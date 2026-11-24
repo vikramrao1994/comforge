@@ -63,7 +63,7 @@ npm install ./artifacts/comforge-core-0.1.0.tgz zod@^4.6.6
 - **Module format:** ESM only.
 - **Imports:** import by package name (`import { … } from "@comforge/core"`), or through a subpath: `@comforge/core/specification`, `/grant`, `/receipt`, `/review`, `/completion` or `/lifecycle`.
 
-A complete, runnable consumer lives in [`examples/factory-core-consumer`](https://github.com/vikramrao1994/comforge/tree/core/v0.1.1/examples/factory-core-consumer). Every code block below is copied from it, and a test fails if they drift.
+A complete, runnable consumer lives in [`examples/factory-core-consumer`](https://github.com/vikramrao1994/comforge/tree/core/v0.1.2/examples/factory-core-consumer). Every code block below is copied from it, and a test fails if they drift.
 
 ## Quick start
 

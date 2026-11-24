@@ -1,27 +1,27 @@
 {
   "schema": "comforge-release/v1",
   "package": "@comforge/core",
-  "version": "0.1.1",
-  "tag": "core/v0.1.1",
+  "version": "0.1.2",
+  "tag": "core/v0.1.2",
   "source": {
-    "commit": "d251815137905afbb647990c3c500f7736d2a964",
-    "packageTree": "654e66ce6f588f81d111496ee98c341fe1749601",
-    "exampleTree": "406a1fd02c5b5a4939ecd65ed5ed124e6e114af9"
+    "commit": "09f6c6f8ee6cc4a0aa1140c0c5bbe7491f051954",
+    "packageTree": "ced9ced33a0e9b17c71123bbb177f04e799ac176",
+    "exampleTree": "3060fe6fee232e8db396f69ca44d1de6c6b557e7"
   },
   "toolchain": {
     "typescript": "7.0.2"
   },
   "tarball": {
-    "file": "comforge-core-0.1.1.tgz",
-    "sha256": "b60659c4160e4b03cf88e9603aebba1a89174e8e457ec6bc0caf4a6fd8c2ee5b",
-    "integrity": "sha512-OnVyWRtiW01tvUg0CicviBoKSI+YJIDvTbkj2jaHprzwXrllaLpp1ZgPZ3Obj/wsOCjVttJzNM2hFfB2yxXNEA=="
+    "file": "comforge-core-0.1.2.tgz",
+    "sha256": "6cc5352195d08a39219ed7a2bb853186965b924c351ebad32785e3737a8ec333",
+    "integrity": "sha512-DTeJs6xJ/HJqL7rv/acQ4IgKi9U+Tl3ULRD04/hvUhG6N5JiLRlcahbQskaw6LKJJmE7DTPAcYE4Qj76HGlcEw=="
   },
   "files": {
     ".github/comforge/npm-release.mjs": "28e4085fc0c1e89b1308e21c40ce793c2c63931f24b0b0e35bccd3e9065f4b7d",
     ".github/workflows/npm-publish.yml": "ed3ae350fb649b8d699c1aed4eceaafb3ab3906e416aca585d3068915037ab48",
-    "CHANGELOG.md": "454648e5ce01d57bdf58e9f589684ffba95481e7f7fbca02a7903ec91bc9436d",
+    "CHANGELOG.md": "01edfa5f39a47037bbcbdb42315cdaa0b7f2a5263fb2989813a09a68a84070a2",
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-    "README.md": "329f28cc43722ae5fdc0b45731becf33c40db6df37c7efdcb53061b4a8d5d829",
+    "README.md": "0403f62bf9fd774b378d2d5aa877d324af527c4216075961f0b10b932d7838fe",
     "dist/authorization.d.ts": "74c536a3de851c4b093207c914c4178799477214c4bf5bfc8e7018cf9626b007",
     "dist/authorization.js": "fcb29ecafa48f1eb23092e815827cb6a88f441bded0a699bf695d7b043d22773",
     "dist/canonical.d.ts": "dcea2394aa23006e19179c6b025ffda5063fcdefd11a4508e83528afd17f417f",
@@ -44,14 +44,14 @@
     "dist/review.js": "e5e3de1028a2b521ae1f7ab6b43d57a83b8746bd422245aafb4be7602400329a",
     "dist/specification.d.ts": "f009536752846681e6d7f03f96aab31b587b9a590b422f73da0034cfc99518ca",
     "dist/specification.js": "cbc6ec0517f42afec52a9f075ec3db360de098c9b4fc979a9f5fb955e01f07b1",
-    "examples/factory-core-consumer/package.json": "bd6dce50de1b251ddbeb68faa542a745eb6f41055a96ff67c19bcac30ffb9895",
+    "examples/factory-core-consumer/package.json": "d1533338ee9ccf07ef083e5184232e00990d8aec032a0e1b6a9b37f7d8489d1e",
     "examples/factory-core-consumer/src/flows.ts": "b612126d9d4114a64a28843a3bca496ce34a1a8f3f0da2b82b2c65bfdc4d2015",
     "examples/factory-core-consumer/src/identity.ts": "cf32b6aa63e8dff2116b8b23654dc3dc2a902997c10e592960268f0c9c4e7c5a",
     "examples/factory-core-consumer/src/main.ts": "c90439692035e4b947798d4a388a2c98058d57d0f5307a61774c0677009cd781",
     "examples/factory-core-consumer/src/testSigner.ts": "90fea87923d52c2ab89434039482d83b4a44916ddf545d7345a02b3b844ef0f2",
     "examples/factory-core-consumer/tsconfig.json": "6eb26b5b55a4f91fc253f358bd6929e6e41373a0c967bbf661f58f5c99dc1806",
-    "llms.txt": "e128e56ba531679d31e9a460dd492114a5f9f13b00822b0974cecdf3421e8196",
-    "package.json": "89cf1c00c8be749d7aae6f4526d5c4fc3f5649e52e58cfe190fb1a8e39eae785",
+    "llms.txt": "a0433f016caa6dee093c7772012836781832ebcd6eb2328a5ea2d52d7250116e",
+    "package.json": "433226d33ee6441488ef3931f7979de35e20784de08cf7cd220c0f3fd3e22c7d",
     "src/authorization.ts": "b1a41dbf08851f83adebd99561022a4b4bb1b860c2760af2657ca52d8184f4c0",
     "src/canonical.ts": "fcc08a36e3b2f5e704c3565f0e3775937a1568d0b228295f07b376e6c066964a",
     "src/completion.ts": "8c212a431e913f9939c013cef6ddf9667cfa32c663d039f44943d81a525187b5",

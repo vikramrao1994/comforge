@@ -2,6 +2,10 @@
 
 `@comforge/core`, the governance kernel of Comforge. Every release is tagged `core/vMAJOR.MINOR.PATCH` on the `releases/core` branch of the public Comforge repository and carries a `RELEASE.json` naming its source commit, the TypeScript version that compiled it, the SHA-256 of every file and of the npm tarball. Released versions are never changed; a correction is a new version.
 
+## 0.1.2
+
+Distribution release; the library is unchanged from 0.1.1 and 0.1.0. 0.1.1 is a Git-only release: its tag push, which also added the npm workflow, did not start that workflow, so it was never published to npm. 0.1.2 is the first version published to npm through Trusted Publishing, with provenance naming this repository, `npm-publish.yml`, the `core/v0.1.2` tag and the release commit.
+
 ## 0.1.1
 
 Distribution release. The library is unchanged: same source, exports, wire formats and signatures as 0.1.0.
