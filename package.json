@@ -1,0 +1,53 @@
+{
+  "name": "@comforge/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Deterministic governance contracts for an engineering lifecycle: specification digests, grant and receipt verification, review and completion-record integrity, lifecycle decisions. Pure: no I/O, no environment, no clock, no private keys.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./specification": {
+      "types": "./dist/specification.d.ts",
+      "default": "./dist/specification.js"
+    },
+    "./grant": {
+      "types": "./dist/grant.d.ts",
+      "default": "./dist/grant.js"
+    },
+    "./receipt": {
+      "types": "./dist/receipt.d.ts",
+      "default": "./dist/receipt.js"
+    },
+    "./review": {
+      "types": "./dist/review.d.ts",
+      "default": "./dist/review.js"
+    },
+    "./completion": {
+      "types": "./dist/completion.d.ts",
+      "default": "./dist/completion.js"
+    },
+    "./lifecycle": {
+      "types": "./dist/lifecycle.d.ts",
+      "default": "./dist/lifecycle.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.6"
+  },
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.4"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "llms.txt"
+  ]
+}
