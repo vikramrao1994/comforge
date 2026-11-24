@@ -1,9 +1,13 @@
 {
   "name": "@comforge/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Deterministic governance contracts for an engineering lifecycle: specification digests, grant and receipt verification, review and completion-record integrity, lifecycle decisions. Pure: no I/O, no environment, no clock, no private keys.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikramrao1994/comforge.git"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {

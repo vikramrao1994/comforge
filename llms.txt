@@ -31,7 +31,7 @@ Rules for an agent integrating this library:
 
 ## Examples
 
-- [Example consumer](examples/factory-core-consumer/src/flows.ts): all four use cases with synthetic data, runnable under Node and Bun
+- [Example consumer](https://github.com/vikramrao1994/comforge/tree/core/v0.1.1/examples/factory-core-consumer/src/flows.ts): all four use cases with synthetic data, runnable under Node and Bun
 
 ## Optional
 

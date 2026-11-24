@@ -29,12 +29,20 @@ Each answer is only as trustworthy as the observation you pass in. Never pass is
 
 | Consumer | How | Status |
 |---|---|---|
-| Bun ≥ 1.4 | a release (git dependency), the workspace package or the distribution tarball | tested (1.4.1) |
-| Node ≥ 22 | a release (git dependency) or **the distribution tarball** (`dist/*.js`) | tested (v26.3.0) |
+| Bun ≥ 1.4 | the npm package, a release (git dependency), the workspace package or the distribution tarball | tested (1.4.1) |
+| Node ≥ 22 | the npm package, a release (git dependency) or **the distribution tarball** (`dist/*.js`) | tested (v26.3.0) |
 | Node, workspace source | not supported: Node does not strip types under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`) | — |
-| TypeScript (`tsc`) | the distribution tarball ships `.d.ts`. The source package needs `allowImportingTsExtensions` | tested (7.0.2) |
+| TypeScript (`tsc`) | the npm package and the distribution tarball ship `.d.ts`. The source package needs `allowImportingTsExtensions` | tested (7.0.2) |
 
-Install a release by pinning its **commit** on the `releases/core` branch (the tag names it; a commit cannot be moved, a tag can). The repository is public, so no credential is needed:
+Install from npm at an exact version (`0.1.0` is the first):
+
+```sh
+npm install --save-exact @comforge/core@0.1.0     # or: bun add --exact @comforge/core@0.1.0
+```
+
+The npm package is a verified Git release's `LICENSE`, `README.md`, `llms.txt`, `package.json` and `dist/`, byte for byte except the manifest (`private` removed, `repository` added). Versions published from the release workflow carry npm provenance naming the release tag and commit.
+
+Or pin a Git release by its **commit** on the `releases/core` branch (the tag names it; a commit cannot be moved, a tag can). The repository is public, so no credential is needed:
 
 ```json
 "dependencies": {
@@ -55,7 +63,7 @@ npm install ./artifacts/comforge-core-0.1.0.tgz zod@^4.6.6
 - **Module format:** ESM only.
 - **Imports:** import by package name (`import { … } from "@comforge/core"`), or through a subpath: `@comforge/core/specification`, `/grant`, `/receipt`, `/review`, `/completion` or `/lifecycle`.
 
-A complete, runnable consumer lives in [`examples/factory-core-consumer`](examples/factory-core-consumer). Every code block below is copied from it, and a test fails if they drift.
+A complete, runnable consumer lives in [`examples/factory-core-consumer`](https://github.com/vikramrao1994/comforge/tree/core/v0.1.1/examples/factory-core-consumer). Every code block below is copied from it, and a test fails if they drift.
 
 ## Quick start
 

@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@comforge/core": "0.1.0",
+    "@comforge/core": "0.1.1",
     "zod": "^4.6.6"
   },
   "devDependencies": {
