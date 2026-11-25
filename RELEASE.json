@@ -1,0 +1,47 @@
+{
+  "schema": "comforge-release/v1",
+  "package": "@comforge/github",
+  "version": "0.1.0",
+  "tag": "github/v0.1.0",
+  "source": {
+    "commit": "cb151c49955fde6b6ba3affe3205f1a2cbc7a76b",
+    "packageTree": "3621390c41a234439243b933266b017ce5690f82",
+    "exampleTree": "d88b308fd2e59c3eea99f4e57eb379a5c95baef6"
+  },
+  "toolchain": {
+    "typescript": "7.0.2"
+  },
+  "tarball": {
+    "file": "comforge-github-0.1.0.tgz",
+    "sha256": "ec09a506f1d9bee52e104dbcbcb8f6a563aaf5722122a6c163fd2bbba3d168d4",
+    "integrity": "sha512-u0ilKPYZ8Z6qpL4mZe2wT3j7ZNIL9n3+RGZP4+h8XleOtYbtgBc2rvyzV5pazCr0QyIu7CsWL8MVgGaIcaJwxA=="
+  },
+  "files": {
+    ".github/comforge/npm-release.mjs": "0d499ebe9a0db8c03c6366e136a02c2d4c8f0baab2959061297fc5e83f33d787",
+    ".github/workflows/npm-publish-github.yml": "235f8d5b27d390347ae5b3dcbb37fc2f3cc5db7bb07ded792fba35aa4adda839",
+    "CHANGELOG.md": "5189a51199ee23867570dce975c8172c955fa045572b4dfc570cacacf4f7c539",
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "README.md": "c418ddfb58a5eb14b9ab284afed52aa5298b47e53319c4473d129d8383be3857",
+    "dist/errors.d.ts": "f78bdf61e37044248bf5fe47fac7f251fd1f8ac5b54824f43d737d2f73564876",
+    "dist/errors.js": "3df4326904493e8257c76ef451f72f3f73cc7cb4beefa2eca3cd1557ead01a81",
+    "dist/evidence.d.ts": "330ae320c3eb859006919762b1d0c9e6f7ad456f30993fbe40ee0ea8a3bda2eb",
+    "dist/evidence.js": "bf397342833276454f40ca72116fa3912ca6692e47807858ae952854119e78d7",
+    "dist/index.d.ts": "9586e4dc48e796fd77b9f4613b3c9cff7639f4fe50731c4de874ec7bab8cd664",
+    "dist/index.js": "d140f8704d600e430d17155bd61131433a40e50ae4c2960cfeccfa556d7632e3",
+    "dist/specification.d.ts": "3f0099958bdcb8c5d0b735112ddd737c5d3a1b9d0c2c049df64a255c959dcf0a",
+    "dist/specification.js": "b4d59a8a7eafdb7c57e0f7fe74cf95644d5985d36467c51f8da93572a984f7c5",
+    "dist/transport.d.ts": "18451a9caa2828a8abfb3bd93c729a3e93fb375d5f93e60ef596a584e701c3e8",
+    "dist/transport.js": "8b0eb9f2d350f2b7fb2ee888cbecd452210ea6cd529291f36db48d294c16ac26",
+    "examples/factory-github-consumer/package.json": "46fc36ee8559c710cef82fc2787c40d900509af91a030be5454dc013adffb927",
+    "examples/factory-github-consumer/src/fakeGitHub.ts": "ae0e373a68ada072580520ba7e092e18db2b3a82d13704489cea1f2440960a56",
+    "examples/factory-github-consumer/src/main.ts": "6b925f6a2e5d61ac48f1f8ea74c48a25d5cd3a14068e2cb81c59e00b8a7da93b",
+    "examples/factory-github-consumer/tsconfig.json": "6eb26b5b55a4f91fc253f358bd6929e6e41373a0c967bbf661f58f5c99dc1806",
+    "llms.txt": "00b77b393352dff06daf984744dfd1e8691b220c2763b7787a1b46d0e58918f0",
+    "package.json": "04a7502f0fb025e857a6563d7b265603b272169c16fbb12d9f0bbb5c22d6da7f",
+    "src/errors.ts": "189372225aeaa85e01c23df6d4a1466d4cccab4619d5b463764fa962954b0300",
+    "src/evidence.ts": "851b4f4eb58d1806cee5a770a98f0f8786a19d862658125fbf5d6ecfb02c3635",
+    "src/index.ts": "6bfb1553b5a9268be4f5183e605417e30f3ca152c853532797a835f2da30118d",
+    "src/specification.ts": "fabf1554005e8396b64c3d7af8fd3484f6cffb68b0b8b97089bd917caeaa9779",
+    "src/transport.ts": "2adbd25704e3fd8bfd96e565d20cb9bc97c189fbbb293158c4f80c4827b23711"
+  }
+}

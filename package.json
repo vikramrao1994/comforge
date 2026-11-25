@@ -1,0 +1,34 @@
+{
+  "name": "@comforge/github",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitHub evidence for Comforge governance: typed, exact-SHA reads of issues, pull requests, reviews and checks, and published-specification verification through @comforge/core. Injected transport; no writes.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikramrao1994/comforge.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@comforge/core": "^0.1.2",
+    "zod": "^4.6.6"
+  },
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.4"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "llms.txt"
+  ]
+}
