@@ -18,6 +18,10 @@ export const GITHUB_ERROR_CODES = [
   "stale",
   "wrong-target",
   "conflict",
+  // The writer refuses with these before anything is sent.
+  "capability-denied",
+  "authorization-denied",
+  "ledger-failure",
 ] as const;
 export type GitHubErrorCode = (typeof GITHUB_ERROR_CODES)[number];
 

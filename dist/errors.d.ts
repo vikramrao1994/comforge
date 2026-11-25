@@ -2,7 +2,7 @@
  * Every refusal the adapter makes, with a stable code. A refusal is never a governance
  * decision: it says GitHub could not supply trustworthy evidence, so the caller stops.
  */
-export declare const GITHUB_ERROR_CODES: readonly ["invalid-input", "unapproved-origin", "not-found", "unauthorized", "forbidden", "rate-limited", "http-error", "timeout", "network", "too-large", "malformed-response", "incomplete", "stale", "wrong-target", "conflict"];
+export declare const GITHUB_ERROR_CODES: readonly ["invalid-input", "unapproved-origin", "not-found", "unauthorized", "forbidden", "rate-limited", "http-error", "timeout", "network", "too-large", "malformed-response", "incomplete", "stale", "wrong-target", "conflict", "capability-denied", "authorization-denied", "ledger-failure"];
 export type GitHubErrorCode = (typeof GITHUB_ERROR_CODES)[number];
 export interface GitHubErrorDetail {
     /** HTTP status, when GitHub answered. */

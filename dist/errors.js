@@ -18,6 +18,10 @@ export const GITHUB_ERROR_CODES = [
     "stale",
     "wrong-target",
     "conflict",
+    // The writer refuses with these before anything is sent.
+    "capability-denied",
+    "authorization-denied",
+    "ledger-failure",
 ];
 export class GitHubAdapterError extends Error {
     name = "GitHubAdapterError";

@@ -2,7 +2,7 @@
   "name": "acme-github-consumer",
   "version": "0.0.0",
   "private": true,
-  "description": "Independent example consumer of @comforge/github: exact-SHA pull-request, check and review evidence and published-specification verification, against a fake GitHub transport with synthetic data.",
+  "description": "Independent example consumer of @comforge/github: exact-SHA pull-request, check and review evidence and published-specification verification, and the opt-in caller-authorized writer, against a synthetic GitHub with synthetic data.",
   "type": "module",
   "scripts": {
     "start": "node src/main.ts",
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@comforge/core": "^0.1.2",
-    "@comforge/github": "0.2.0",
+    "@comforge/github": "0.3.0",
     "zod": "^4.6.6"
   },
   "devDependencies": {

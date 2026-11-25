@@ -7,6 +7,7 @@ import {
   reconcileSpecification,
 } from "@comforge/github";
 import { fakeGitHub } from "./fakeGitHub.ts";
+import { runWriterExample } from "./writer.ts";
 
 export type Check = { id: string; pass: boolean };
 
@@ -144,6 +145,7 @@ export async function runExample(): Promise<{ runtime: string; checks: Check[] }
       { id: "compare.exact-commits", pass: compared.status === "ahead" && compared.aheadBy === 2 && compared.mergeBase === BASE },
       { id: "workflow-runs.exact-sha-no-verdict", pass: workflowRuns.sha === HEAD && workflowRuns.runs.length === 1 && !("ok" in workflowRuns) },
       { id: "refuse.ref-compare-never-sent", pass: (await refusal(github.compareCommits("main", HEAD))) === "invalid-input" },
+      ...(await runWriterExample()),
     ],
   };
 }
