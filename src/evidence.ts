@@ -72,6 +72,7 @@ const FileSchema = z.object({
   additions: z.number().int(),
   deletions: z.number().int(),
   changes: z.number().int(),
+  patch: z.string().optional(),
 });
 const ReviewSchema = z.object({
   id: z.number().int(),
@@ -90,10 +91,36 @@ const CheckRunsSchema = z.object({
       head_sha: z.string(),
       status: z.string(),
       conclusion: z.string().nullable(),
+      started_at: z.string().nullable().optional(),
       completed_at: z.string().nullable().optional(),
       app: z.object({ slug: z.string() }).nullable().optional(),
     }),
   ),
+});
+
+const WorkflowRunsSchema = z.object({
+  total_count: z.number().int().nonnegative(),
+  workflow_runs: z.array(
+    z.object({
+      id: z.number().int(),
+      name: z.string().nullable(),
+      head_sha: z.string(),
+      status: z.string().nullable(),
+      conclusion: z.string().nullable(),
+      event: z.string(),
+      created_at: z.string(),
+    }),
+  ),
+});
+/** Extensions whose missing patch means binary content, not an unreadable one. */
+const BINARY_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|ico|pdf|zip|gz|woff2?|ttf|bin|db|sqlite)$/i;
+
+const CompareSchema = z.object({
+  status: z.enum(["identical", "ahead", "behind", "diverged"]),
+  ahead_by: z.number().int().nonnegative(),
+  behind_by: z.number().int().nonnegative(),
+  base_commit: z.object({ sha: z.string().regex(SHA) }),
+  merge_base_commit: z.object({ sha: z.string().regex(SHA) }),
 });
 
 export interface UntrustedText {
@@ -129,6 +156,13 @@ export interface PullRequestEvidence {
   head: { ref: string; sha: string; repository: string | null };
 }
 
+export type PatchStatus =
+  | "included"
+  | "truncated"
+  | "omitted-budget"
+  | "omitted-by-request"
+  | "unavailable";
+
 export interface ChangedFile {
   path: string;
   previousPath: string | null;
@@ -136,6 +170,40 @@ export interface ChangedFile {
   additions: number;
   deletions: number;
   changes: number;
+  /** GitHub sent no patch and the name is a binary format: there is no text to show. */
+  binary: boolean;
+  /**
+   * Why `patch` is or is not here. `unavailable`: GitHub sent none (binary or too large for it);
+   * never an empty patch. `omitted-*`: GitHub sent one and the caller's request or budget left it out.
+   */
+  patchStatus: PatchStatus;
+  patch: UntrustedText | null;
+}
+
+export interface PatchLimits {
+  /** Characters kept of one file's patch. */
+  perFileMaxChars: number;
+  /** Characters kept across all patches, in GitHub's file order. */
+  totalMaxChars: number;
+}
+
+export const DEFAULT_PATCH_LIMITS: PatchLimits = {
+  perFileMaxChars: 20_000,
+  totalMaxChars: 100_000,
+};
+
+export interface WorkflowRunEvidence {
+  repository: string;
+  sha: string;
+  /** Workflow runs for exactly `sha`. Evidence of what ran, never a verdict on required checks. */
+  runs: {
+    id: number;
+    name: string | null;
+    status: string | null;
+    conclusion: string | null;
+    event: string;
+    createdAt: string;
+  }[];
 }
 
 export interface PullRequestFilesEvidence {
@@ -162,11 +230,25 @@ export interface CheckEvidence {
     status: string;
     conclusion: string | null;
     app: string | null;
+    startedAt: string | null;
     completedAt: string | null;
   }[];
   required: { name: string; conclusion: string | null; satisfied: boolean }[];
   /** Every required check has a successful run on exactly `sha`. False when nothing is required. */
   ok: boolean;
+}
+
+export interface CommitComparison {
+  repository: string;
+  base: string;
+  head: string;
+  /** How `head` relates to `base`: `ahead` means `head` has commits `base` lacks. */
+  status: "identical" | "ahead" | "behind" | "diverged";
+  /** Commits on `head` that are not on `base`. */
+  aheadBy: number;
+  /** Commits on `base` that are not on `head`. */
+  behindBy: number;
+  mergeBase: string;
 }
 
 export interface GitHubEvidence {
@@ -178,12 +260,26 @@ export interface GitHubEvidence {
     number: number,
     options?: { expectedHeadSha?: string },
   ): Promise<PullRequestEvidence>;
-  /** The changed files of a pull request whose head is exactly `headSha`, before and after the read. */
-  listPullRequestFiles(number: number, headSha: string): Promise<PullRequestFilesEvidence>;
+  /**
+   * The changed files of a pull request whose head is exactly `headSha`, before and after the
+   * read. With `patches`, each file's patch text within the per-file and total budgets.
+   */
+  listPullRequestFiles(
+    number: number,
+    headSha: string,
+    options?: { patches?: Partial<PatchLimits> | true },
+  ): Promise<PullRequestFilesEvidence>;
   /** Reviews; with `commitSha`, only those submitted on that exact commit. */
   listReviews(number: number, options?: { commitSha?: string }): Promise<ReviewEvidence[]>;
   /** Check runs GitHub recorded for exactly `sha`, judged against `required` check names. */
   getChecks(sha: string, required?: readonly string[]): Promise<CheckEvidence>;
+  /**
+   * Workflow runs GitHub recorded for exactly `sha`: a read for credentials without check-run
+   * access. Which one to trust when is the caller's policy; this never reports success.
+   */
+  listWorkflowRuns(sha: string): Promise<WorkflowRunEvidence>;
+  /** How commit `head` relates to commit `base` (both full SHAs), as GitHub's compare reports it. */
+  compareCommits(base: string, head: string): Promise<CommitComparison>;
 }
 
 function positive(value: number, what: string): number {
@@ -341,26 +437,67 @@ export function createGitHubEvidence(options: {
 
     getPullRequest,
 
-    async listPullRequestFiles(number: number, headSha: string) {
+    async listPullRequestFiles(
+      number: number,
+      headSha: string,
+      opts: { patches?: Partial<PatchLimits> | true } = {},
+    ) {
       sha(headSha, "headSha");
+      const patchLimits =
+        opts.patches === undefined
+          ? null
+          : { ...DEFAULT_PATCH_LIMITS, ...(opts.patches === true ? {} : opts.patches) };
+      if (
+        patchLimits &&
+        !(
+          Number.isSafeInteger(patchLimits.perFileMaxChars) &&
+          Number.isSafeInteger(patchLimits.totalMaxChars) &&
+          patchLimits.perFileMaxChars >= 1 &&
+          patchLimits.totalMaxChars >= 1
+        )
+      )
+        throw new GitHubAdapterError("invalid-input", "Invalid patch limits");
       await getPullRequest(number, { expectedHeadSha: headSha });
       const files = await pages(["pulls", number, "files"], {}, (body) => ({
         items: parse(z.array(FileSchema), body, "pull request files"),
       }));
       // The listing is of whatever the head was while it was read; prove it did not move.
       await getPullRequest(number, { expectedHeadSha: headSha });
+      let budget = patchLimits?.totalMaxChars ?? 0;
       return {
         repository,
         number,
         headSha,
-        files: files.map((f) => ({
-          path: f.filename,
-          previousPath: f.previous_filename ?? null,
-          status: f.status,
-          additions: f.additions,
-          deletions: f.deletions,
-          changes: f.changes,
-        })),
+        files: files.map((f): ChangedFile => {
+          let patchStatus: PatchStatus = "unavailable";
+          let patch: UntrustedText | null = null;
+          if (f.patch !== undefined) {
+            if (!patchLimits) patchStatus = "omitted-by-request";
+            else if (budget <= 0) patchStatus = "omitted-budget";
+            else {
+              const max = Math.min(patchLimits.perFileMaxChars, budget);
+              const truncated = f.patch.length > max;
+              patch = {
+                text: truncated ? f.patch.slice(0, max) : f.patch,
+                truncated,
+                trust: UNTRUSTED,
+              };
+              budget -= patch.text.length;
+              patchStatus = truncated ? "truncated" : "included";
+            }
+          }
+          return {
+            path: f.filename,
+            previousPath: f.previous_filename ?? null,
+            status: f.status,
+            additions: f.additions,
+            deletions: f.deletions,
+            changes: f.changes,
+            binary: f.patch === undefined && BINARY_EXTENSIONS.test(f.filename),
+            patchStatus,
+            patch,
+          };
+        }),
       };
     },
 
@@ -397,6 +534,7 @@ export function createGitHubEvidence(options: {
         status: r.status,
         conclusion: r.conclusion,
         app: r.app?.slug ?? null,
+        startedAt: r.started_at ?? null,
         completedAt: r.completed_at ?? null,
       }));
       // Any successful run of a required name on exactly this commit proves it passed on this tree.
@@ -417,6 +555,53 @@ export function createGitHubEvidence(options: {
         checks,
         required: requiredEvidence,
         ok: requiredEvidence.length > 0 && requiredEvidence.every((r) => r.satisfied),
+      };
+    },
+
+    async listWorkflowRuns(commit: string) {
+      sha(commit);
+      const runs = await pages(["actions", "runs"], { head_sha: commit }, (body) => {
+        const page = parse(WorkflowRunsSchema, body, "workflow runs");
+        return { items: page.workflow_runs, total: page.total_count };
+      });
+      if (runs.some((r) => r.head_sha !== commit))
+        throw new GitHubAdapterError(
+          "malformed-response",
+          "A workflow run belongs to another commit",
+        );
+      return {
+        repository,
+        sha: commit,
+        runs: runs.map((r) => ({
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          conclusion: r.conclusion,
+          event: r.event,
+          createdAt: r.created_at,
+        })),
+      };
+    },
+
+    async compareCommits(baseSha: string, headSha: string) {
+      sha(baseSha, "base");
+      sha(headSha, "head");
+      const c = parse(
+        CompareSchema,
+        await get(["compare", `${baseSha}...${headSha}`]),
+        "a commit comparison",
+      );
+      // GitHub resolves the range itself; an answer about another base is not this comparison.
+      if (c.base_commit.sha !== baseSha)
+        throw new GitHubAdapterError("malformed-response", "The comparison names another base");
+      return {
+        repository,
+        base: baseSha,
+        head: headSha,
+        status: c.status,
+        aheadBy: c.ahead_by,
+        behindBy: c.behind_by,
+        mergeBase: c.merge_base_commit.sha,
       };
     },
   });

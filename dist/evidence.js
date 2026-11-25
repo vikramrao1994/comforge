@@ -52,6 +52,7 @@ const FileSchema = z.object({
     additions: z.number().int(),
     deletions: z.number().int(),
     changes: z.number().int(),
+    patch: z.string().optional(),
 });
 const ReviewSchema = z.object({
     id: z.number().int(),
@@ -69,10 +70,36 @@ const CheckRunsSchema = z.object({
         head_sha: z.string(),
         status: z.string(),
         conclusion: z.string().nullable(),
+        started_at: z.string().nullable().optional(),
         completed_at: z.string().nullable().optional(),
         app: z.object({ slug: z.string() }).nullable().optional(),
     })),
 });
+const WorkflowRunsSchema = z.object({
+    total_count: z.number().int().nonnegative(),
+    workflow_runs: z.array(z.object({
+        id: z.number().int(),
+        name: z.string().nullable(),
+        head_sha: z.string(),
+        status: z.string().nullable(),
+        conclusion: z.string().nullable(),
+        event: z.string(),
+        created_at: z.string(),
+    })),
+});
+/** Extensions whose missing patch means binary content, not an unreadable one. */
+const BINARY_EXTENSIONS = /\.(png|jpe?g|gif|webp|avif|ico|pdf|zip|gz|woff2?|ttf|bin|db|sqlite)$/i;
+const CompareSchema = z.object({
+    status: z.enum(["identical", "ahead", "behind", "diverged"]),
+    ahead_by: z.number().int().nonnegative(),
+    behind_by: z.number().int().nonnegative(),
+    base_commit: z.object({ sha: z.string().regex(SHA) }),
+    merge_base_commit: z.object({ sha: z.string().regex(SHA) }),
+});
+export const DEFAULT_PATCH_LIMITS = {
+    perFileMaxChars: 20_000,
+    totalMaxChars: 100_000,
+};
 function positive(value, what) {
     if (!Number.isSafeInteger(value) || value < 1)
         throw new GitHubAdapterError("invalid-input", `Invalid ${what}`);
@@ -173,26 +200,60 @@ export function createGitHubEvidence(options) {
             return all.map(issueEvidence).filter((i) => !i.isPullRequest);
         },
         getPullRequest,
-        async listPullRequestFiles(number, headSha) {
+        async listPullRequestFiles(number, headSha, opts = {}) {
             sha(headSha, "headSha");
+            const patchLimits = opts.patches === undefined
+                ? null
+                : { ...DEFAULT_PATCH_LIMITS, ...(opts.patches === true ? {} : opts.patches) };
+            if (patchLimits &&
+                !(Number.isSafeInteger(patchLimits.perFileMaxChars) &&
+                    Number.isSafeInteger(patchLimits.totalMaxChars) &&
+                    patchLimits.perFileMaxChars >= 1 &&
+                    patchLimits.totalMaxChars >= 1))
+                throw new GitHubAdapterError("invalid-input", "Invalid patch limits");
             await getPullRequest(number, { expectedHeadSha: headSha });
             const files = await pages(["pulls", number, "files"], {}, (body) => ({
                 items: parse(z.array(FileSchema), body, "pull request files"),
             }));
             // The listing is of whatever the head was while it was read; prove it did not move.
             await getPullRequest(number, { expectedHeadSha: headSha });
+            let budget = patchLimits?.totalMaxChars ?? 0;
             return {
                 repository,
                 number,
                 headSha,
-                files: files.map((f) => ({
-                    path: f.filename,
-                    previousPath: f.previous_filename ?? null,
-                    status: f.status,
-                    additions: f.additions,
-                    deletions: f.deletions,
-                    changes: f.changes,
-                })),
+                files: files.map((f) => {
+                    let patchStatus = "unavailable";
+                    let patch = null;
+                    if (f.patch !== undefined) {
+                        if (!patchLimits)
+                            patchStatus = "omitted-by-request";
+                        else if (budget <= 0)
+                            patchStatus = "omitted-budget";
+                        else {
+                            const max = Math.min(patchLimits.perFileMaxChars, budget);
+                            const truncated = f.patch.length > max;
+                            patch = {
+                                text: truncated ? f.patch.slice(0, max) : f.patch,
+                                truncated,
+                                trust: UNTRUSTED,
+                            };
+                            budget -= patch.text.length;
+                            patchStatus = truncated ? "truncated" : "included";
+                        }
+                    }
+                    return {
+                        path: f.filename,
+                        previousPath: f.previous_filename ?? null,
+                        status: f.status,
+                        additions: f.additions,
+                        deletions: f.deletions,
+                        changes: f.changes,
+                        binary: f.patch === undefined && BINARY_EXTENSIONS.test(f.filename),
+                        patchStatus,
+                        patch,
+                    };
+                }),
             };
         },
         async listReviews(number, opts = {}) {
@@ -224,6 +285,7 @@ export function createGitHubEvidence(options) {
                 status: r.status,
                 conclusion: r.conclusion,
                 app: r.app?.slug ?? null,
+                startedAt: r.started_at ?? null,
                 completedAt: r.completed_at ?? null,
             }));
             // Any successful run of a required name on exactly this commit proves it passed on this tree.
@@ -242,6 +304,44 @@ export function createGitHubEvidence(options) {
                 checks,
                 required: requiredEvidence,
                 ok: requiredEvidence.length > 0 && requiredEvidence.every((r) => r.satisfied),
+            };
+        },
+        async listWorkflowRuns(commit) {
+            sha(commit);
+            const runs = await pages(["actions", "runs"], { head_sha: commit }, (body) => {
+                const page = parse(WorkflowRunsSchema, body, "workflow runs");
+                return { items: page.workflow_runs, total: page.total_count };
+            });
+            if (runs.some((r) => r.head_sha !== commit))
+                throw new GitHubAdapterError("malformed-response", "A workflow run belongs to another commit");
+            return {
+                repository,
+                sha: commit,
+                runs: runs.map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    status: r.status,
+                    conclusion: r.conclusion,
+                    event: r.event,
+                    createdAt: r.created_at,
+                })),
+            };
+        },
+        async compareCommits(baseSha, headSha) {
+            sha(baseSha, "base");
+            sha(headSha, "head");
+            const c = parse(CompareSchema, await get(["compare", `${baseSha}...${headSha}`]), "a commit comparison");
+            // GitHub resolves the range itself; an answer about another base is not this comparison.
+            if (c.base_commit.sha !== baseSha)
+                throw new GitHubAdapterError("malformed-response", "The comparison names another base");
+            return {
+                repository,
+                base: baseSha,
+                head: headSha,
+                status: c.status,
+                aheadBy: c.ahead_by,
+                behindBy: c.behind_by,
+                mergeBase: c.merge_base_commit.sha,
             };
         },
     });

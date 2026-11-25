@@ -46,7 +46,16 @@ const pull = (head: string) => ({
   base: { ref: "main", sha: BASE },
   head: { ref: "sorting", sha: head },
 });
-const run = (name: string, conclusion: string) => ({ id: name.length, name, head_sha: HEAD, status: "completed", conclusion, app: { slug: "ci" } });
+const run = (name: string, conclusion: string) => ({
+  id: name.length,
+  name,
+  head_sha: HEAD,
+  status: "completed",
+  conclusion,
+  started_at: "2026-01-01T00:00:00Z",
+  completed_at: "2026-01-01T00:05:00Z",
+  app: { slug: "ci" },
+});
 
 async function refusal(promise: Promise<unknown>): Promise<string> {
   try {
@@ -66,7 +75,24 @@ export async function runExample(): Promise<{ runtime: string; checks: Check[] }
   const github = createGitHubEvidence({
     transport: fakeGitHub({
       [`${ROOT}/pulls/7`]: pull(HEAD),
-      [`${ROOT}/pulls/7/files`]: [{ filename: "src/sort.ts", status: "added", additions: 20, deletions: 0, changes: 20 }],
+      [`${ROOT}/pulls/7/files`]: [
+        { filename: "src/sort.ts", status: "added", additions: 20, deletions: 0, changes: 20, patch: "@@ -0,0 +1 @@\n+export const sort = 1;" },
+        { filename: "docs/diagram.png", status: "added", additions: 0, deletions: 0, changes: 0 },
+      ],
+      [`${ROOT}/compare/${BASE}...${HEAD}`]: {
+        status: "ahead",
+        ahead_by: 2,
+        behind_by: 0,
+        total_commits: 2,
+        base_commit: { sha: BASE },
+        merge_base_commit: { sha: BASE },
+      },
+      [`${ROOT}/actions/runs`]: (q: Record<string, string>) => ({
+        total_count: 1,
+        workflow_runs: [
+          { id: 5, name: "CI", head_sha: q.head_sha, status: "completed", conclusion: "success", event: "pull_request", created_at: "2026-01-01T00:00:00Z" },
+        ],
+      }),
       [`${ROOT}/pulls/7/reviews`]: [
         { id: 1, user: { login: "reviewer" }, state: "APPROVED", commit_id: BASE, submitted_at: "2026-01-01T00:00:00Z", body: "LGTM" },
       ],
@@ -86,6 +112,9 @@ export async function runExample(): Promise<{ runtime: string; checks: Check[] }
   const strict = await github.getChecks(pr.head.sha, ["Validate", "Lint"]);
   const files = await github.listPullRequestFiles(7, pr.head.sha);
   const currentReviews = await github.listReviews(7, { commitSha: pr.head.sha });
+  const withPatches = await github.listPullRequestFiles(7, pr.head.sha, { patches: { perFileMaxChars: 10 } });
+  const compared = await github.compareCommits(BASE, HEAD);
+  const workflowRuns = await github.listWorkflowRuns(HEAD);
   const published = await readSpecificationIssue(github, protocol, 42);
   const again = await reconcileSpecification(github, protocol, { ticketId: spec.ticketId, digest, keyDigest });
 
@@ -102,6 +131,19 @@ export async function runExample(): Promise<{ runtime: string; checks: Check[] }
       { id: "spec.republication-is-a-replay", pass: again.outcome === "replayed" },
       { id: "refuse.moved-head-is-stale", pass: (await refusal(stale.listPullRequestFiles(7, HEAD))) === "stale" },
       { id: "refuse.short-sha-never-sent", pass: (await refusal(github.getChecks("1234567"))) === "invalid-input" },
+      {
+        id: "files.patch-is-bounded-untrusted-text",
+        pass:
+          withPatches.files[0]?.patchStatus === "truncated" &&
+          withPatches.files[0]?.patch?.text.length === 10 &&
+          withPatches.files[0]?.patch?.trust === "untrusted" &&
+          files.files[0]?.patchStatus === "omitted-by-request",
+      },
+      { id: "files.binary-has-no-patch", pass: withPatches.files[1]?.binary === true && withPatches.files[1]?.patch === null },
+      { id: "checks.carry-start-time", pass: checks.checks[0]?.startedAt === "2026-01-01T00:00:00Z" },
+      { id: "compare.exact-commits", pass: compared.status === "ahead" && compared.aheadBy === 2 && compared.mergeBase === BASE },
+      { id: "workflow-runs.exact-sha-no-verdict", pass: workflowRuns.sha === HEAD && workflowRuns.runs.length === 1 && !("ok" in workflowRuns) },
+      { id: "refuse.ref-compare-never-sent", pass: (await refusal(github.compareCommits("main", HEAD))) === "invalid-input" },
     ],
   };
 }

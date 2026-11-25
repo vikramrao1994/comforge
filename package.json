@@ -1,6 +1,6 @@
 {
   "name": "@comforge/github",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "GitHub evidence for Comforge governance: typed, exact-SHA reads of issues, pull requests, reviews and checks, and published-specification verification through @comforge/core. Injected transport; no writes.",
   "license": "Apache-2.0",

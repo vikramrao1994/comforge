@@ -7,15 +7,19 @@ export {
 export {
   type ChangedFile,
   type CheckEvidence,
+  type CommitComparison,
   createGitHubEvidence,
   type EvidenceLimits,
   type GitHubEvidence,
   type IssueEvidence,
+  type PatchLimits,
+  type PatchStatus,
   type PullRequestEvidence,
   type PullRequestFilesEvidence,
   type RepositoryRef,
   type ReviewEvidence,
   type UntrustedText,
+  type WorkflowRunEvidence,
 } from "./evidence.ts";
 export {
   type Reconciliation,

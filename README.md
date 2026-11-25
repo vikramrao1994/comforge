@@ -41,7 +41,7 @@ const files = await github.listPullRequestFiles(7, pr.head.sha); // refuses if t
 if (!checks.ok) throw new Error("required checks are not green for this exact commit");
 ```
 
-A complete, runnable consumer with a fake GitHub transport: [examples/factory-github-consumer](https://github.com/vikramrao1994/comforge/tree/github/v0.1.0/examples/factory-github-consumer/).
+A complete, runnable consumer with a fake GitHub transport: [examples/factory-github-consumer](https://github.com/vikramrao1994/comforge/tree/github/v0.2.0/examples/factory-github-consumer/).
 
 ## The transport
 

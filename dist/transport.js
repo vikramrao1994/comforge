@@ -36,6 +36,12 @@ export function classifyStatus(status, headers) {
     return new GitHubAdapterError("http-error", `GitHub returned HTTP ${status}`, { status });
 }
 const PATH = /^\/[A-Za-z0-9._~%/-]*$/;
+/**
+ * GitHub's commit-comparison range (`compare/BASE...HEAD`) is the only API path with dots in a
+ * row. It is accepted only as the last segment and only between two full commit SHAs, so it can
+ * never spell a parent-directory step; every other `..` is refused.
+ */
+const COMPARE_RANGE = /\/compare\/[0-9a-f]{40}\.\.\.[0-9a-f]{40}$/;
 /** A request that never completed: a timeout, or the network. */
 function unreachable(error, message, status) {
     const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
@@ -52,7 +58,7 @@ export function createFetchTransport(options) {
         async get(path, query) {
             if (typeof path !== "string" ||
                 !PATH.test(path) ||
-                path.includes("..") ||
+                path.replace(COMPARE_RANGE, "/compare/range").includes("..") ||
                 path.includes("//"))
                 throw new GitHubAdapterError("invalid-input", "The request path is not an API path");
             const url = new URL(`${base}${path}`);

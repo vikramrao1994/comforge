@@ -1,47 +1,47 @@
 {
   "schema": "comforge-release/v1",
   "package": "@comforge/github",
-  "version": "0.1.0",
-  "tag": "github/v0.1.0",
+  "version": "0.2.0",
+  "tag": "github/v0.2.0",
   "source": {
-    "commit": "cb151c49955fde6b6ba3affe3205f1a2cbc7a76b",
-    "packageTree": "3621390c41a234439243b933266b017ce5690f82",
-    "exampleTree": "d88b308fd2e59c3eea99f4e57eb379a5c95baef6"
+    "commit": "84f962a320831751c614872a34047636ca46e156",
+    "packageTree": "eb300b635508312f9bc6ba45344a7b8801650e2a",
+    "exampleTree": "f35d38366b2c13b49d1e009aa6bd58e78f919d96"
   },
   "toolchain": {
     "typescript": "7.0.2"
   },
   "tarball": {
-    "file": "comforge-github-0.1.0.tgz",
-    "sha256": "ec09a506f1d9bee52e104dbcbcb8f6a563aaf5722122a6c163fd2bbba3d168d4",
-    "integrity": "sha512-u0ilKPYZ8Z6qpL4mZe2wT3j7ZNIL9n3+RGZP4+h8XleOtYbtgBc2rvyzV5pazCr0QyIu7CsWL8MVgGaIcaJwxA=="
+    "file": "comforge-github-0.2.0.tgz",
+    "sha256": "0c9b43ea36fcde898f99dee9a2741aeb18f28f16b12a85fa25ddad7ce50ddff1",
+    "integrity": "sha512-jEicHKnyL7LER4tUcdVWk1JuLFOVKPfMc7sckdFVW6J3Nutg903RwdJLNFg1YfyvuYd55TsbIFn2bcWbEpu6QQ=="
   },
   "files": {
     ".github/comforge/npm-release.mjs": "0d499ebe9a0db8c03c6366e136a02c2d4c8f0baab2959061297fc5e83f33d787",
     ".github/workflows/npm-publish-github.yml": "235f8d5b27d390347ae5b3dcbb37fc2f3cc5db7bb07ded792fba35aa4adda839",
-    "CHANGELOG.md": "5189a51199ee23867570dce975c8172c955fa045572b4dfc570cacacf4f7c539",
+    "CHANGELOG.md": "351d3595a06b89641b46c462f014bdb30b35720d0e97e0d8d2cdd0a75e69c065",
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-    "README.md": "c418ddfb58a5eb14b9ab284afed52aa5298b47e53319c4473d129d8383be3857",
+    "README.md": "b7813d51f89f883432667b922a01c6b0f554d8e25ee2eeae818873c8dc3d6b79",
     "dist/errors.d.ts": "f78bdf61e37044248bf5fe47fac7f251fd1f8ac5b54824f43d737d2f73564876",
     "dist/errors.js": "3df4326904493e8257c76ef451f72f3f73cc7cb4beefa2eca3cd1557ead01a81",
-    "dist/evidence.d.ts": "330ae320c3eb859006919762b1d0c9e6f7ad456f30993fbe40ee0ea8a3bda2eb",
-    "dist/evidence.js": "bf397342833276454f40ca72116fa3912ca6692e47807858ae952854119e78d7",
-    "dist/index.d.ts": "9586e4dc48e796fd77b9f4613b3c9cff7639f4fe50731c4de874ec7bab8cd664",
+    "dist/evidence.d.ts": "16447bfd8d6e0b1a625ee3bb48f8b01fa5dd3a2d29b0058d117df38a01d1d2bc",
+    "dist/evidence.js": "f18e1cacde94d4da0e44bb80d4b143e76e6cfa48659afdd72f25364f582a1eb0",
+    "dist/index.d.ts": "4430a672318e4363c73d651e3644ebd1db8b654bbe3cb503436c77dbb5978a30",
     "dist/index.js": "d140f8704d600e430d17155bd61131433a40e50ae4c2960cfeccfa556d7632e3",
     "dist/specification.d.ts": "3f0099958bdcb8c5d0b735112ddd737c5d3a1b9d0c2c049df64a255c959dcf0a",
     "dist/specification.js": "b4d59a8a7eafdb7c57e0f7fe74cf95644d5985d36467c51f8da93572a984f7c5",
     "dist/transport.d.ts": "18451a9caa2828a8abfb3bd93c729a3e93fb375d5f93e60ef596a584e701c3e8",
-    "dist/transport.js": "8b0eb9f2d350f2b7fb2ee888cbecd452210ea6cd529291f36db48d294c16ac26",
-    "examples/factory-github-consumer/package.json": "46fc36ee8559c710cef82fc2787c40d900509af91a030be5454dc013adffb927",
+    "dist/transport.js": "32d15549ec2f389857ebf6d7ee924e2a1a41ee2feb4791f9ed241e895d86d706",
+    "examples/factory-github-consumer/package.json": "7774ebd10827f671aa67438066d69b49448c9741b8c6fc87f3fbde4a605fc22b",
     "examples/factory-github-consumer/src/fakeGitHub.ts": "ae0e373a68ada072580520ba7e092e18db2b3a82d13704489cea1f2440960a56",
-    "examples/factory-github-consumer/src/main.ts": "6b925f6a2e5d61ac48f1f8ea74c48a25d5cd3a14068e2cb81c59e00b8a7da93b",
+    "examples/factory-github-consumer/src/main.ts": "972c9d07668c72c06d6f6fc9d763ecbbb418981449504ae83e6697e5911def8e",
     "examples/factory-github-consumer/tsconfig.json": "6eb26b5b55a4f91fc253f358bd6929e6e41373a0c967bbf661f58f5c99dc1806",
     "llms.txt": "00b77b393352dff06daf984744dfd1e8691b220c2763b7787a1b46d0e58918f0",
-    "package.json": "04a7502f0fb025e857a6563d7b265603b272169c16fbb12d9f0bbb5c22d6da7f",
+    "package.json": "ed2ec2b4fb47d47d9ee4ff23d8a73669f91c7db567a14716571b27416102b63c",
     "src/errors.ts": "189372225aeaa85e01c23df6d4a1466d4cccab4619d5b463764fa962954b0300",
-    "src/evidence.ts": "851b4f4eb58d1806cee5a770a98f0f8786a19d862658125fbf5d6ecfb02c3635",
-    "src/index.ts": "6bfb1553b5a9268be4f5183e605417e30f3ca152c853532797a835f2da30118d",
+    "src/evidence.ts": "480250212a5f8b40938bd7f225a27f28ac7dafd5eabb5953dc8b1e510d454e08",
+    "src/index.ts": "32f417f253aca72bce117246ace8a7847a50c90135f7bdf10ce5997c303ed05e",
     "src/specification.ts": "fabf1554005e8396b64c3d7af8fd3484f6cffb68b0b8b97089bd917caeaa9779",
-    "src/transport.ts": "2adbd25704e3fd8bfd96e565d20cb9bc97c189fbbb293158c4f80c4827b23711"
+    "src/transport.ts": "633f72b131d194c45a6d4a551e287f8f483818c61a4c18abe0c1fadd03f35ad7"
   }
 }

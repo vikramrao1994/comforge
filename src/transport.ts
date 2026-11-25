@@ -66,6 +66,12 @@ export function classifyStatus(status: number, headers: Headers): GitHubAdapterE
 }
 
 const PATH = /^\/[A-Za-z0-9._~%/-]*$/;
+/**
+ * GitHub's commit-comparison range (`compare/BASE...HEAD`) is the only API path with dots in a
+ * row. It is accepted only as the last segment and only between two full commit SHAs, so it can
+ * never spell a parent-directory step; every other `..` is refused.
+ */
+const COMPARE_RANGE = /\/compare\/[0-9a-f]{40}\.\.\.[0-9a-f]{40}$/;
 
 /** A request that never completed: a timeout, or the network. */
 function unreachable(error: unknown, message: string, status?: number): GitHubAdapterError {
@@ -92,7 +98,7 @@ export function createFetchTransport(options: FetchTransportOptions): GitHubTran
       if (
         typeof path !== "string" ||
         !PATH.test(path) ||
-        path.includes("..") ||
+        path.replace(COMPARE_RANGE, "/compare/range").includes("..") ||
         path.includes("//")
       )
         throw new GitHubAdapterError("invalid-input", "The request path is not an API path");
