@@ -73,7 +73,23 @@ export interface WriteOutcome {
     reason?: string;
     /** False when the ledger could not record this outcome; the write's result above still stands. */
     recorded: boolean;
+    /**
+     * The written resource exactly as this call's verification read returned it, so a caller
+     * needs no second GET for its body. Present only when this call read the resource back and
+     * every authorized field matched (`verification: "matched"`, fresh or recovered); absent on a
+     * replay (the ledger keeps no response), on `accepted` and on `indeterminate`. Bounded by
+     * `maxBodyBytes`; untrusted JSON the caller still validates with its own schema. Never stored.
+     */
+    response?: VerifiedResponse;
 }
+/** A body the writer read back and matched against the authorized write in the same call. */
+export interface VerifiedResponse {
+    /** The GET it came from: the resource itself (an issue, comment, review or pull request). */
+    source: "verification-read";
+    body: unknown;
+}
+/** An outcome as the ledger keeps it: no per-call flags and never a response body. */
+export type StoredOutcome = Omit<WriteOutcome, "replayed" | "recorded" | "response">;
 export interface OperationRecord {
     schema: "comforge-github-operation/v1";
     operationId: string;
@@ -95,7 +111,7 @@ export interface OperationRecord {
     changedAt: number;
     authorizationReference: string | null;
     marker: string | null;
-    outcome: Omit<WriteOutcome, "replayed" | "recorded"> | null;
+    outcome: StoredOutcome | null;
     failure: {
         code: GitHubErrorCode;
         message: string;

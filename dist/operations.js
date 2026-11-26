@@ -15,6 +15,7 @@ export const WRITE_CAPABILITIES = [
     "issues:update",
     "issues:comment:update",
     "pulls:create",
+    "pulls:update",
     "pulls:review",
     "pulls:review:approve",
     "pulls:review:request-changes",
@@ -32,6 +33,8 @@ export function capabilityOf(op) {
             return "issues:comment:update";
         case "pull.create":
             return "pulls:create";
+        case "pull.update":
+            return "pulls:update";
         case "pull.review":
             return op.event === "APPROVE"
                 ? "pulls:review:approve"
@@ -270,6 +273,24 @@ export async function describe(repository, input) {
                 updatedAt: timestamp(expected.updatedAt, "expected.updatedAt"),
                 bodyDigest: optionalDigest(expected.bodyDigest, "expected.bodyDigest"),
                 state: oneOf(expected.state, ["open", "closed"], "expected.state"),
+            });
+            capability = capabilityOf({ kind });
+            break;
+        }
+        case "pull.update": {
+            const number = positive(input.pullNumber, "pull request number");
+            const expected = input.expected ?? {};
+            const digest = optionalDigest(expected.bodyDigest, "expected.bodyDigest");
+            if (digest === undefined)
+                throw invalid("expected.bodyDigest is required");
+            target = { type: "pull", number };
+            payload = { body: text(input.body, "body", MAX_BODY_CHARS, { allowEmpty: true }) };
+            precondition = defined({
+                bodyDigest: digest,
+                headSha: expected.headSha === undefined ? undefined : sha(expected.headSha, "expected.headSha"),
+                updatedAt: expected.updatedAt === undefined
+                    ? undefined
+                    : timestamp(expected.updatedAt, "expected.updatedAt"),
             });
             capability = capabilityOf({ kind });
             break;

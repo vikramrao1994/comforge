@@ -41,7 +41,7 @@ const files = await github.listPullRequestFiles(7, pr.head.sha); // refuses if t
 if (!checks.ok) throw new Error("required checks are not green for this exact commit");
 ```
 
-A complete, runnable consumer with a fake GitHub transport: [examples/factory-github-consumer](https://github.com/vikramrao1994/comforge/tree/github/v0.3.0/examples/factory-github-consumer/).
+A complete, runnable consumer with a fake GitHub transport: [examples/factory-github-consumer](https://github.com/vikramrao1994/comforge/tree/github/v0.4.0/examples/factory-github-consumer/).
 
 ## The transport
 
@@ -109,10 +109,11 @@ const outcome = await writer.execute({
 | `issue.comment` | `issues:comment` | `POST …/issues/{n}/comments` | the thread is an issue (or `thread: "pull-request"`), open, not locked |
 | `pull.review` | `pulls:review` (COMMENT), `pulls:review:approve`, `pulls:review:request-changes` | `POST …/pulls/{n}/reviews` with `commit_id` | open, head is exactly `expectedHeadSha` |
 | `pull.create` | `pulls:create` | `POST …/pulls` (same-repository head, `maintainer_can_modify: false`) | head (and optionally base) branch at the expected commit; no open PR for head and base |
+| `pull.update` | `pulls:update` | `PATCH …/pulls/{n}` with `body` only | open, not merged; body digest (required), and optionally head SHA and `updatedAt`, unchanged |
 | `issue.update` | `issues:update` | `PATCH …/issues/{n}` | `updatedAt`, and optionally body digest and state, unchanged |
 | `comment.update` | `issues:comment:update` | `PATCH …/issues/comments/{id}` | on the expected issue; `updatedAt`, optionally body digest and author, unchanged |
 
-Not supported, by design: merging, tags and releases, workflow dispatch, deletion, inline review comments, pending reviews and cross-repository pull requests.
+Not supported, by design: changing a pull request's title, state, base or draft status, merging, tags and releases, workflow dispatch, deletion, inline review comments, pending reviews and cross-repository pull requests.
 
 **Authorization is yours and is bound to bytes.** `prepare(op)` returns the frozen `OperationDescriptor` (repository, target, capability, exact JSON payload, preconditions, and a `sha256:` digest of all of them) without sending anything. `execute(op)` builds the same descriptor and calls `authorize(descriptor)`. The decision must be `{ allow: true, descriptorDigest, expiresAt }`, with the digest of exactly this descriptor and an expiry no more than 15 minutes ahead (`limits.maxAuthorizationTtlMs`). Anything else, including a thrown error, is `authorization-denied` and nothing is sent; the expiry is checked again just before sending. The request body is derived from the descriptor only, so changing your input object after authorization changes nothing. A callback that returns `allow` is your policy, not evidence that a person approved anything.
 
@@ -123,9 +124,15 @@ Not supported, by design: merging, tags and releases, workflow dispatch, deletio
 - `reconcile(operationId)` searches again; `abandon(operationId, reason)` ends the operation by your decision. A retry after a rate limit waits for `retry-after` and searches before its one resend.
 - Updates carry no marker: reconciliation compares the target with the requested change.
 
+**Expected-state checks are not compare-and-swap.** `issue.update`, `comment.update` and `pull.update` read the target, compare it with `expected`, then write. GitHub has no conditional write for these endpoints, so an edit by someone else between that read and the write is overwritten, and the outcome is still `verified`: it describes your write, not what it replaced. The check narrows the window to one round trip; it does not prevent lost updates.
+
 Nothing here is exactly-once: a write can still be duplicated if it becomes visible only after you abandon it, and an expected-state check reads before it writes, so a change in between is not prevented (an edit within the same second as `updatedAt` is not even detected — pass `bodyDigest`, from `bodyDigest(body)`, to narrow that).
 
 **Outcomes.** `verified`: a fresh read shows exactly what was authorized. `accepted`: the resource exists but differs or could not be re-read (`mismatches`, e.g. labels GitHub silently dropped for a caller without push access, or a branch that moved during a pull-request create). `indeterminate`: unknown; reconcile. Refusals throw a `GitHubAdapterError` and mean nothing was written.
+
+**The verified response.** When this call read the resource back and every authorized field matched (`verification: "matched"`, after a fresh write or a recovery), the outcome carries `response: { source: "verification-read", body }`, the resource exactly as that read returned it. Use it instead of a second GET. A read of a different resource (another number or id, or a comment on another issue) is a mismatch, so it is never handed back. It is absent on a replay (the ledger keeps no response body), on `accepted` and on `indeterminate`: GET the resource yourself there. It is bounded by `maxBodyBytes` but otherwise untrusted JSON, so validate it with your own schema. Requests for a fresh, verified write: issue create 2 (write, read-back); issue or pull request comment 3 (thread check, write, read-back); review 4 (adds the pull request read that reports `headMovedDuringPublication`); pull request create 4–5; pull request body edit 3.
+
+**Source compatibility (0.4.0).** The new `pull.update` member of `WriteOperation` and `WriteKind`, and `pulls:update` in `WRITE_CAPABILITIES`, are additions to public unions. Code that compiled against 0.3.0 still runs, but a TypeScript `switch` that exhaustively covers `WriteKind` or `WriteCapability` (with a `never` check) needs a `pull.update` / `pulls:update` case before it compiles again. A ledger implementation typed against 0.3.0 is still accepted.
 
 **Permissions** (fine-grained token or GitHub App installation token; the writer cannot verify a token's permissions and does not try): Issues write for issue writes and issue comments; Pull requests write for reviews, pull requests and comments on pull requests; plus read access to issues, pull requests and contents (branch refs) for the checks.
 

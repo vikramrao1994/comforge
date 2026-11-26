@@ -17,6 +17,7 @@ export const WRITE_CAPABILITIES = [
   "issues:update",
   "issues:comment:update",
   "pulls:create",
+  "pulls:update",
   "pulls:review",
   "pulls:review:approve",
   "pulls:review:request-changes",
@@ -84,6 +85,22 @@ export type WriteOperation =
       };
     }
   | {
+      kind: "pull.update";
+      operationId: string;
+      pullNumber: number;
+      /**
+       * The pull request as the caller last read it. `bodyDigest` is required: an edit replaces
+       * the whole body, so a body changed by anyone since is `stale`. With `headSha`, a moved
+       * head is `stale` too. A closed or merged pull request is refused.
+       * The check is a read before the write, not a compare-and-swap (GitHub offers none): an
+       * edit landing between that read and the PATCH is overwritten, and the outcome is still
+       * `verified`, because it describes this write, not what it replaced.
+       */
+      expected: { bodyDigest: string; headSha?: string; updatedAt?: string };
+      /** The new body. Title, state, base and draft are deliberately not editable here. */
+      body: string;
+    }
+  | {
       kind: "comment.update";
       operationId: string;
       commentId: number;
@@ -109,6 +126,8 @@ export function capabilityOf(
       return "issues:comment:update";
     case "pull.create":
       return "pulls:create";
+    case "pull.update":
+      return "pulls:update";
     case "pull.review":
       return op.event === "APPROVE"
         ? "pulls:review:approve"
@@ -403,6 +422,25 @@ export async function describe(
         updatedAt: timestamp(expected.updatedAt, "expected.updatedAt"),
         bodyDigest: optionalDigest(expected.bodyDigest, "expected.bodyDigest"),
         state: oneOf(expected.state, ["open", "closed"] as const, "expected.state"),
+      });
+      capability = capabilityOf({ kind });
+      break;
+    }
+    case "pull.update": {
+      const number = positive(input.pullNumber, "pull request number");
+      const expected = input.expected ?? ({} as never);
+      const digest = optionalDigest(expected.bodyDigest, "expected.bodyDigest");
+      if (digest === undefined) throw invalid("expected.bodyDigest is required");
+      target = { type: "pull", number };
+      payload = { body: text(input.body, "body", MAX_BODY_CHARS, { allowEmpty: true }) };
+      precondition = defined({
+        bodyDigest: digest,
+        headSha:
+          expected.headSha === undefined ? undefined : sha(expected.headSha, "expected.headSha"),
+        updatedAt:
+          expected.updatedAt === undefined
+            ? undefined
+            : timestamp(expected.updatedAt, "expected.updatedAt"),
       });
       capability = capabilityOf({ kind });
       break;

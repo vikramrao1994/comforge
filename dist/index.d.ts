@@ -3,4 +3,4 @@ export { type ChangedFile, type CheckEvidence, type CommitComparison, createGitH
 export { bodyDigest, type DescriptorTarget, type OperationDescriptor, type ReviewEvent, WRITE_CAPABILITIES, type WriteCapability, type WriteKind, type WriteOperation, } from "./operations.ts";
 export { type Reconciliation, readSpecificationIssue, reconcileSpecification, type SpecificationIssueEvidence, } from "./specification.ts";
 export { createFetchTransport, type FetchTransportOptions, type GitHubTransport, } from "./transport.ts";
-export { type AuthorizationDecision, createGitHubWriter, DEFAULT_WRITER_LIMITS, type GitHubWriter, type GitHubWriterOptions, type OperationLedger, type OperationRecord, type OperationState, type ReconciliationReport, type WriteOutcome, type WriterLimits, type WrittenResource, } from "./writer.ts";
+export { type AuthorizationDecision, createGitHubWriter, DEFAULT_WRITER_LIMITS, type GitHubWriter, type GitHubWriterOptions, type OperationLedger, type OperationRecord, type OperationState, type ReconciliationReport, type StoredOutcome, type VerifiedResponse, type WriteOutcome, type WriterLimits, type WrittenResource, } from "./writer.ts";

@@ -8,7 +8,7 @@
  * Capabilities a writer may be constructed with. Each names exactly one kind of write; nothing
  * is implied by a broader one, and none is inferred from what a token happens to permit.
  */
-export declare const WRITE_CAPABILITIES: readonly ["issues:create", "issues:comment", "issues:update", "issues:comment:update", "pulls:create", "pulls:review", "pulls:review:approve", "pulls:review:request-changes"];
+export declare const WRITE_CAPABILITIES: readonly ["issues:create", "issues:comment", "issues:update", "issues:comment:update", "pulls:create", "pulls:update", "pulls:review", "pulls:review:approve", "pulls:review:request-changes"];
 export type WriteCapability = (typeof WRITE_CAPABILITIES)[number];
 export type ReviewEvent = "COMMENT" | "APPROVE" | "REQUEST_CHANGES";
 export type WriteOperation = {
@@ -67,6 +67,25 @@ export type WriteOperation = {
         stateReason?: "completed" | "not_planned" | "reopened";
         labels?: readonly string[];
     };
+} | {
+    kind: "pull.update";
+    operationId: string;
+    pullNumber: number;
+    /**
+     * The pull request as the caller last read it. `bodyDigest` is required: an edit replaces
+     * the whole body, so a body changed by anyone since is `stale`. With `headSha`, a moved
+     * head is `stale` too. A closed or merged pull request is refused.
+     * The check is a read before the write, not a compare-and-swap (GitHub offers none): an
+     * edit landing between that read and the PATCH is overwritten, and the outcome is still
+     * `verified`, because it describes this write, not what it replaced.
+     */
+    expected: {
+        bodyDigest: string;
+        headSha?: string;
+        updatedAt?: string;
+    };
+    /** The new body. Title, state, base and draft are deliberately not editable here. */
+    body: string;
 } | {
     kind: "comment.update";
     operationId: string;

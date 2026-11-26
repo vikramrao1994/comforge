@@ -14,6 +14,7 @@ export declare const WRITE_METHODS: {
     readonly "issue.comment": "POST";
     readonly "pull.review": "POST";
     readonly "pull.create": "POST";
+    readonly "pull.update": "PATCH";
     readonly "issue.update": "PATCH";
     readonly "comment.update": "PATCH";
 };

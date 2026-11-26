@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- Source compatibility: WriteOperation, WriteKind and WRITE_CAPABILITIES gain pull.update and pulls:update, so an exhaustive TypeScript switch over them needs the new case. Verification now also requires the read-back to be the written resource's own number or id.
+- Write outcomes carry the matched verification read as response (never on replay, accepted or indeterminate; never stored), so no second GET is needed. New pull.update (pulls:update) replaces a pull request body under an expected body digest and optional head SHA.
+
 ## 0.3.0
 
 - Opt-in createGitHubWriter: caller-authorized issue, comment, review and pull-request creates and expected-state issue/comment updates, bound to a digested descriptor, recorded in a consumer-owned ledger, with typed verified/accepted/indeterminate outcomes. Read APIs unchanged.

@@ -1,5 +1,6 @@
 import {
   type AuthorizationDecision,
+  bodyDigest,
   createGitHubWriter,
   GitHubAdapterError,
   type OperationDescriptor,
@@ -50,6 +51,7 @@ function syntheticGitHub() {
   const refs = new Map<string, string>([["feature", HEAD], ["sorting", HEAD], ["main", "b".repeat(40)]]);
   let dropNextAnswer = false;
   let writes = 0;
+  let readCount = 0;
   const pull = (number: number, head: string, body: string, title = "Sorting") => ({
     number,
     title,
@@ -86,6 +88,7 @@ function syntheticGitHub() {
     const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
     let m: RegExpMatchArray | null;
     if (method === "GET") {
+      readCount += 1;
       if ((m = p.match(/\/git\/ref\/heads\/(.+)$/))) return json({ ref: m[1], object: { sha: refs.get(m[1] as string), type: "commit" } });
       if ((m = p.match(/\/issues\/comments\/(\d+)$/))) return json(comments.get(Number(m[1])));
       if ((m = p.match(/\/issues\/(\d+)\/comments$/))) return json([...comments.values()].filter((c) => String(c.issue_url).endsWith(`/issues/${m?.[1]}`)));
@@ -113,6 +116,10 @@ function syntheticGitHub() {
       const created = pull(next++, body.head as string, body.body as string, body.title as string);
       pulls.set(created.number, created);
       answer = created;
+    } else if ((m = p.match(/\/pulls\/(\d+)$/))) {
+      const pr = pulls.get(Number(m[1])) as Record<string, unknown>;
+      Object.assign(pr, { body: body.body });
+      answer = pr;
     } else if ((m = p.match(/\/issues\/comments\/(\d+)$/))) {
       const c = comments.get(Number(m[1])) as Record<string, unknown>;
       Object.assign(c, { body: body.body, updated_at: "2026-01-02T00:00:00Z" });
@@ -131,6 +138,7 @@ function syntheticGitHub() {
   return {
     fetchImpl,
     writes: () => writes,
+    reads: () => readCount,
     loseNextAnswer: () => {
       dropNextAnswer = true;
     },
@@ -156,7 +164,7 @@ export async function runWriterExample(): Promise<Check[]> {
   const writer = createGitHubWriter({
     repository: { owner: "acme", name: "widgets" },
     token: "synthetic-token",
-    capabilities: ["issues:create", "issues:comment", "issues:update", "issues:comment:update", "pulls:create", "pulls:review"],
+    capabilities: ["issues:create", "issues:comment", "issues:update", "issues:comment:update", "pulls:create", "pulls:update", "pulls:review"],
     authorize,
     ledger: memoryLedger(),
     clock: () => time,
@@ -179,6 +187,10 @@ export async function runWriterExample(): Promise<Check[]> {
   const updated = await run({ kind: "issue.update", operationId: "acme-op-0007", issueNumber: 1, expected: { updatedAt: "2026-01-01T00:00:00Z" }, changes: { body: "New text" } });
   const staleEdit = await code(run({ kind: "comment.update", operationId: "acme-op-0008", commentId: 5, expected: { issueNumber: 1, updatedAt: "2025-01-01T00:00:00Z" }, body: "x" }));
   const edited = await run({ kind: "comment.update", operationId: "acme-op-0009", commentId: 5, expected: { issueNumber: 1, updatedAt: "2026-01-01T00:00:00Z" }, body: "Final" });
+  const reads = github.reads();
+  const prBody = await run({ kind: "pull.update", operationId: "acme-op-0011", pullNumber: 7, expected: { bodyDigest: await bodyDigest(""), headSha: HEAD }, body: "Release notes." });
+  const prBodyReads = github.reads() - reads;
+  const stalePrBody = await code(run({ kind: "pull.update", operationId: "acme-op-0012", pullNumber: 7, expected: { bodyDigest: await bodyDigest("") }, body: "x" }));
   github.loseNextAnswer();
   const before = github.writes();
   const recovered = await run({ kind: "issue.comment", operationId: "acme-op-0010", issueNumber: 1, body: "Lost answer." });
@@ -196,6 +208,11 @@ export async function runWriterExample(): Promise<Check[]> {
     { id: "write.issue-update-with-expected-state", pass: updated.status === "verified" },
     { id: "write.stale-comment-edit-refused", pass: staleEdit === "stale" },
     { id: "write.comment-update-verified", pass: edited.status === "verified" },
+    // The verified read-back is handed back, so the consumer needs no GET of its own.
+    { id: "write.verified-response-returned", pass: (created.response?.body as { number?: number } | undefined)?.number === (created.resource?.type === "issue" ? created.resource.number : -1) },
+    { id: "write.replay-carries-no-response", pass: replay.replayed && replay.response === undefined },
+    { id: "write.pull-body-edit-verified", pass: prBody.status === "verified" && (prBody.response?.body as { body?: string } | undefined)?.body === "Release notes." && prBodyReads === 2 },
+    { id: "write.stale-pull-body-edit-refused", pass: stalePrBody === "stale" },
     { id: "write.lost-answer-recovered-not-duplicated", pass: recovered.recovered && github.writes() === before + 1 },
   ];
 }

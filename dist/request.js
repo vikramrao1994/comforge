@@ -15,6 +15,7 @@ export const WRITE_METHODS = {
     "issue.comment": "POST",
     "pull.review": "POST",
     "pull.create": "POST",
+    "pull.update": "PATCH",
     "issue.update": "PATCH",
     "comment.update": "PATCH",
 };

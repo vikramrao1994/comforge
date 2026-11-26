@@ -52,6 +52,8 @@ export {
   type OperationRecord,
   type OperationState,
   type ReconciliationReport,
+  type StoredOutcome,
+  type VerifiedResponse,
   type WriteOutcome,
   type WriterLimits,
   type WrittenResource,

@@ -82,7 +82,25 @@ export interface WriteOutcome {
   reason?: string;
   /** False when the ledger could not record this outcome; the write's result above still stands. */
   recorded: boolean;
+  /**
+   * The written resource exactly as this call's verification read returned it, so a caller
+   * needs no second GET for its body. Present only when this call read the resource back and
+   * every authorized field matched (`verification: "matched"`, fresh or recovered); absent on a
+   * replay (the ledger keeps no response), on `accepted` and on `indeterminate`. Bounded by
+   * `maxBodyBytes`; untrusted JSON the caller still validates with its own schema. Never stored.
+   */
+  response?: VerifiedResponse;
 }
+
+/** A body the writer read back and matched against the authorized write in the same call. */
+export interface VerifiedResponse {
+  /** The GET it came from: the resource itself (an issue, comment, review or pull request). */
+  source: "verification-read";
+  body: unknown;
+}
+
+/** An outcome as the ledger keeps it: no per-call flags and never a response body. */
+export type StoredOutcome = Omit<WriteOutcome, "replayed" | "recorded" | "response">;
 
 export interface OperationRecord {
   schema: "comforge-github-operation/v1";
@@ -105,7 +123,7 @@ export interface OperationRecord {
   changedAt: number;
   authorizationReference: string | null;
   marker: string | null;
-  outcome: Omit<WriteOutcome, "replayed" | "recorded"> | null;
+  outcome: StoredOutcome | null;
   failure: {
     code: GitHubErrorCode;
     message: string;
@@ -244,6 +262,7 @@ const PullRead = z.object({
   draft: z.boolean().optional(),
   merged_at: z.string().nullable().optional(),
   html_url: z.string(),
+  updated_at: z.string().optional(),
   head: Ref,
   base: Ref,
   user: User,
@@ -470,6 +489,8 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
         return `${root}/pulls/${(t as { number: number }).number}/reviews`;
       case "pull.create":
         return `${root}/pulls`;
+      case "pull.update":
+        return `${root}/pulls/${(t as { number: number }).number}`;
       case "issue.update":
         return `${root}/issues/${(t as { number: number }).number}`;
       case "comment.update":
@@ -552,6 +573,17 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
           });
         return {};
       }
+      case "pull.update": {
+        const pull = parse(
+          PullRead,
+          await read(["pulls", (d.target as { number: number }).number]),
+          "a pull request",
+        );
+        if (pull.state !== "open" || pull.merged_at)
+          fail("conflict", "The pull request is not open", { reason: "closed" });
+        await expectPull(pull, pre);
+        return {};
+      }
       case "issue.update": {
         const number = (d.target as { number: number }).number;
         const issue = parse(IssueRead, await read(["issues", number]), "an issue");
@@ -593,6 +625,22 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
       fail("stale", "The target's state changed since it was read");
   }
 
+  /** A pull request edit's expected state: body always, head and update time when given. */
+  async function expectPull(pull: z.infer<typeof PullRead>, pre: Record<string, unknown>) {
+    if ((await bodyDigest(pull.body)) !== pre.bodyDigest)
+      fail("stale", "The pull request body changed since it was read");
+    if (pre.headSha !== undefined && pull.head.sha !== pre.headSha)
+      fail("stale", "The pull request head is not the expected commit", {
+        expected: pre.headSha,
+        actual: pull.head.sha,
+      });
+    if (pre.updatedAt !== undefined && pull.updated_at !== pre.updatedAt)
+      fail("stale", "The pull request changed since it was read", {
+        expected: pre.updatedAt,
+        actual: pull.updated_at,
+      });
+  }
+
   function resourceOf(d: OperationDescriptor, body: unknown): WrittenResource | null {
     const target = d.target as { number?: number; id?: number };
     switch (d.kind) {
@@ -624,7 +672,8 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
             }
           : null;
       }
-      case "pull.create": {
+      case "pull.create":
+      case "pull.update": {
         const r = PullRead.safeParse(body);
         return r.success
           ? { type: "pull", number: r.data.number, url: r.data.html_url, headSha: r.data.head.sha }
@@ -638,13 +687,39 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
     d: OperationDescriptor,
     resource: WrittenResource,
     sent: Record<string, unknown>,
-  ) {
+  ): Promise<{
+    verification: "matched" | "mismatch" | "unavailable";
+    mismatches: string[];
+    headMoved: boolean | undefined;
+    response?: VerifiedResponse;
+  }> {
     const mismatches: string[] = [];
     let headMoved: boolean | undefined;
+    /** The resource's own read, kept only to hand back when everything matched. */
+    let raw: unknown;
+    const readResource = async (segments: readonly (string | number)[]) => {
+      raw = await read(segments);
+      return raw;
+    };
+    // Identity first: a well-formed read of another resource is never this write's evidence.
+    // An update's resource must be its target; every read must be the resource it asked for.
+    const target = d.target as { number?: number; id?: number };
+    if (
+      (d.kind === "issue.update" || d.kind === "pull.update") &&
+      (resource as { number?: number }).number !== target.number
+    )
+      mismatches.push("identity");
+    if (d.kind === "comment.update" && (resource as { id?: number }).id !== target.id)
+      mismatches.push("identity");
     try {
       switch (resource.type) {
         case "issue": {
-          const issue = parse(IssueRead, await read(["issues", resource.number]), "an issue");
+          const issue = parse(
+            IssueRead,
+            await readResource(["issues", resource.number]),
+            "an issue",
+          );
+          if (issue.number !== resource.number) mismatches.push("identity");
           if (sent.title !== undefined && issue.title !== sent.title) mismatches.push("title");
           if (sent.body !== undefined && (issue.body ?? "") !== sent.body) mismatches.push("body");
           if (sent.state !== undefined && issue.state !== sent.state) mismatches.push("state");
@@ -666,9 +741,10 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
         case "comment": {
           const comment = parse(
             CommentRead,
-            await read(["issues", "comments", resource.id]),
+            await readResource(["issues", "comments", resource.id]),
             "a comment",
           );
+          if (comment.id !== resource.id) mismatches.push("identity");
           if ((comment.body ?? "") !== sent.body) mismatches.push("body");
           if (!comment.issue_url.endsWith(`${root}/issues/${resource.issueNumber}`))
             mismatches.push("issue");
@@ -677,9 +753,10 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
         case "review": {
           const review = parse(
             ReviewRead,
-            await read(["pulls", resource.pullNumber, "reviews", resource.id]),
+            await readResource(["pulls", resource.pullNumber, "reviews", resource.id]),
             "a review",
           );
+          if (review.id !== resource.id) mismatches.push("identity");
           if (review.commit_id !== sent.commit_id) mismatches.push("commit");
           if (review.state !== REVIEW_STATE[sent.event as keyof typeof REVIEW_STATE])
             mismatches.push("state");
@@ -693,8 +770,19 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
           break;
         }
         case "pull": {
-          const pull = parse(PullRead, await read(["pulls", resource.number]), "a pull request");
-          const pre = d.precondition as { headSha: string };
+          const pull = parse(
+            PullRead,
+            await readResource(["pulls", resource.number]),
+            "a pull request",
+          );
+          const pre = d.precondition as { headSha?: string };
+          if (pull.number !== resource.number) mismatches.push("identity");
+          if (d.kind === "pull.update") {
+            if ((pull.body ?? "") !== sent.body) mismatches.push("body");
+            if (pre.headSha !== undefined && pull.head.sha !== pre.headSha)
+              mismatches.push("head.sha");
+            break;
+          }
           if (pull.head.sha !== pre.headSha) mismatches.push("head.sha");
           if (pull.head.ref !== sent.head) mismatches.push("head.ref");
           if (pull.head.repo?.full_name !== repository) mismatches.push("head.repository");
@@ -707,10 +795,12 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
     } catch {
       return { verification: "unavailable" as const, mismatches, headMoved };
     }
+    const matched = mismatches.length === 0;
     return {
-      verification: mismatches.length === 0 ? ("matched" as const) : ("mismatch" as const),
+      verification: matched ? ("matched" as const) : ("mismatch" as const),
       mismatches,
       headMoved,
+      ...(matched ? { response: { source: "verification-read" as const, body: raw } } : {}),
     };
   }
 
@@ -788,7 +878,7 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
     fields: Partial<
       Omit<WriteOutcome, "status" | "operationId" | "kind" | "repository" | "descriptorDigest">
     >,
-  ): Omit<WriteOutcome, "replayed" | "recorded"> {
+  ): StoredOutcome {
     return {
       status,
       operationId: record.operationId,
@@ -825,7 +915,12 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
       outcome: result,
       failure: null,
     });
-    return { ...result, replayed: false, recorded };
+    return {
+      ...result,
+      replayed: false,
+      recorded,
+      ...(checked.response ? { response: checked.response } : {}),
+    };
   }
 
   async function markIndeterminate(
@@ -864,6 +959,20 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
         (sent.labels === undefined || sameSet(labelNames(issue.labels), sent.labels as string[]));
       if (applied) return "applied";
       return issue.updated_at === pre.updatedAt ? "applicable" : "diverged";
+    }
+    if (d.kind === "pull.update") {
+      const pull = parse(
+        PullRead,
+        await read(["pulls", (d.target as { number: number }).number]),
+        "a pull request",
+      );
+      if ((pull.body ?? "") === sent.body) return "applied";
+      try {
+        await expectPull(pull, pre);
+      } catch {
+        return "diverged";
+      }
+      return pull.state === "open" && !pull.merged_at ? "applicable" : "diverged";
     }
     const comment = parse(
       CommentRead,
@@ -1094,10 +1203,16 @@ export function createGitHubWriter(options: GitHubWriterOptions): GitHubWriter {
       outcome: final,
       failure: null,
     });
-    return { ...final, replayed: false, recorded };
+    return {
+      ...final,
+      replayed: false,
+      recorded,
+      ...(checked.response ? { response: checked.response } : {}),
+    };
   }
 
   async function readTarget(d: OperationDescriptor): Promise<unknown> {
+    if (d.kind === "pull.update") return read(["pulls", (d.target as { number: number }).number]);
     return d.kind === "issue.update"
       ? read(["issues", (d.target as { number: number }).number])
       : read(["issues", "comments", (d.target as { id: number }).id]);
