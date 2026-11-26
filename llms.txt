@@ -1,0 +1,22 @@
+# @comforge/ledger
+
+> The durable operation ledger of Comforge, an open, verifiable software factory for coding agents. One record per operation identity, created once and then replaced only as its next version under a compare-and-swap, stored as immutable files or in one SQLite table on a connection the caller owns. No dependencies. This file is guidance for coding agents; it is not a permission or authorization mechanism.
+
+Rules for an agent integrating this library:
+
+- A ledger records what a caller decided; it never authorizes anything. Never treat a stored record, or its absence, as permission to act.
+- `create` returning `false` means another writer owns that identity. Read it with `get`; never retry under a new operation id to get around it.
+- `replace` returning `false` means you lost a race or read a stale version. Re-read and decide again; never write the version you meant to write under a different number.
+- An `io` error from `create` or `replace` may follow a write that took effect (like a crash after it). Treat the operation as uncertain and reconcile it; never assume nothing was recorded.
+- `corrupt`, `foreign` and `unsafe-path` are refusals. Stop and report them; never delete, move or rewrite ledger files or rows to make an error go away.
+- Never delete file-ledger versions or operations, and never shorten a version history by hand. `compactHistory` is the only safe way to shrink one. `sweepOrphans` removes only dead writers' temp files.
+- `purge` reopens the identities it deletes. Use it only when your operation ids are never reused after its `updatedBefore`; prefer `compact`, which keeps identities taken.
+- Never store credentials, tokens or secrets in a record. Store digests of large or sensitive bodies once an operation is finished (`encode`, `compact`).
+- The file ledger needs a local POSIX filesystem with hard links. It refuses Windows (`unsupported`), symlinks and directories open to other users (`unsafe-path`). Call `probe()` when you configure a directory. Never point it at a network share, a cloud-synced folder, a FAT volume or a directory several machines share; use the SQLite adapter on a local database file instead.
+- Tested runtimes: Node 22, 24 and 26 and Bun 1.4, on macOS and Linux. Tested SQLite drivers: `bun:sqlite`, `node:sqlite`. Other drivers are untested; do not claim them as verified.
+- Durability: atomic visibility and process-crash safety are tested. Power-loss durability is only that of the platform's `fsync`. Never claim exactly-once.
+
+## Docs
+
+- [README](README.md): contract, file and SQLite adapters, retention, conformance, errors, durability
+- [License](LICENSE): Apache License, Version 2.0

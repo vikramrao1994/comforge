@@ -1,0 +1,42 @@
+{
+  "name": "@comforge/ledger",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Durable operation ledgers for Comforge governance: a versioned compare-and-swap record per operation identity, as immutable files or one SQLite table on a caller-owned connection, with typed errors, namespace isolation, safe retention and a shared conformance suite. No dependencies.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikramrao1994/comforge.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./file": {
+      "types": "./dist/file.d.ts",
+      "default": "./dist/file.js"
+    },
+    "./sqlite": {
+      "types": "./dist/sqlite.d.ts",
+      "default": "./dist/sqlite.js"
+    },
+    "./conformance": {
+      "types": "./dist/conformance.d.ts",
+      "default": "./dist/conformance.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22",
+    "bun": ">=1.4"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "llms.txt"
+  ]
+}
