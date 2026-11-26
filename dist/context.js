@@ -4,26 +4,34 @@ import { fail } from "./errors.js";
 import { openGitHub } from "./github.js";
 import { locateRepository, trustedConfigAt } from "./repository.js";
 import { openState } from "./state.js";
-export function openContext(rt) {
-    const repo = locateRepository(rt);
+export function openContext(rt, options = {}) {
+    const repo = options.repository ?? locateRepository(rt);
     let working = null;
     const access = new Map();
     return {
         rt,
         repo,
-        state: openState(repo.commonDir),
+        state: options.state ?? openState(repo.commonDir),
         working: () => {
             working ??= readWorkingConfig(repo.root);
             return working;
         },
         github: (trusted) => {
-            const key = JSON.stringify(trusted.repository) + JSON.stringify(trusted.security);
+            const key = JSON.stringify(trusted.repository) +
+                JSON.stringify(trusted.security) +
+                JSON.stringify(trusted.state);
             let a = access.get(key);
             if (!a) {
-                a = openGitHub(rt, trusted, repo.commonDir);
+                a = openGitHub(rt, trusted, repo.commonDir, options.credentials, options.writeLedger);
                 access.set(key, a);
             }
             return a;
+        },
+        checkpoint: () => {
+            if (options.signal?.aborted)
+                fail("cancelled", "the caller cancelled the command", {
+                    reason: String(options.signal.reason ?? "aborted"),
+                });
         },
     };
 }
@@ -36,7 +44,7 @@ export async function loadInitiative(ctx, id) {
         });
     if (record.cleanedAt)
         fail("stale", `${id} was cleaned up at ${record.cleanedAt}`, { initiative: id });
-    const { config, digest } = trustedConfigAt(ctx.rt, ctx.repo.root, record.base.sha);
+    const { config, digest } = trustedConfigAt(ctx.rt, ctx.repo.root, record.trustedConfigRevision ?? record.base.sha);
     if (digest !== record.trustedConfig)
         fail("conflict", "the trusted configuration at the recorded base no longer matches the record", {
             initiative: id,

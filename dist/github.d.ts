@@ -1,5 +1,5 @@
 import { type GitHubEvidence, type GitHubTransport, type OperationRecord, type WriteOperation, type WriteOutcome } from "@comforge/github";
-import { type FileLedger } from "@comforge/ledger/file";
+import type { Ledger } from "@comforge/ledger";
 import { type ComforgeConfig } from "./config.ts";
 import { type Runtime } from "./runtime.ts";
 /**
@@ -25,14 +25,16 @@ export interface GitHubAccess {
     write(operation: WriteOperation): Promise<WriteOutcome>;
     reconcile(operationId: string): Promise<WriteOutcome>;
     abandon(operationId: string, reason: string): Promise<void>;
-    /** The write ledger (read-only use by `recover` and `status`). */
-    ledger: FileLedger<OperationRecord>;
+    /** The write ledger (read-only use by `recover`, `status` and the write guards). */
+    ledger: Ledger<OperationRecord>;
 }
 export declare function githubError(error: unknown): never;
-export declare function openGitHub(rt: Runtime, config: ComforgeConfig, commonDir: string): GitHubAccess;
+export declare function openGitHub(rt: Runtime, config: ComforgeConfig, commonDir: string, provider?: (config: ComforgeConfig) => string, ledgerFactory?: (config: ComforgeConfig) => Ledger<OperationRecord>): GitHubAccess;
 /** The audited host adapter: assignment through `gh`, which the SDK does not offer. */
 export declare function assignWithGh(rt: Runtime, config: ComforgeConfig, prNumber: number, login: string): {
     assigned: boolean;
     detail: string;
 };
+/** The write ledger's directory: `comforge/`, or an earlier lifecycle's shared one (`state`). */
+export declare const writeLedgerDir: (commonDir: string, config: ComforgeConfig) => string;
 export declare const ledgerLocation: (commonDir: string, config: ComforgeConfig) => string;

@@ -17,8 +17,58 @@ export declare const CONFIG_FILE = "comforge.config.json";
 export declare const CONFIG_SCHEMA = "comforge-config/v1";
 /** Capabilities the CLI can use; each maps to exactly one @comforge/github write kind. */
 export declare const CLI_CAPABILITIES: readonly ["pulls:create", "pulls:update", "issues:comment"];
-/** Writes outside the SDK, each through one audited host adapter; never granted by default. */
-export declare const HOST_CAPABILITIES: readonly ["pulls:assign"];
+/**
+ * Writes outside the SDK, each through one audited host adapter; never granted by default.
+ * `pulls:assign` assigns the configured login; `pulls:ready` marks the pull request this
+ * command published ready for review (GitHub's REST API cannot); `branches:delete` deletes an
+ * initiative's own merged branch under a lease during cleanup.
+ */
+export declare const HOST_CAPABILITIES: readonly ["pulls:assign", "pulls:ready", "branches:delete"];
+export declare const SECTION_DEFAULTS: {
+    readonly state: {
+        writeLedgerDirectory: string;
+        legacy: {
+            directory: string;
+            format: "agent-lifecycle/v1";
+        } | null;
+    };
+    readonly lifecycle: {
+        remotePreflight: boolean;
+        phaseRequiresCleanParent: boolean;
+    };
+    readonly verification: {
+        snapshot: boolean;
+        unavailableExitStatuses: number[];
+        summary: {
+            path: string;
+            maxBytes: number;
+        } | null;
+        optional: {
+            name: string;
+            run: string[];
+        }[];
+    };
+    readonly publication: {
+        checks: {
+            name: string;
+            run: string[];
+        }[];
+        bodyCommand: string[] | null;
+        marker: boolean;
+        draftFirst: boolean;
+        linkMarkerNamespace: string;
+        reportPullRequestReason: string | null;
+    };
+    readonly cleanup: {
+        deleteRemoteBranch: boolean;
+        deleteLocalBranch: boolean;
+        fastForwardPrimary: boolean;
+        after: {
+            name: string;
+            run: string[];
+        }[];
+    };
+};
 export declare const ConfigSchema: z.ZodObject<{
     $schema: z.ZodOptional<z.ZodString>;
     schema: z.ZodLiteral<"comforge-config/v1">;
@@ -70,11 +120,56 @@ export declare const ConfigSchema: z.ZodObject<{
     context: z.ZodDefault<z.ZodNullable<z.ZodObject<{
         manifest: z.ZodString;
     }, z.core.$strict>>>;
+    state: z.ZodDefault<z.ZodObject<{
+        writeLedgerDirectory: z.ZodDefault<z.ZodString>;
+        legacy: z.ZodDefault<z.ZodNullable<z.ZodObject<{
+            directory: z.ZodString;
+            format: z.ZodLiteral<"agent-lifecycle/v1">;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>>;
+    lifecycle: z.ZodDefault<z.ZodObject<{
+        remotePreflight: z.ZodDefault<z.ZodBoolean>;
+        phaseRequiresCleanParent: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strict>>;
+    verification: z.ZodDefault<z.ZodObject<{
+        snapshot: z.ZodDefault<z.ZodBoolean>;
+        unavailableExitStatuses: z.ZodDefault<z.ZodArray<z.ZodNumber>>;
+        summary: z.ZodDefault<z.ZodNullable<z.ZodObject<{
+            path: z.ZodString;
+            maxBytes: z.ZodDefault<z.ZodNumber>;
+        }, z.core.$strict>>>;
+        optional: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            run: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>>;
+    publication: z.ZodDefault<z.ZodObject<{
+        checks: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            run: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>>>;
+        bodyCommand: z.ZodDefault<z.ZodNullable<z.ZodArray<z.ZodString>>>;
+        marker: z.ZodDefault<z.ZodBoolean>;
+        draftFirst: z.ZodDefault<z.ZodBoolean>;
+        linkMarkerNamespace: z.ZodDefault<z.ZodString>;
+        reportPullRequestReason: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+    }, z.core.$strict>>;
+    cleanup: z.ZodDefault<z.ZodObject<{
+        deleteRemoteBranch: z.ZodDefault<z.ZodBoolean>;
+        deleteLocalBranch: z.ZodDefault<z.ZodBoolean>;
+        fastForwardPrimary: z.ZodDefault<z.ZodBoolean>;
+        after: z.ZodDefault<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            run: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>>;
     security: z.ZodDefault<z.ZodObject<{
         capabilities: z.ZodDefault<z.ZodArray<z.ZodEnum<{
+            "branches:delete": "branches:delete";
             "issues:comment": "issues:comment";
             "pulls:assign": "pulls:assign";
             "pulls:create": "pulls:create";
+            "pulls:ready": "pulls:ready";
             "pulls:update": "pulls:update";
         }>>>;
         authorization: z.ZodDefault<z.ZodNullable<z.ZodDiscriminatedUnion<[z.ZodObject<{
@@ -104,12 +199,50 @@ export declare const ConfigSchema: z.ZodObject<{
 export type ComforgeConfig = z.infer<typeof ConfigSchema>;
 export type ConfigInput = z.input<typeof ConfigSchema>;
 /** Sections a candidate revision may not change for its own publication. */
-export declare const TRUSTED_SECTIONS: readonly ["schema", "repository", "tickets", "validation", "specification", "completion", "security"];
+export declare const TRUSTED_SECTIONS: readonly ["schema", "repository", "tickets", "validation", "specification", "completion", "security", "state", "lifecycle", "verification", "publication", "cleanup"];
 export declare function parseConfig(text: string, source: string): ComforgeConfig;
 /** The working tree's configuration (candidate text: guidance and local settings only). */
 export declare function readWorkingConfig(root: string): ComforgeConfig;
 export declare const trustedPart: (config: ComforgeConfig) => {
     [k: string]: "comforge-config/v1" | {
+        writeLedgerDirectory: string;
+        legacy: {
+            directory: string;
+            format: "agent-lifecycle/v1";
+        } | null;
+    } | {
+        remotePreflight: boolean;
+        phaseRequiresCleanParent: boolean;
+    } | {
+        snapshot: boolean;
+        unavailableExitStatuses: number[];
+        summary: {
+            path: string;
+            maxBytes: number;
+        } | null;
+        optional: {
+            name: string;
+            run: string[];
+        }[];
+    } | {
+        checks: {
+            name: string;
+            run: string[];
+        }[];
+        bodyCommand: string[] | null;
+        marker: boolean;
+        draftFirst: boolean;
+        linkMarkerNamespace: string;
+        reportPullRequestReason: string | null;
+    } | {
+        deleteRemoteBranch: boolean;
+        deleteLocalBranch: boolean;
+        fastForwardPrimary: boolean;
+        after: {
+            name: string;
+            run: string[];
+        }[];
+    } | {
         pattern: string;
         branchPrefix: string;
     } | {
@@ -127,7 +260,7 @@ export declare const trustedPart: (config: ComforgeConfig) => {
         };
         publishCommand: string;
     } | {
-        capabilities: ("issues:comment" | "pulls:assign" | "pulls:create" | "pulls:update")[];
+        capabilities: ("branches:delete" | "issues:comment" | "pulls:assign" | "pulls:create" | "pulls:ready" | "pulls:update")[];
         authorization: {
             mode: "owner-grant";
             grantScheme: string;

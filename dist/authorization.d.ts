@@ -47,6 +47,8 @@ export declare function authorizeWrites(ctx: CommandContext, trusted: ComforgeCo
  * remote write, needs another attempt to run again; its write is then answered from the write
  * ledger (idempotent), never repeated. When the attempts are gone the owner issues a new grant.
  */
+/** Commands whose remote effect is destructive; they never share a grant with any other. */
+export declare const DESTRUCTIVE_COMMANDS: Set<string>;
 export declare function reserveGrantAttempt(ctx: Pick<CommandContext, "state">, initiative: string, use: {
     grantId: string;
     maxAttempts: number;

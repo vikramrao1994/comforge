@@ -21,6 +21,8 @@ Requirements: Node >= 22.18 or Bun >= 1.4; git; macOS or Linux (Windows refused)
 4. `comforge deliver <TICKET> --title "<title>" --result result.json --execute`: push, PR, one completion comment, PR link.
 5. People review and merge. Then `comforge cleanup <PR> --execute`.
 Recovery: `comforge recover <TICKET> --execute`, then `--abandon --execute` if a complete search found nothing.
+An earlier lifecycle's state: `comforge migrate` (dry run), then `--execute`; its tickets are refused until imported.
+Verification: PASS, FAIL (exit 1) or UNAVAILABLE (exit 3, the environment could not validate; fix it and rerun).
 
 ## Trust
 
@@ -31,4 +33,5 @@ Recovery: `comforge recover <TICKET> --execute`, then `--abandon --execute` if a
 
 ## Library
 
-`import { main, runCommand, ConfigSchema, checkManifest, routeTask } from "@comforge/cli"`; `@comforge/cli/config`, `@comforge/cli/routing`.
+`import { createLifecycleServices, main, runCommand, ConfigSchema, checkManifest, routeTask } from "@comforge/cli"`; `@comforge/cli/config`, `@comforge/cli/routing`.
+`createLifecycleServices({ runtime, repository, credentials?, state?, writeLedger?, signal? })`: each command as a function returning `{ok, value|error, exit}`; nothing read from `process`.

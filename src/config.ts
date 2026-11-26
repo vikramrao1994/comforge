@@ -45,8 +45,104 @@ const ENV_NAME = z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/, "an environment vari
 
 /** Capabilities the CLI can use; each maps to exactly one @comforge/github write kind. */
 export const CLI_CAPABILITIES = ["pulls:create", "pulls:update", "issues:comment"] as const;
-/** Writes outside the SDK, each through one audited host adapter; never granted by default. */
-export const HOST_CAPABILITIES = ["pulls:assign"] as const;
+/**
+ * Writes outside the SDK, each through one audited host adapter; never granted by default.
+ * `pulls:assign` assigns the configured login; `pulls:ready` marks the pull request this
+ * command published ready for review (GitHub's REST API cannot); `branches:delete` deletes an
+ * initiative's own merged branch under a lease during cleanup.
+ */
+export const HOST_CAPABILITIES = ["pulls:assign", "pulls:ready", "branches:delete"] as const;
+
+/**
+ * Sections added after 0.1.0. Each defaults to 0.1.0 behaviour and is left out of the trusted
+ * digest while it equals its default, so initiatives started under 0.1.0 keep their digest.
+ */
+const LEDGER_DIR = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9._-]{0,63}$/, "a directory name inside the git common directory");
+const NAMESPACE = z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/);
+const NAMED_COMMAND = z
+  .object({ name: z.string().regex(/^[a-z0-9][a-z0-9:._-]{0,63}$/), run: COMMAND })
+  .strict();
+
+const StateSection = z
+  .object({
+    /**
+     * Directory (in the git common directory) of the GitHub write ledger. Sharing the
+     * directory of an earlier lifecycle keeps its unresolved writes under their own identities.
+     */
+    writeLedgerDirectory: LEDGER_DIR.default("comforge"),
+    /** An earlier lifecycle's local state that `comforge migrate` imports; until then its tickets are refused. */
+    legacy: z
+      .object({
+        directory: LEDGER_DIR,
+        format: z.literal("agent-lifecycle/v1"),
+      })
+      .strict()
+      .nullable()
+      .default(null),
+  })
+  .strict();
+const LifecycleSection = z
+  .object({
+    /** start refuses when the remote already has the branch or a pull request for it. */
+    remotePreflight: z.boolean().default(false),
+    /** A phase starts only after its ticket's initiative was cleaned up. */
+    phaseRequiresCleanParent: z.boolean().default(false),
+  })
+  .strict();
+const VerificationSection = z
+  .object({
+    /** Validate a fresh clone of the exact commit (provisioned like a new checkout), not the working checkout. */
+    snapshot: z.boolean().default(false),
+    /** Exit statuses of a validation command that mean "could not run", recorded as UNAVAILABLE. */
+    unavailableExitStatuses: z.array(z.number().int().min(1).max(255)).max(20).default([]),
+    /** A JSON file a validation command writes, recorded (size-bounded) with the result. */
+    summary: z
+      .object({ path: REL_PATH, maxBytes: z.number().int().min(1).max(1_000_000).default(200_000) })
+      .strict()
+      .nullable()
+      .default(null),
+    /** Extra validation commands run only when named with --with NAME (for example end-to-end tests). */
+    optional: z.array(NAMED_COMMAND).max(10).default([]),
+  })
+  .strict();
+const PublicationSection = z
+  .object({
+    /** Trusted checks run in the checkout before anything is pushed (for example evidence or commit-message checks). */
+    checks: z.array(NAMED_COMMAND).max(10).default([]),
+    /** A trusted command printing the pull request body (Markdown) on stdout; the CLI appends its marker. */
+    bodyCommand: COMMAND.nullable().default(null),
+    /** Appends `<!-- <completion namespace>:publication ticket=… head=… -->` to the body. */
+    marker: z.boolean().default(false),
+    /** Create the pull request as a draft and mark it ready after the handoff checks (needs pulls:ready). */
+    draftFirst: z.boolean().default(false),
+    /** Namespace of the completion-link block in pull request bodies. */
+    linkMarkerNamespace: NAMESPACE.default("comforge"),
+    /** pullRequest.reason given to a non-implementation result delivered with its own pull request. */
+    reportPullRequestReason: z.string().min(1).max(300).nullable().default(null),
+  })
+  .strict();
+const CleanupSection = z
+  .object({
+    /** Delete the initiative's merged remote branch under a lease (needs branches:delete and an authorization). */
+    deleteRemoteBranch: z.boolean().default(false),
+    /** Delete the primary's local copy of the initiative branch when it is fully merged. */
+    deleteLocalBranch: z.boolean().default(false),
+    /** Fast-forward the primary's base branch when it is checked out, clean and behind. */
+    fastForwardPrimary: z.boolean().default(false),
+    /** Trusted commands run in the primary after the checkout is removed (for example an index refresh). */
+    after: z.array(NAMED_COMMAND).max(5).default([]),
+  })
+  .strict();
+
+export const SECTION_DEFAULTS = {
+  state: StateSection.parse({}),
+  lifecycle: LifecycleSection.parse({}),
+  verification: VerificationSection.parse({}),
+  publication: PublicationSection.parse({}),
+  cleanup: CleanupSection.parse({}),
+} as const;
 
 export const ConfigSchema = z
   .object({
@@ -155,6 +251,11 @@ export const ConfigSchema = z
       .nullable()
       .default(null),
     context: z.object({ manifest: REL_PATH }).strict().nullable().default(null),
+    state: StateSection.default(SECTION_DEFAULTS.state),
+    lifecycle: LifecycleSection.default(SECTION_DEFAULTS.lifecycle),
+    verification: VerificationSection.default(SECTION_DEFAULTS.verification),
+    publication: PublicationSection.default(SECTION_DEFAULTS.publication),
+    cleanup: CleanupSection.default(SECTION_DEFAULTS.cleanup),
     security: z
       .object({
         capabilities: z
@@ -192,7 +293,7 @@ export const ConfigSchema = z
           ])
           .nullable()
           .default(null),
-        /** Namespace of the write ledger in `<git common dir>/comforge/`. */
+        /** Namespace of the write ledger in `<git common dir>/<state.writeLedgerDirectory>/`. */
         ledgerNamespace: z
           .string()
           .regex(/^[a-z0-9][a-z0-9._-]{0,63}$/)
@@ -240,7 +341,15 @@ export const TRUSTED_SECTIONS = [
   "specification",
   "completion",
   "security",
+  "state",
+  "lifecycle",
+  "verification",
+  "publication",
+  "cleanup",
 ] as const satisfies readonly (keyof ComforgeConfig)[];
+
+/** Trusted sections added after 0.1.0: in the digest only when they differ from their default. */
+const LATER_SECTIONS = new Set<string>(Object.keys(SECTION_DEFAULTS));
 
 export function parseConfig(text: string, source: string): ComforgeConfig {
   let raw: unknown;
@@ -286,7 +395,13 @@ export function readWorkingConfig(root: string): ComforgeConfig {
 }
 
 export const trustedPart = (config: ComforgeConfig) =>
-  Object.fromEntries(TRUSTED_SECTIONS.map((k) => [k, config[k]]));
+  Object.fromEntries(
+    TRUSTED_SECTIONS.filter(
+      (k) =>
+        !LATER_SECTIONS.has(k) ||
+        canonical(config[k]) !== canonical(SECTION_DEFAULTS[k as keyof typeof SECTION_DEFAULTS]),
+    ).map((k) => [k, config[k]]),
+  );
 
 /** Trusted sections in which `candidate` differs from `trusted`. */
 export function trustedChanges(trusted: ComforgeConfig, candidate: ComforgeConfig): string[] {

@@ -5,11 +5,18 @@ import { CLI_CAPABILITIES } from "./config.js";
 import { CliError, fail } from "./errors.js";
 import { childEnv } from "./runtime.js";
 import { stateDir } from "./state.js";
-function credential(rt, config) {
+function credential(rt, config, provider) {
     let token = null;
     return () => {
         if (token)
             return token;
+        if (provider) {
+            const value = provider(config);
+            if (!value)
+                fail("credential-missing", "the credential provider returned no token");
+            token = value;
+            return token;
+        }
         const source = config.security.credentials;
         if (source.source === "env") {
             const value = rt.env[source.variable];
@@ -50,9 +57,9 @@ export function githubError(error) {
     }
     throw error;
 }
-export function openGitHub(rt, config, commonDir) {
+export function openGitHub(rt, config, commonDir, provider, ledgerFactory) {
     const { owner, name, apiOrigin } = config.repository;
-    const token = credential(rt, config);
+    const token = credential(rt, config, provider);
     // Resolved now: the SDK transport reports a failing token provider as a network error.
     token();
     const transport = createFetchTransport({
@@ -62,14 +69,15 @@ export function openGitHub(rt, config, commonDir) {
         userAgent: "comforge-cli",
     });
     const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
-    const ledger = createFileLedger({
-        directory: stateDir(commonDir),
-        namespace: config.security.ledgerNamespace,
-        validate: (record) => {
-            if (record.schema !== "comforge-github-operation/v1")
-                fail("ledger", "the write ledger holds a record of another kind");
-        },
-    });
+    const ledger = ledgerFactory?.(config) ??
+        createFileLedger({
+            directory: writeLedgerDir(commonDir, config),
+            namespace: config.security.ledgerNamespace,
+            validate: (record) => {
+                if (record.schema !== "comforge-github-operation/v1")
+                    fail("ledger", "the write ledger holds a record of another kind");
+            },
+        });
     let viewer = null;
     const login = async () => {
         if (viewer)
@@ -138,4 +146,8 @@ export function assignWithGh(rt, config, prNumber, login) {
         ? { assigned: true, detail: `assigned ${login} with gh` }
         : { assigned: false, detail: `gh pr edit failed: ${r.stderr.trim().slice(0, 200)}` };
 }
-export const ledgerLocation = (commonDir, config) => path.join(stateDir(commonDir), config.security.ledgerNamespace);
+/** The write ledger's directory: `comforge/`, or an earlier lifecycle's shared one (`state`). */
+export const writeLedgerDir = (commonDir, config) => config.state.writeLedgerDirectory === "comforge"
+    ? stateDir(commonDir)
+    : path.join(commonDir, config.state.writeLedgerDirectory);
+export const ledgerLocation = (commonDir, config) => path.join(writeLedgerDir(commonDir, config), config.security.ledgerNamespace);

@@ -40,7 +40,7 @@ export declare const COMMANDS: readonly [{
     readonly dryRunByDefault: false;
 }, {
     readonly name: "revise";
-    readonly usage: "revise <PR> [--reviewed-head SHA]";
+    readonly usage: "revise <PR> [--reviewed-head SHA] [--no-provision]";
     readonly summary: "Resume an initiative for a revision of its open pull request.";
     readonly writes: "local state";
     readonly dryRunByDefault: false;
@@ -52,7 +52,7 @@ export declare const COMMANDS: readonly [{
     readonly dryRunByDefault: false;
 }, {
     readonly name: "verify";
-    readonly usage: "verify <TICKET[.phase]> [--commit SHA]";
+    readonly usage: "verify <TICKET[.phase]> [--commit SHA] [--with NAME[,NAME]] [--keep]";
     readonly summary: "Run the trusted validation commands on the exact committed head; record PASS/FAIL.";
     readonly writes: "local state";
     readonly dryRunByDefault: false;
@@ -88,9 +88,15 @@ export declare const COMMANDS: readonly [{
     readonly dryRunByDefault: true;
 }, {
     readonly name: "cleanup";
-    readonly usage: "cleanup <PR|TICKET[.phase]> [--allow-missing-completion] [--execute]";
+    readonly usage: "cleanup <PR|TICKET[.phase]> [--allow-missing-completion] [--grant FILE] [--execute]";
     readonly summary: "After a merge: remove the checkout and close the local record.";
     readonly writes: "local checkout and state";
+    readonly dryRunByDefault: true;
+}, {
+    readonly name: "migrate";
+    readonly usage: "migrate [--rollback] [--wait SECONDS] [--execute]";
+    readonly summary: "Imports an earlier lifecycle's local state (state.legacy); --rollback undoes an import nothing has changed since.";
+    readonly writes: "local state (and a sentinel in the legacy directory)";
     readonly dryRunByDefault: true;
 }];
 export declare function capabilities(): CommandResult;

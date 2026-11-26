@@ -33,6 +33,10 @@ export function openState(commonDir) {
                 throw new LedgerError("foreign", "not a comforge initiative record");
         },
     });
+    return stateStoreOn(ledger);
+}
+/** The initiative store over any @comforge/ledger: the file ledger above, or an injected one. */
+export function stateStoreOn(ledger) {
     const getInitiative = async (id) => {
         const record = await ledger.get(id);
         if (record && record.schema !== INITIATIVE_SCHEMA)

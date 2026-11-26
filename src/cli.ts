@@ -14,11 +14,14 @@ import {
   status,
   verify,
 } from "./commands/lifecycle.ts";
+import { migrate } from "./commands/migrate.ts";
 import { configJsonSchema } from "./config.ts";
 import { openContext } from "./context.ts";
 import { CliError, EXIT, errorJson, exitOf, fail } from "./errors.ts";
 import { stableJson } from "./json.ts";
+import { locateRepository } from "./repository.ts";
 import { defaultRuntime, type Runtime } from "./runtime.ts";
+import { createLifecycleServices, type ServiceResult } from "./services.ts";
 
 /**
  * `comforge <command> [arguments] [--json]`. Output: a result on stdout (human text, or
@@ -44,6 +47,9 @@ const VALUE_FLAGS = new Set([
   "--result",
   "--task",
   "--cwd",
+  "--with",
+  "--closes",
+  "--wait",
 ]);
 
 export function parseArgs(argv: readonly string[]): Parsed {
@@ -72,15 +78,16 @@ const KNOWN_FLAGS: Record<string, readonly string[]> = {
   context: ["--task"],
   schema: [],
   start: ["--issue", "--expect-digest", "--no-provision"],
-  revise: ["--reviewed-head"],
+  revise: ["--reviewed-head", "--no-provision"],
   status: [],
-  verify: ["--commit"],
-  publish: ["--title", "--draft", "--execute", "--grant"],
+  verify: ["--commit", "--with", "--keep"],
+  publish: ["--title", "--draft", "--closes", "--execute", "--grant"],
   grant: ["--grant", "--key", "--hours"],
   complete: ["--result", "--execute", "--grant"],
-  deliver: ["--title", "--result", "--no-pr", "--draft", "--execute", "--grant"],
+  deliver: ["--title", "--result", "--no-pr", "--draft", "--closes", "--execute", "--grant"],
   recover: ["--abandon", "--execute", "--grant"],
-  cleanup: ["--allow-missing-completion", "--execute"],
+  cleanup: ["--allow-missing-completion", "--execute", "--grant"],
+  migrate: ["--execute", "--rollback", "--wait"],
 };
 const GLOBAL_FLAGS = ["--json", "--help", "--version", "--cwd"];
 
@@ -150,65 +157,106 @@ export async function runCommand(p: Parsed, rt: Runtime): Promise<CommandResult>
       if (p.positional.length > 0) fail("usage", "context takes --task TEXT or the word check");
       return context(rt, { task: str(p, "--task") });
   }
-  const ctx = openContext(rt);
+  // The lifecycle commands go through the same services an embedder calls (R10).
+  const services = createLifecycleServices({ runtime: rt, repository: locateRepository(rt) });
+  const unwrap = async <T>(pending: Promise<ServiceResult<T>>): Promise<CommandResult> => {
+    const r = await pending;
+    if (r.ok) return { result: r.value as Record<string, unknown>, exit: r.exit };
+    if (r.error.code === "internal") throw new Error(r.error.message);
+    throw new CliError(r.error.code, r.error.message, r.error.detail);
+  };
   switch (p.command) {
     case "start":
-      return start(ctx, {
-        id: needOne(p, "initiative id"),
-        issue: p.flags.has("--issue") ? intArg(str(p, "--issue"), "--issue") : undefined,
-        expectDigest: str(p, "--expect-digest"),
-        provision: !p.flags.has("--no-provision"),
-      });
+      return unwrap(
+        services.start({
+          id: needOne(p, "initiative id"),
+          issue: p.flags.has("--issue") ? intArg(str(p, "--issue"), "--issue") : undefined,
+          expectDigest: str(p, "--expect-digest"),
+          provision: !p.flags.has("--no-provision"),
+        }),
+      );
     case "revise":
-      return revise(ctx, {
-        pr: intArg(needOne(p, "pull request number"), "the pull request"),
-        reviewedHead: str(p, "--reviewed-head"),
-      });
+      return unwrap(
+        services.revise({
+          pr: intArg(needOne(p, "pull request number"), "the pull request"),
+          reviewedHead: str(p, "--reviewed-head"),
+          provision: !p.flags.has("--no-provision"),
+        }),
+      );
     case "status":
       if (p.positional.length > 1) fail("usage", "status takes at most one initiative id");
-      return status(ctx, { id: p.positional[0] });
+      return unwrap(services.status({ id: p.positional[0] }));
     case "verify":
-      return verify(ctx, { id: needOne(p, "initiative id"), commit: str(p, "--commit") });
+      return unwrap(
+        services.verify({
+          id: needOne(p, "initiative id"),
+          commit: str(p, "--commit"),
+          with: str(p, "--with")?.split(",").filter(Boolean),
+          keep: p.flags.has("--keep"),
+        }),
+      );
     case "publish":
-      return publish(ctx, {
-        id: needOne(p, "initiative id"),
-        title: required(p, "--title"),
-        draft: p.flags.has("--draft"),
-        execute,
-        grantFile: grantFile(p, rt),
-      });
+      return unwrap(
+        services.publish({
+          id: needOne(p, "initiative id"),
+          title: required(p, "--title"),
+          draft: p.flags.has("--draft"),
+          closes: p.flags.has("--closes") ? intArg(str(p, "--closes"), "--closes") : undefined,
+          execute,
+          grantFile: grantFile(p, rt),
+        }),
+      );
     case "complete":
       if (p.positional.length > 0) fail("usage", "complete takes only --result FILE");
-      return complete(ctx, {
-        raw: readResultFile(path.resolve(rt.cwd, required(p, "--result"))),
-        execute,
-        grantFile: grantFile(p, rt),
-      });
+      return unwrap(
+        services.complete({
+          raw: readResultFile(path.resolve(rt.cwd, required(p, "--result"))),
+          execute,
+          grantFile: grantFile(p, rt),
+        }),
+      );
     case "deliver":
-      return deliver(ctx, {
-        id: needOne(p, "initiative id"),
-        title: required(p, "--title"),
-        raw: readResultFile(path.resolve(rt.cwd, required(p, "--result"))),
-        withoutPullRequest: p.flags.has("--no-pr"),
-        draft: p.flags.has("--draft"),
-        execute,
-        grantFile: grantFile(p, rt),
-      });
+      return unwrap(
+        services.deliver({
+          id: needOne(p, "initiative id"),
+          title: required(p, "--title"),
+          raw: readResultFile(path.resolve(rt.cwd, required(p, "--result"))),
+          withoutPullRequest: p.flags.has("--no-pr"),
+          draft: p.flags.has("--draft"),
+          closes: p.flags.has("--closes") ? intArg(str(p, "--closes"), "--closes") : undefined,
+          execute,
+          grantFile: grantFile(p, rt),
+        }),
+      );
     case "grant":
-      return grant(ctx, p);
+      return grant(openContext(rt), p);
     case "recover":
-      return recover(ctx, {
-        id: needOne(p, "initiative id"),
-        execute,
-        grantFile: grantFile(p, rt),
-        abandon: p.flags.has("--abandon"),
-      });
+      return unwrap(
+        services.recover({
+          id: needOne(p, "initiative id"),
+          execute,
+          grantFile: grantFile(p, rt),
+          abandon: p.flags.has("--abandon"),
+        }),
+      );
+    case "migrate":
+      if (p.positional.length > 0) fail("usage", "migrate takes only --execute and --rollback");
+      return unwrap(
+        services.migrate({
+          execute,
+          rollback: p.flags.has("--rollback"),
+          waitSeconds: p.flags.has("--wait") ? intArg(str(p, "--wait"), "--wait") : undefined,
+        }),
+      );
     case "cleanup":
-      return cleanup(ctx, {
-        target: needOne(p, "pull request number or initiative id"),
-        execute,
-        allowMissingCompletion: p.flags.has("--allow-missing-completion"),
-      });
+      return unwrap(
+        services.cleanup({
+          target: needOne(p, "pull request number or initiative id"),
+          execute,
+          allowMissingCompletion: p.flags.has("--allow-missing-completion"),
+          grantFile: grantFile(p, rt),
+        }),
+      );
   }
   return fail("usage", `unknown command ${p.command}`);
 }

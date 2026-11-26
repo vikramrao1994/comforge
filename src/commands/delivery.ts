@@ -15,11 +15,16 @@ import type { ComforgeConfig } from "../config.ts";
 import { type CommandContext, loadInitiative, requireCheckout } from "../context.ts";
 import { CliError, EXIT, fail } from "../errors.ts";
 import { assignWithGh, type GitHubAccess, githubError } from "../github.ts";
-import { completionProtocol, specificationProtocol } from "../protocols.ts";
+import { completionProtocol, detectSecrets, specificationProtocol } from "../protocols.ts";
 import { initiativeFromBranch, requireTrustedUnchanged } from "../repository.ts";
-import { git, gitOk } from "../runtime.ts";
-import { type InitiativeRecord, nowIso } from "../state.ts";
-import type { CommandResult } from "./lifecycle.ts";
+import { childEnv, git, gitOk, gitRun } from "../runtime.ts";
+import {
+  type DeliveryAttempt,
+  type HostOperation,
+  type InitiativeRecord,
+  nowIso,
+} from "../state.ts";
+import { type CommandResult, credentialVariables } from "./lifecycle.ts";
 
 /**
  * C2: the governed GitHub writes. Every write goes through the @comforge/github writer with
@@ -138,6 +143,40 @@ async function transitionIdentity(gh: GitHubAccess, base: string): Promise<strin
   );
 }
 
+const UNRESOLVED_STATES = new Set(["reserved", "sending", "indeterminate"]);
+
+/**
+ * No new write while an earlier one of this initiative is unresolved: its identity may be
+ * derived differently (an imported write), so only `recover` may settle it, never a resend.
+ */
+export async function requireResolved(
+  gh: GitHubAccess,
+  record: InitiativeRecord | null,
+  now: number,
+): Promise<void> {
+  if (!record) return;
+  const leased: string[] = [];
+  const open: string[] = [];
+  for (const id of record.operations) {
+    const op = await gh.ledger.get(id).catch(githubError);
+    if (!op || !UNRESOLVED_STATES.has(op.state)) continue;
+    // Same answer as the writer gives for one operation: another process holds a live lease.
+    if (op.state !== "indeterminate" && op.leaseUntil !== null && op.leaseUntil > now)
+      leased.push(id);
+    else open.push(id);
+  }
+  if (leased.length > 0)
+    fail("conflict", "another process is writing for this initiative; wait for it, then rerun", {
+      operations: leased,
+    });
+  if (open.length > 0)
+    fail(
+      "ambiguous",
+      "earlier writes of this initiative are unresolved; run comforge recover first",
+      { operations: open },
+    );
+}
+
 /** Notes an operation id in the initiative before its write, so `recover` can find it after a crash. */
 async function remember(ctx: CommandContext, initiative: string | null, id: string): Promise<void> {
   if (!initiative) return;
@@ -182,12 +221,192 @@ function composeBody(
   ].join("\n");
 }
 
+/** The trusted pre-publication checks, in the checkout, without the credential. */
+function runPublicationChecks(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  record: InitiativeRecord,
+  checkout: string,
+  head: string,
+): { name: string; status: "PASS" }[] {
+  const out: { name: string; status: "PASS" }[] = [];
+  for (const check of trusted.publication.checks) {
+    const r = ctx.rt.run(check.run[0] as string, check.run.slice(1), {
+      cwd: checkout,
+      env: hostEnv(ctx, trusted, record, head),
+      timeoutMs: trusted.validation.timeoutSeconds * 1000,
+    });
+    if (r.status !== 0)
+      fail("policy-denied", `the publication check ${check.name} refused this head`, {
+        check: check.name,
+        status: r.status,
+        output: `${r.stdout}${r.stderr}`.slice(-2000),
+      });
+    out.push({ name: check.name, status: "PASS" });
+  }
+  return out;
+}
+
+/** What a trusted host command sees: no credential, no gh login, the initiative's identity. */
+function hostEnv(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  record: InitiativeRecord,
+  head: string,
+) {
+  return {
+    ...childEnv(ctx.rt.env, { dropCredentials: credentialVariables(trusted) }),
+    GH_CONFIG_DIR: "/nonexistent-comforge-gh",
+    COMFORGE_INITIATIVE: record.operationId,
+    COMFORGE_TICKET: record.ticket,
+    COMFORGE_HEAD: head,
+    COMFORGE_BASE: record.base.sha,
+  };
+}
+
+const MAX_BODY = 60_000;
+
+/**
+ * The pull request body: the configured command's Markdown, or the built-in summary, then
+ * `Closes #N` and the publication marker. Command output is repository-controlled text, so it
+ * may not hide content (HTML comments), carry a reserved marker or a secret-like value.
+ */
+function publicationBody(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  record: InitiativeRecord,
+  checkout: string,
+  head: string,
+  closes?: number,
+): string {
+  const policy = trusted.publication;
+  let main: string;
+  if (policy.bodyCommand) {
+    const r = ctx.rt.run(policy.bodyCommand[0] as string, policy.bodyCommand.slice(1), {
+      cwd: checkout,
+      env: hostEnv(ctx, trusted, record, head),
+      timeoutMs: 120_000,
+    });
+    if (r.status !== 0)
+      fail("policy-denied", "publication.bodyCommand failed", {
+        status: r.status,
+        stderr: r.stderr.slice(-2000),
+      });
+    main = r.stdout.trim();
+    const reserved = [
+      trusted.completion?.markerNamespace,
+      trusted.specification?.markerNamespace,
+      trusted.security.markerNamespace,
+      policy.linkMarkerNamespace,
+      "comforge-op",
+    ].filter((x): x is string => typeof x === "string");
+    const problems = [
+      ...(main.length === 0 || main.length > MAX_BODY ? [`length ${main.length}`] : []),
+      ...(main.includes("<!--") || main.includes("-->") ? ["an HTML comment"] : []),
+      ...reserved
+        .filter((ns) => main.includes(`${ns}:`) || main.includes(`${ns} `))
+        .map((ns) => `the reserved ${ns} marker`),
+      ...(detectSecrets(main).count > 0 ? ["secret-like text"] : []),
+    ];
+    if (problems.length > 0)
+      fail("policy-denied", "publication.bodyCommand produced a body that cannot be published", {
+        problems,
+      });
+  } else main = composeBody(record, trusted, checkout, ctx, head);
+  const parts = [main];
+  if (closes !== undefined) parts.push(`Closes #${closes}`);
+  if (policy.marker && trusted.completion)
+    parts.push(
+      `<!-- ${trusted.completion.markerNamespace}:publication ticket=${record.operationId} head=${head} -->`,
+    );
+  return parts.join("\n\n");
+}
+
+/**
+ * R14: one host-adapter write, durable and reconciled. A `sending` entry left by a process that
+ * died is settled from GitHub first. The command runs only when GitHub shows the change is not
+ * applied; its outcome is what GitHub shows afterwards, whatever the adapter's exit status said.
+ * Both adapters' operations are idempotent, so a retry after "not applied" cannot double them.
+ */
+async function hostWrite(
+  ctx: CommandContext,
+  initiative: string,
+  op: {
+    kind: HostOperation["kind"];
+    prNumber: number;
+    head: string;
+    login?: string;
+    applied: (pull: Pull) => boolean;
+    read: () => Promise<Pull>;
+    run: () => string;
+  },
+): Promise<{ pull: Pull; ran: boolean; applied: boolean; detail: string }> {
+  const at = () => nowIso(ctx.rt.now());
+  const same = (h: HostOperation) =>
+    h.kind === op.kind && h.prNumber === op.prNumber && (h.login ?? null) === (op.login ?? null);
+  let pull = await op.read();
+  const before = (await ctx.state.get(initiative))?.hostOperations ?? [];
+  const pending = before.filter((h) => same(h) && h.state === "sending");
+  if (pending.length > 0)
+    await ctx.state.update(initiative, (r) => {
+      for (const h of r.hostOperations ?? [])
+        if (same(h) && h.state === "sending")
+          Object.assign(h, {
+            state: op.applied(pull) ? "succeeded" : "not-applied",
+            detail: "settled from GitHub after an interrupted run",
+            at: at(),
+          });
+    });
+  if (op.applied(pull)) return { pull, ran: false, applied: true, detail: "already applied" };
+  await ctx.state.update(initiative, (r) => {
+    r.hostOperations ??= [];
+    r.hostOperations.push({
+      kind: op.kind,
+      prNumber: op.prNumber,
+      head: op.head,
+      ...(op.login ? { login: op.login } : {}),
+      state: "sending",
+      at: at(),
+      detail: "",
+    });
+  });
+  const said = op.run();
+  pull = await op.read();
+  const applied = op.applied(pull);
+  await ctx.state.update(initiative, (r) => {
+    const h = [...(r.hostOperations ?? [])].reverse().find((x) => same(x) && x.state === "sending");
+    if (h)
+      Object.assign(h, { state: applied ? "succeeded" : "not-applied", detail: said, at: at() });
+  });
+  return { pull, ran: true, applied, detail: said };
+}
+
+/** The audited host adapter for leaving draft (pulls:ready), through `gh pr ready`. */
+function markReadyWithGh(
+  rt: CommandContext["rt"],
+  config: ComforgeConfig,
+  prNumber: number,
+): { ready: boolean; detail: string } {
+  if (!config.security.capabilities.includes("pulls:ready"))
+    return { ready: false, detail: "skipped: pulls:ready is not a configured capability" };
+  const slug = `${config.repository.owner}/${config.repository.name}`;
+  const r = rt.run("gh", ["pr", "ready", String(prNumber), "--repo", slug], {
+    cwd: rt.cwd,
+    env: childEnv(rt.env),
+  });
+  return r.status === 0
+    ? { ready: true, detail: "marked ready with gh" }
+    : { ready: false, detail: `gh pr ready failed: ${r.stderr.trim().slice(0, 200)}` };
+}
+
 export async function publish(
   ctx: CommandContext,
   options: {
     id: string;
     title: string;
     draft?: boolean;
+    /** Adds `Closes #N` to the body (GitHub closes it when a person merges). */
+    closes?: number;
     execute: boolean;
     grantFile?: string;
     /** Set by deliver, which authorized the whole delivery once. */
@@ -211,6 +430,14 @@ export async function publish(
     },
   });
   if (publishDecision.decision !== "allow") refuse(publishDecision.reasons, "publication refused");
+  const policy = trusted.publication;
+  if (policy.draftFirst && !trusted.security.capabilities.includes("pulls:ready"))
+    fail("config-invalid", "publication.draftFirst needs the pulls:ready capability");
+  if (policy.marker && !trusted.completion)
+    fail("config-invalid", "publication.marker needs a completion section (its namespace)");
+  // Trusted checks, before anything is pushed: a dry run reports the same refusal.
+  const checks = runPublicationChecks(ctx, trusted, record, checkout, head);
+  ctx.checkpoint();
 
   const gh = ctx.github(trusted);
   const { owner, name, remote, baseBranch } = trusted.repository;
@@ -255,18 +482,24 @@ export async function publish(
   const facts = target.facts;
   const existing =
     facts.openPullRequestIndex === null ? null : (candidates[facts.openPullRequestIndex] as Pull);
-  const body = composeBody(record, trusted, checkout, ctx, head);
+  const body = publicationBody(ctx, trusted, record, checkout, head, options.closes);
+  // draftFirst: created as a draft and marked ready only after the handoff checks.
+  const createDraft = options.draft === true || policy.draftFirst;
   const plan = {
     initiative: record.operationId,
     head,
     push: facts.push,
+    checks,
     pullRequest: existing
       ? { action: "update", number: existing.number }
-      : { action: "create", draft: options.draft === true, base: baseBranch },
+      : { action: "create", draft: createDraft, base: baseBranch },
+    readyForReview:
+      options.draft === true ? "stays draft" : policy.draftFirst ? "mark ready" : "created ready",
     assignee: trusted.security.delivery.assignee,
     authorization: trusted.security.authorization?.mode ?? "none: writes are refused",
   };
   if (!options.execute) return { result: { executed: false, plan, body } };
+  await requireResolved(gh, record, rt.now());
   const authorized =
     options.authorized ??
     (await authorizeWrites(ctx, trusted, record, {
@@ -275,14 +508,33 @@ export async function publish(
       command: "publish",
     }));
 
-  if (facts.push !== "up-to-date")
-    git(rt, checkout, ["push", "--quiet", remote, `${head}:refs/heads/${record.branch}`]);
+  if (facts.push !== "up-to-date") {
+    ctx.checkpoint();
+    // Never forced: a branch that moved meanwhile rejects the push.
+    const pushed = gitRun(rt, checkout, [
+      "push",
+      "--quiet",
+      remote,
+      `${head}:refs/heads/${record.branch}`,
+    ]);
+    // Settled by reading the remote, not by the exit status: a lost answer is not a failure.
+    const now =
+      git(rt, checkout, ["ls-remote", remote, `refs/heads/${record.branch}`]).split(/\s/)[0] ?? "";
+    if (now !== head)
+      throw new CliError(
+        pushed.status === 0 ? "ambiguous" : "git-failed",
+        `the branch is not at the published head after the push: ${pushed.stderr.trim().slice(0, 300)}`,
+        { remote: now || null, head },
+      );
+  }
   let pull: Pull;
   const ops: string[] = [];
   if (existing) {
     const current = await readPull(gh, trusted, existing.number);
     // A completion link already in the body is kept: publishing again must not remove it.
-    const link = completionLinkBlock(current.body ?? "");
+    const linkNs = trusted.publication.linkMarkerNamespace;
+    assertCompletionLinkUnambiguous(current.body ?? "", linkNs);
+    const link = completionLinkBlock(current.body ?? "", linkNs);
     const next = link ? `${body}\n\n${link}\n` : body;
     if (withoutWriterMarker(current.body ?? "") !== next) {
       const digest = await bodyDigest(current.body ?? "");
@@ -322,7 +574,7 @@ export async function publish(
       head: record.branch,
       base: baseBranch,
       expectedHeadSha: head,
-      draft: options.draft === true,
+      draft: createDraft,
     });
     if (outcome.status !== "verified" || outcome.resource?.type !== "pull")
       throw new CliError(
@@ -333,13 +585,44 @@ export async function publish(
     pull = await readPull(gh, trusted, outcome.resource.number);
   }
   let assignment: { assigned: boolean; detail: string } | null = null;
-  // Assignment is the one host-adapter write: only with its own capability.
+  // Assignment is a host-adapter write: only with its own capability, journalled, settled by reading.
   const assignee = trusted.security.capabilities.includes("pulls:assign")
     ? trusted.security.delivery.assignee
     : null;
-  if (assignee && !pull.assignees.some((a) => a.login === assignee)) {
-    assignment = assignWithGh(rt, trusted, pull.number, assignee);
-    pull = await readPull(gh, trusted, pull.number);
+  if (assignee) {
+    ctx.checkpoint();
+    const outcome = await hostWrite(ctx, record.operationId, {
+      kind: "pulls:assign",
+      prNumber: pull.number,
+      head,
+      login: assignee,
+      applied: (p) => p.assignees.some((a) => a.login === assignee),
+      read: () => readPull(gh, trusted, pull.number),
+      run: () => assignWithGh(rt, trusted, pull.number, assignee).detail,
+    });
+    pull = outcome.pull;
+    assignment = outcome.ran ? { assigned: outcome.applied, detail: outcome.detail } : null;
+  }
+  // Ready for review: GitHub's REST API cannot leave draft, so a bounded host adapter does it,
+  // only for this pull request, only at the published head, only with pulls:ready.
+  let ready: { ready: boolean; detail: string } | null = null;
+  if (options.draft !== true && policy.draftFirst) {
+    ctx.checkpoint();
+    if (pull.head.sha !== head)
+      fail("stale", "the pull request moved before it was marked ready; nothing was changed", {
+        pullRequest: pull.head.sha,
+        published: head,
+      });
+    const outcome = await hostWrite(ctx, record.operationId, {
+      kind: "pulls:ready",
+      prNumber: pull.number,
+      head,
+      applied: (p) => p.draft !== true,
+      read: () => readPull(gh, trusted, pull.number),
+      run: () => markReadyWithGh(rt, trusted, pull.number).detail,
+    });
+    pull = outcome.pull;
+    ready = outcome.ran ? { ready: outcome.applied, detail: outcome.detail } : null;
   }
   await ctx.state.update(record.operationId, (r) => {
     r.publications.push({
@@ -376,6 +659,7 @@ export async function publish(
         draft: pull.draft === true,
       },
       assignment,
+      readyForReview: ready,
       authorization: authorized,
       handoff: problems.length === 0 ? "ok" : problems,
     },
@@ -400,20 +684,69 @@ const CommentSchema = z.object({
   created_at: z.string(),
 });
 
-const LINK_BEGIN = "<!-- comforge:completion-link-begin -->";
-const LINK_END = "<!-- comforge:completion-link-end -->";
+const linkMarkers = (namespace: string) => ({
+  begin: `<!-- ${namespace}:completion-link-begin -->`,
+  end: `<!-- ${namespace}:completion-link-end -->`,
+});
+const DEFAULT_LINK_NAMESPACE = "comforge";
+
+const count = (text: string, needle: string) => text.split(needle).length - 1;
+
+/**
+ * Refuses a body whose completion-link block is ambiguous: a marker twice, an end before its
+ * begin, a lone marker, or blocks in two namespaces (an earlier namespace still in the body).
+ * Rewriting such a body could drop or duplicate a link, so a person fixes it first.
+ */
+export function assertCompletionLinkUnambiguous(
+  body: string,
+  namespace = DEFAULT_LINK_NAMESPACE,
+): void {
+  const namespaces = [...new Set([namespace, DEFAULT_LINK_NAMESPACE])];
+  const present = namespaces.filter((ns) => {
+    const { begin, end } = linkMarkers(ns);
+    const b = count(body, begin);
+    const e = count(body, end);
+    if (b > 1 || e > 1 || b !== e || (b === 1 && body.indexOf(end) < body.indexOf(begin)))
+      fail(
+        "conflict",
+        "the pull request body has a malformed completion-link block; fix it by hand",
+        {
+          namespace: ns,
+          begins: b,
+          ends: e,
+        },
+      );
+    return b === 1;
+  });
+  if (present.length > 1)
+    fail(
+      "conflict",
+      "the pull request body has completion-link blocks in two namespaces; keep one",
+      {
+        namespaces: present,
+      },
+    );
+}
 
 /** The completion-link block of a body, or null. */
-export function completionLinkBlock(body: string): string | null {
+export function completionLinkBlock(
+  body: string,
+  namespace = DEFAULT_LINK_NAMESPACE,
+): string | null {
+  const { begin: LINK_BEGIN, end: LINK_END } = linkMarkers(namespace);
   const begin = body.indexOf(LINK_BEGIN);
   const end = body.indexOf(LINK_END);
   return begin >= 0 && end > begin ? body.slice(begin, end + LINK_END.length) : null;
 }
 
+/** The body with its completion-link block replaced (or appended); every other byte is kept. */
 export function withCompletionLink(
   body: string,
   link: { issueNumber: number; url: string; headSha: string },
+  namespace = DEFAULT_LINK_NAMESPACE,
 ): string {
+  assertCompletionLinkUnambiguous(body, namespace);
+  const { begin: LINK_BEGIN, end: LINK_END } = linkMarkers(namespace);
   const block = [
     LINK_BEGIN,
     "## Issue completion",
@@ -653,7 +986,11 @@ export async function complete(
     closesIssue: false,
     authorization: trusted.security.authorization?.mode ?? "none: writes are refused",
   };
+  // An ambiguous link block is refused before the comment, so nothing is left half done.
+  if (pull && applies)
+    assertCompletionLinkUnambiguous(pull.body ?? "", trusted.publication.linkMarkerNamespace);
   if (!options.execute) return { result: { executed: false, plan, body } };
+  await requireResolved(gh, record, rt.now());
   const authorized =
     options.authorized ??
     (await authorizeWrites(ctx, trusted, record, {
@@ -717,11 +1054,11 @@ export async function complete(
       };
     else {
       const current = fresh.body ?? "";
-      const next = withCompletionLink(withoutWriterMarker(current), {
-        issueNumber: input.issueNumber,
-        url: commentUrl,
-        headSha: linkHead,
-      });
+      const next = withCompletionLink(
+        withoutWriterMarker(current),
+        { issueNumber: input.issueNumber, url: commentUrl, headSha: linkHead },
+        trusted.publication.linkMarkerNamespace,
+      );
       if (next === withoutWriterMarker(current))
         pullRequestLink = { prNumber: pull.number, action: "up-to-date" };
       else {
@@ -781,6 +1118,64 @@ export async function complete(
 
 // --- deliver ----------------------------------------------------------------------------
 
+/**
+ * The result deliver completes with: the initiative's issue, ticket and specification digest
+ * fill fields the result leaves out, and a result that names others is refused.
+ */
+function deliveryResult(
+  record: InitiativeRecord,
+  trusted: ComforgeConfig,
+  raw: unknown,
+): Record<string, unknown> {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw))
+    return fail("usage", "the completion result is not a JSON object");
+  const result = { ...(raw as Record<string, unknown>) };
+  const known: Record<string, unknown> = {
+    ticketId: record.ticket,
+    ...(record.specification
+      ? {
+          issueNumber: record.specification.issueNumber,
+          specificationDigest: record.specification.digest,
+        }
+      : {}),
+  };
+  for (const [key, value] of Object.entries(known)) {
+    if (result[key] === undefined) result[key] = value;
+    else if (result[key] !== value)
+      fail("conflict", `the result's ${key} is not this initiative's`, {
+        field: key,
+        result: result[key] as never,
+        initiative: value as never,
+      });
+  }
+  if (!trusted.completion)
+    fail("config-invalid", "deliver needs a completion section in the configuration");
+  return result;
+}
+
+/**
+ * The pull request a result links. A non-implementation result (a report delivered as its own
+ * pull request) must say why it links one: its own `pullRequest.reason`, else the configured
+ * `publication.reportPullRequestReason`. Without either it is refused before any write.
+ */
+function withReason(
+  pr: { number: number; headSha: string },
+  result: Record<string, unknown>,
+  trusted: ComforgeConfig,
+): { number: number; headSha: string; reason?: string } {
+  const given = (result.pullRequest as { reason?: unknown } | undefined)?.reason;
+  if (typeof given === "string" && given.trim()) return { ...pr, reason: given };
+  if (result.issueType === "implementation") return pr;
+  const configured = trusted.publication.reportPullRequestReason;
+  if (!configured)
+    return fail(
+      "policy-denied",
+      "a report delivered with a pull request needs pullRequest.reason in the result or publication.reportPullRequestReason",
+      { issueType: result.issueType as never },
+    );
+  return { ...pr, reason: configured };
+}
+
 export async function deliver(
   ctx: CommandContext,
   options: {
@@ -789,6 +1184,7 @@ export async function deliver(
     raw: unknown;
     withoutPullRequest?: boolean;
     draft?: boolean;
+    closes?: number;
     execute: boolean;
     grantFile?: string;
   },
@@ -796,7 +1192,7 @@ export async function deliver(
   const { record, trusted } = await loadInitiative(ctx, options.id);
   const checkout = requireCheckout(record);
   const head = git(ctx.rt, checkout, ["rev-parse", "HEAD"]);
-  const result = { ...(options.raw as Record<string, unknown>) };
+  const result = deliveryResult(record, trusted, options.raw);
   const path = evaluateLifecycleAction({
     action: "deliver",
     evidence: {
@@ -813,6 +1209,8 @@ export async function deliver(
   if (path.decision !== "allow") return refuse(path.reasons, "delivery refused");
   result.sourceRevision = path.facts.sourceRevision;
   const needsPr = path.facts.pullRequest === "required";
+  // A report PR without a reason is refused here, before anything is pushed or created.
+  if (needsPr) withReason({ number: 1, headSha: head }, result, trusted);
   const stages: Record<string, unknown> = {};
   if (!options.execute) {
     if (needsPr) {
@@ -820,13 +1218,18 @@ export async function deliver(
         id: options.id,
         title: options.title,
         draft: options.draft,
+        closes: options.closes,
         execute: false,
       });
       stages.publish = dry.result.plan;
-      result.pullRequest = {
-        number: (dry.result.plan as { pullRequest: { number?: number } }).pullRequest.number ?? 1,
-        headSha: head,
-      };
+      result.pullRequest = withReason(
+        {
+          number: (dry.result.plan as { pullRequest: { number?: number } }).pullRequest.number ?? 1,
+          headSha: head,
+        },
+        result,
+        trusted,
+      );
     }
     parseResult(trusted, result);
     stages.completion = {
@@ -834,20 +1237,6 @@ export async function deliver(
     };
     return { result: { initiative: options.id, executed: false, delivery: "planned", stages } };
   }
-  const stop = (stage: string, error: unknown): CommandResult => ({
-    result: {
-      initiative: options.id,
-      executed: true,
-      delivery: "incomplete",
-      failedStage: stage,
-      stages,
-      error:
-        error instanceof CliError
-          ? { code: error.code, message: error.message, detail: error.detail }
-          : { message: String(error) },
-    },
-    exit: EXIT.incomplete,
-  });
   // One authorization for the whole delivery (one attempt of an owner grant).
   const authorized = await authorizeWrites(ctx, trusted, record, {
     head,
@@ -855,13 +1244,47 @@ export async function deliver(
     command: "deliver",
   });
   stages.authorization = authorized;
+  // The attempt is on record before the first remote side effect; a dead run's is uncertain.
+  const attempt = await beginAttempt(ctx, record.operationId, head);
+  const progress = (stage: string) =>
+    ctx.state.update(record.operationId, (r) => {
+      const a = r.deliveries?.find((d) => d.attempt === attempt);
+      if (a && !a.stages.includes(stage)) a.stages.push(stage);
+    });
+  const finish = (outcome: DeliveryAttempt["outcome"], failedStage: string | null) =>
+    ctx.state.update(record.operationId, (r) => {
+      const a = r.deliveries?.find((d) => d.attempt === attempt);
+      if (a) Object.assign(a, { outcome, failedStage, finishedAt: nowIso(ctx.rt.now()) });
+    });
+  const stop = async (stage: string, error: unknown): Promise<CommandResult> => {
+    // A write whose answer was lost may have happened: say so, never call it a clean stop.
+    const uncertain = !(error instanceof CliError) || error.code === "ambiguous";
+    await finish(uncertain ? "uncertain" : "incomplete", stage);
+    return {
+      result: {
+        initiative: options.id,
+        executed: true,
+        delivery: "incomplete",
+        attempt,
+        failedStage: stage,
+        stages,
+        error:
+          error instanceof CliError
+            ? { code: error.code, message: error.message, detail: error.detail }
+            : { message: String(error) },
+      },
+      exit: EXIT.incomplete,
+    };
+  };
   let prNumber: number | null = null;
   if (needsPr) {
     try {
+      ctx.checkpoint();
       const published = await publish(ctx, {
         id: options.id,
         title: options.title,
         draft: options.draft,
+        closes: options.closes,
         execute: true,
         authorized,
       });
@@ -874,27 +1297,143 @@ export async function deliver(
           }),
         );
       prNumber = (published.result.pullRequest as { number: number }).number;
-      result.pullRequest = { number: prNumber, headSha: head };
+      result.pullRequest = withReason({ number: prNumber, headSha: head }, result, trusted);
+      await progress("publish");
     } catch (error) {
       return stop("publish", error);
     }
   }
+  let commentId: number;
   try {
+    ctx.checkpoint();
     const completed = await complete(ctx, { raw: result, execute: true, authorized });
     stages.completion = completed.result;
     if (completed.exit === EXIT.incomplete)
       return stop("completion", new CliError("incomplete", "the completion link is incomplete"));
+    commentId = (completed.result.comment as { id: number }).id;
+    await progress("completion");
   } catch (error) {
     return stop("completion", error);
   }
+  try {
+    stages.read_back = await readBack(ctx, trusted, {
+      input: parseResult(trusted, result),
+      commentId,
+      head,
+      prNumber,
+      requireReady: options.draft !== true,
+    });
+    await progress("read_back");
+  } catch (error) {
+    return stop("read_back", error);
+  }
+  await finish("complete", null);
   return {
     result: {
       initiative: options.id,
       executed: true,
       delivery: "complete",
+      attempt,
       pullRequest: prNumber,
       stages,
     },
+  };
+}
+
+/** Records a new delivery attempt; an earlier one still `running` died part-way: uncertain. */
+async function beginAttempt(ctx: CommandContext, id: string, head: string): Promise<number> {
+  let attempt = 0;
+  await ctx.state.update(id, (r) => {
+    r.deliveries ??= [];
+    const list = r.deliveries;
+    for (const a of list)
+      if (a.outcome === "running")
+        Object.assign(a, { outcome: "uncertain", finishedAt: nowIso(ctx.rt.now()) });
+    attempt = (list.at(-1)?.attempt ?? 0) + 1;
+    list.push({
+      attempt,
+      head,
+      startedAt: nowIso(ctx.rt.now()),
+      finishedAt: null,
+      outcome: "running",
+      stages: [],
+      failedStage: null,
+    });
+  });
+  return attempt;
+}
+
+/**
+ * R7: what GitHub shows after the delivery, read again: the completion record is the comment
+ * this run named, decodes with integrity, is the latest of its author for the ticket, and
+ * names this head (and pull request); the pull request is at this head, ready when required,
+ * and its body links that comment.
+ */
+async function readBack(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  facts: {
+    input: CompletionInput;
+    commentId: number;
+    head: string;
+    prNumber: number | null;
+    requireReady: boolean;
+  },
+): Promise<Record<string, unknown>> {
+  const gh = ctx.github(trusted);
+  const protocol = completionProtocol(trusted);
+  const viewer = await gh.login();
+  const scan = await scanComments(gh, trusted, facts.input.issueNumber);
+  const own = scan.comments.flatMap((comment) => {
+    if (comment.user?.login !== viewer) return [];
+    const marker = protocol.parseCompletionMarker(comment.body);
+    if (!marker || marker.ticketId !== facts.input.ticketId) return [];
+    return [{ comment, ...protocol.decodeCompletion(marker) }];
+  });
+  const mine = own.find((e) => e.comment.id === facts.commentId);
+  const problems: string[] = [];
+  if (!mine) problems.push(`comment ${facts.commentId} is not on #${facts.input.issueNumber}`);
+  else {
+    if (mine.integrity !== "verified") problems.push("the completion record does not verify");
+    const payload = mine.payload as
+      | { sourceRevision?: string; pullRequest?: { number?: number } | null }
+      | null
+      | undefined;
+    const expected = facts.input.pullRequest?.headSha ?? facts.input.sourceRevision;
+    if (payload?.sourceRevision !== facts.input.sourceRevision)
+      problems.push("the record names another source revision");
+    if (facts.prNumber !== null && payload?.pullRequest?.number !== facts.prNumber)
+      problems.push("the record names another pull request");
+    if (own.at(-1)?.comment.id !== facts.commentId)
+      problems.push("a later result of this author supersedes it");
+    if (expected !== facts.head && facts.prNumber !== null)
+      problems.push("the record is not of the delivered head");
+  }
+  let pullRequest: Record<string, unknown> | null = null;
+  if (facts.prNumber !== null) {
+    const pull = await readPull(gh, trusted, facts.prNumber);
+    const ns = trusted.publication.linkMarkerNamespace;
+    const block = completionLinkBlock(pull.body ?? "", ns) ?? "";
+    pullRequest = {
+      number: pull.number,
+      headSha: pull.head.sha,
+      draft: pull.draft === true,
+      linked: block.includes(`#issuecomment-${facts.commentId}`),
+    };
+    if (pull.head.sha !== facts.head) problems.push("the pull request moved to another head");
+    if (facts.requireReady && pull.draft === true)
+      problems.push("the pull request is still a draft");
+    if (!pullRequest.linked)
+      problems.push("the pull request body does not link the completion record");
+  }
+  if (problems.length > 0)
+    fail("incomplete", "the delivery did not read back as published", { problems });
+  return {
+    commentId: facts.commentId,
+    integrity: "verified",
+    current: true,
+    sourceRevision: facts.input.sourceRevision,
+    pullRequest,
   };
 }
 

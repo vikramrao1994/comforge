@@ -10,7 +10,8 @@ import {
   type WriteOperation,
   type WriteOutcome,
 } from "@comforge/github";
-import { createFileLedger, type FileLedger } from "@comforge/ledger/file";
+import type { Ledger } from "@comforge/ledger";
+import { createFileLedger } from "@comforge/ledger/file";
 import { CLI_CAPABILITIES, type ComforgeConfig } from "./config.ts";
 import { CliError, type ErrorCode, fail } from "./errors.ts";
 import { childEnv, type Runtime } from "./runtime.ts";
@@ -40,14 +41,24 @@ export interface GitHubAccess {
   write(operation: WriteOperation): Promise<WriteOutcome>;
   reconcile(operationId: string): Promise<WriteOutcome>;
   abandon(operationId: string, reason: string): Promise<void>;
-  /** The write ledger (read-only use by `recover` and `status`). */
-  ledger: FileLedger<OperationRecord>;
+  /** The write ledger (read-only use by `recover`, `status` and the write guards). */
+  ledger: Ledger<OperationRecord>;
 }
 
-function credential(rt: Runtime, config: ComforgeConfig): () => string {
+function credential(
+  rt: Runtime,
+  config: ComforgeConfig,
+  provider?: (config: ComforgeConfig) => string,
+): () => string {
   let token: string | null = null;
   return () => {
     if (token) return token;
+    if (provider) {
+      const value = provider(config);
+      if (!value) fail("credential-missing", "the credential provider returned no token");
+      token = value;
+      return token;
+    }
     const source = config.security.credentials;
     if (source.source === "env") {
       const value = rt.env[source.variable];
@@ -88,9 +99,15 @@ export function githubError(error: unknown): never {
   throw error;
 }
 
-export function openGitHub(rt: Runtime, config: ComforgeConfig, commonDir: string): GitHubAccess {
+export function openGitHub(
+  rt: Runtime,
+  config: ComforgeConfig,
+  commonDir: string,
+  provider?: (config: ComforgeConfig) => string,
+  ledgerFactory?: (config: ComforgeConfig) => Ledger<OperationRecord>,
+): GitHubAccess {
   const { owner, name, apiOrigin } = config.repository;
-  const token = credential(rt, config);
+  const token = credential(rt, config, provider);
   // Resolved now: the SDK transport reports a failing token provider as a network error.
   token();
   const transport = createFetchTransport({
@@ -100,14 +117,16 @@ export function openGitHub(rt: Runtime, config: ComforgeConfig, commonDir: strin
     userAgent: "comforge-cli",
   });
   const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
-  const ledger = createFileLedger<OperationRecord>({
-    directory: stateDir(commonDir),
-    namespace: config.security.ledgerNamespace,
-    validate: (record) => {
-      if (record.schema !== "comforge-github-operation/v1")
-        fail("ledger", "the write ledger holds a record of another kind");
-    },
-  });
+  const ledger: Ledger<OperationRecord> =
+    ledgerFactory?.(config) ??
+    createFileLedger<OperationRecord>({
+      directory: writeLedgerDir(commonDir, config),
+      namespace: config.security.ledgerNamespace,
+      validate: (record) => {
+        if (record.schema !== "comforge-github-operation/v1")
+          fail("ledger", "the write ledger holds a record of another kind");
+      },
+    });
   let viewer: string | null = null;
   const login = async () => {
     if (viewer) return viewer;
@@ -190,5 +209,11 @@ export function assignWithGh(
     : { assigned: false, detail: `gh pr edit failed: ${r.stderr.trim().slice(0, 200)}` };
 }
 
+/** The write ledger's directory: `comforge/`, or an earlier lifecycle's shared one (`state`). */
+export const writeLedgerDir = (commonDir: string, config: ComforgeConfig) =>
+  config.state.writeLedgerDirectory === "comforge"
+    ? stateDir(commonDir)
+    : path.join(commonDir, config.state.writeLedgerDirectory);
+
 export const ledgerLocation = (commonDir: string, config: ComforgeConfig) =>
-  path.join(stateDir(commonDir), config.security.ledgerNamespace);
+  path.join(writeLedgerDir(commonDir, config), config.security.ledgerNamespace);

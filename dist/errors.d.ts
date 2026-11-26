@@ -42,6 +42,8 @@ export declare const ERROR_CODES: {
     readonly ledger: 3;
     readonly io: 3;
     readonly incomplete: 4;
+    /** The embedding caller aborted the command between stages; rerun to continue. */
+    readonly cancelled: 4;
 };
 export type ErrorCode = keyof typeof ERROR_CODES;
 export declare class CliError extends Error {

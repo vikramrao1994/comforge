@@ -44,6 +44,8 @@ export const ERROR_CODES = {
   ledger: EXIT.failed,
   io: EXIT.failed,
   incomplete: EXIT.incomplete,
+  /** The embedding caller aborted the command between stages; rerun to continue. */
+  cancelled: EXIT.incomplete,
 } as const;
 export type ErrorCode = keyof typeof ERROR_CODES;
 

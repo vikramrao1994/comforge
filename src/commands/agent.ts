@@ -11,10 +11,10 @@ import {
   trustedChanges,
 } from "../config.ts";
 import { CliError, ERROR_CODES, EXIT, fail } from "../errors.ts";
+import { writeLedgerDir } from "../github.ts";
 import { locateRepository } from "../repository.ts";
 import { checkManifest, routeTask } from "../routing.ts";
 import { childEnv, gitRun, type Runtime } from "../runtime.ts";
-import { stateDir } from "../state.ts";
 import type { CommandResult } from "./lifecycle.ts";
 
 export const PACKAGE_VERSION: string = (() => {
@@ -79,7 +79,7 @@ export const COMMANDS = [
   },
   {
     name: "revise",
-    usage: "revise <PR> [--reviewed-head SHA]",
+    usage: "revise <PR> [--reviewed-head SHA] [--no-provision]",
     summary: "Resume an initiative for a revision of its open pull request.",
     writes: "local state",
     dryRunByDefault: false,
@@ -93,7 +93,7 @@ export const COMMANDS = [
   },
   {
     name: "verify",
-    usage: "verify <TICKET[.phase]> [--commit SHA]",
+    usage: "verify <TICKET[.phase]> [--commit SHA] [--with NAME[,NAME]] [--keep]",
     summary: "Run the trusted validation commands on the exact committed head; record PASS/FAIL.",
     writes: "local state",
     dryRunByDefault: false,
@@ -139,9 +139,17 @@ export const COMMANDS = [
   },
   {
     name: "cleanup",
-    usage: "cleanup <PR|TICKET[.phase]> [--allow-missing-completion] [--execute]",
+    usage: "cleanup <PR|TICKET[.phase]> [--allow-missing-completion] [--grant FILE] [--execute]",
     summary: "After a merge: remove the checkout and close the local record.",
     writes: "local checkout and state",
+    dryRunByDefault: true,
+  },
+  {
+    name: "migrate",
+    usage: "migrate [--rollback] [--wait SECONDS] [--execute]",
+    summary:
+      "Imports an earlier lifecycle's local state (state.legacy); --rollback undoes an import nothing has changed since.",
+    writes: "local state (and a sentinel in the legacy directory)",
     dryRunByDefault: true,
   },
 ] as const;
@@ -370,7 +378,7 @@ export async function doctor(rt: Runtime): Promise<CommandResult> {
   if (commonDir && working) {
     try {
       const inspection = await createFileLedger({
-        directory: stateDir(commonDir),
+        directory: writeLedgerDir(commonDir, working),
         namespace: working.security.ledgerNamespace,
       }).inspect();
       add(

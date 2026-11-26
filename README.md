@@ -70,16 +70,17 @@ npx comforge cleanup 17 --execute           # after the merge
 | `capabilities` | Commands, exit codes, error codes, what it never does | nothing |
 | `context [--task TEXT]` / `context check` | The one routing category a task matches | nothing |
 | `schema config` | The configuration's JSON Schema | nothing |
-| `start <ID> [--issue N] [--expect-digest HEX] [--no-provision]` | Verifies the specification; clones an isolated checkout from the fetched base | local checkout, state |
-| `revise <PR> [--reviewed-head SHA]` | Resumes an initiative for a revision of its open PR | state |
+| `start <ID> [--issue N] [--expect-digest HEX] [--no-provision]` | Verifies the specification; clones an isolated checkout from the fetched base and provisions it | local checkout, state |
+| `revise <PR> [--reviewed-head SHA] [--no-provision]` | Resumes an initiative for a revision of its open PR: re-creates a missing checkout, fast-forwards, reports divergence | state |
 | `status [ID]` | Local state of one or all initiatives | nothing |
-| `verify <ID> [--commit SHA]` | Runs the trusted validation commands on the clean, committed head | state |
-| `publish <ID> --title T [--draft] [--grant FILE] [--execute]` | Pushes the validated head; creates or updates its PR | git push, PR |
+| `verify <ID> [--commit SHA] [--with NAME[,NAME]] [--keep]` | Runs the trusted validation commands on the clean, committed head (optionally in a fresh snapshot) | state |
+| `publish <ID> --title T [--draft] [--closes N] [--grant FILE] [--execute]` | Runs the publication checks, pushes the validated head; creates or updates its PR | git push, PR |
 | `complete --result FILE [--execute]` | Publishes a completion record as one issue comment, linked from the PR | comment, PR body |
-| `deliver <ID> --title T --result FILE [--no-pr] [--draft] [--execute]` | `publish`, then `complete` | as both |
+| `deliver <ID> --title T --result FILE [--no-pr] [--draft] [--closes N] [--execute]` | `publish`, then `complete`, then reads both back; every attempt is recorded | as both |
 | `recover <ID> [--abandon] [--grant FILE] [--execute]` | Reconciles unresolved writes of this initiative | write ledger |
 | `grant template <ID>` / `grant sign <ID> --grant FILE --key FILE` | Owner grants (see Authorization) | nothing |
-| `cleanup <PR or ID> [--allow-missing-completion] [--execute]` | After a merge, removes the checkout | local checkout, state |
+| `cleanup <PR or ID> [--allow-missing-completion] [--grant FILE] [--execute]` | After a merge reached the base: removes the checkout and runs the configured cleanup steps, resumably | local checkout, state (and the branch, if configured) |
+| `migrate [--rollback] [--execute]` | Imports an earlier lifecycle's local state (`state.legacy`) | local state |
 
 `<ID>` is a ticket (`ACME-101`) or a phase of one (`ACME-101.b`), which gets its own branch
 (`agent/acme-101.b`) and checkout and must keep its ticket's specification.
@@ -102,7 +103,7 @@ Errors go to stderr as `{"error": "<code>", "message": "…", "detail": {…}}`.
 | 1 | `untrusted-config-change`, `not-found`, `conflict`, `stale`, `policy-denied`, `validation-missing`, `validation-failed`, `specification-invalid`, `evidence-missing`, `dirty-checkout`, `credential-missing`, `authorization-required`, `unauthorized`, `would-overwrite` |
 | 2 | `usage`, `config-missing`, `config-invalid`, `unsupported-platform` |
 | 3 | `git-failed`, `github-failed`, `ambiguous`, `ledger`, `io` |
-| 4 | `incomplete` |
+| 4 | `incomplete`, `cancelled` |
 
 ## Configuration
 
@@ -131,6 +132,17 @@ keys and unknown versions are refused.
 }
 ```
 
+Sections added in 0.2.0 change nothing until you set them; while each equals its default it is
+left out of the trusted digest, so initiatives started under 0.1.0 keep working:
+
+| Section | What it configures |
+|---|---|
+| `state` | `writeLedgerDirectory` (share an earlier lifecycle's write ledger), `legacy` (its state, for `migrate`) |
+| `lifecycle` | `remotePreflight` (refuse a branch or PR that exists), `phaseRequiresCleanParent` |
+| `verification` | `snapshot` (fresh clone of the exact commit), `unavailableExitStatuses`, `summary` (a recorded JSON artifact), `optional` (commands run with `--with`) |
+| `publication` | `checks` (before any push), `bodyCommand`, `marker`, `draftFirst` (needs `pulls:ready`), `linkMarkerNamespace`, `reportPullRequestReason` |
+| `cleanup` | `deleteRemoteBranch` (needs `branches:delete`), `deleteLocalBranch`, `fastForwardPrimary`, `after` (commands) |
+
 Commands are argument vectors, never shell strings. `specification` and `completion` name the
 [`@comforge/core`](https://www.npmjs.com/package/@comforge/core) protocols; a repository that
 configures the same names produces byte-identical records.
@@ -138,8 +150,9 @@ configures the same names produces byte-identical records.
 ### Trust
 
 Configuration is repository text and grants nothing. `repository`, `tickets`, `validation`,
-`specification`, `completion` and `security` are read from the base revision the initiative
-started from (what the owner already merged), never from the working tree. If a candidate changes
+`specification`, `completion`, `security`, `state`, `lifecycle`, `verification`, `publication` and
+`cleanup` are read from the base revision the initiative started from (what the owner already
+merged), never from the working tree. If a candidate changes
 any of them, `publish` refuses with `untrusted-config-change`; the owner merges such a change by
 other means. Instructions, skills and `context` output are guidance: no command reads them to
 decide a permission.
@@ -176,9 +189,12 @@ the owner's machine: an agent that can read a trusted private key can authorize 
 no CLI can prevent. Keep keys, credentials and the agent in separate places (external
 enforcement), and use branch rulesets so GitHub, not the CLI, decides what can merge.
 
-Assigning a pull request is the one write outside the SDK (`gh pr edit --add-assignee`). It runs
-only with the `pulls:assign` capability, only for the configured assignee, and only on the pull
-request just published.
+Three writes happen outside the SDK, each through one bounded host adapter and only with its own
+capability (each is recorded before it runs and settled by what GitHub then shows, never by the
+adapter's exit status alone, so a lost answer or a dead process is reconciled, not repeated): assigning the configured login to the pull request just published (`pulls:assign`,
+`gh pr edit --add-assignee`), marking that pull request ready for review (`pulls:ready`,
+`gh pr ready`; GitHub's REST API cannot leave draft), and deleting the initiative's merged branch
+during cleanup under a lease on the published commit (`branches:delete`, `git push`).
 
 ### Credentials
 
@@ -194,6 +210,72 @@ against the specification on the issue (unedited, same digest), every evidence f
 committed at a commit on the remote, and an implementation's PR must be this initiative's, at a
 head that `verify` passed and `publish` published. The same result is never posted twice; a
 changed result supersedes the previous one in a new comment.
+
+### Provisioning
+
+Each `checkout.provision` command runs in a new checkout (or a verification snapshot) without the
+credential, with `COMFORGE_PRIMARY`, `COMFORGE_PROVISION_PURPOSE` (`checkout` or `snapshot`) and
+`COMFORGE_PROVISION_RESULT`. A command may write `comforge-provision-result/v1` JSON
+(`{"schema", "steps": [{"name", "detail", "digest"?}]}`) to that file; it must be a regular file of
+at most 64 KiB without secret-like text, and is recorded on the initiative.
+
+### Verification results
+
+`PASS`, `FAIL` (exit 1) or `UNAVAILABLE` (exit 3): the environment could not validate, because the
+snapshot could not be prepared, a command exited with one of `verification.unavailableExitStatuses`,
+or the configured summary is missing or too large. Only `PASS` on the exact head publishes.
+
+### Delivery and cleanup
+
+`deliver` records an attempt before its first remote write and completes only after reading the
+completion record and the pull request link back from GitHub; a run that stopped on an unresolved
+write is `uncertain`. A report delivered with its own pull request (audit, investigation, design,
+experiment) needs `pullRequest.reason` in the result or `publication.reportPullRequestReason`.
+The result's issue, ticket and specification digest may be left out: they come from the initiative.
+
+`cleanup` first proves the merge reached the base branch (stricter than 0.1.0), refuses while a write
+of the initiative is unresolved, and removes only an isolated clone with nothing unpublished. Its
+steps are journalled, so a rerun resumes where an interrupted cleanup stopped.
+
+## Migrating from an earlier lifecycle
+
+`comforge migrate` imports records of the `agent-lifecycle/v1` format named by `state.legacy`. It is
+a dry run by default. `--execute` writes a `.migrated` sentinel into the legacy directory first (the
+earlier lifecycle refuses to write once it exists), backs up every record byte for byte, imports
+them under a journal (an interrupted import resumes), and refuses unknown formats, conflicts and
+unverified specifications. Write identities are kept by sharing the legacy write ledger
+(`state.writeLedgerDirectory`); an unresolved write that belongs to no initiative refuses the
+migration, and no new write is sent for an initiative until its earlier ones are resolved.
+`--rollback --execute` undoes an import only while nothing changed since.
+
+The earlier lifecycle's writers register themselves in `.writers/` of its directory for as long as
+they run. After writing the sentinel, `migrate` waits (`--wait SECONDS`, default 30) until none
+of them is alive, so no earlier-lifecycle process can still write while the inventory is taken;
+a live writer, or one registered from another host, fails the migration closed.
+
+## Embedding
+
+`createLifecycleServices({ runtime, repository, credentials?, state?, writeLedger?, signal? })`
+returns the lifecycle commands as functions that resolve to `{ ok: true, value, exit }` or
+`{ ok: false, error: { code, message, detail, exit } }`, with the CLI's codes. Every dependency is
+injected (no `process` access, no cwd discovery, no shared credential); `state` and `writeLedger`
+take any `@comforge/ledger` (for example SQLite); `signal` cancels between stages (`cancelled`).
+Authorization is still the trusted configuration's. The `comforge` executable calls these same
+services.
+
+Two kinds of input meet there, and they are trusted differently:
+
+- **Trusted host wiring** (`createLifecycleServices` options): the runtime, the repository, the
+  credential provider, the stores and the signal. Only the embedding program supplies these; a
+  service never takes them from a request.
+- **Untrusted request input** (each call's options, for example from an MCP tool call): ids,
+  titles, result files. It is parsed and checked like command-line input: ids must match the
+  ticket pattern (no paths), unknown fields are ignored, and a caller-supplied `authorized` value is
+  removed. Writes are authorized only by the trusted configuration, and with owner grants only by
+  a grant file signed by a trusted key; a destructive cleanup needs a grant of its own.
+
+A cancelled call stops at the next stage boundary, never inside a write; a delivery cancelled after
+a remote write records an incomplete attempt and finishes when called again.
 
 ## For agents
 
@@ -222,6 +304,10 @@ These are guidance. The CLI's checks do not depend on an agent following them.
 | `unsafe-path` / `ledger` | `.git/comforge` is a symlink, owned by someone else, or open to other users. |
 
 ## Upgrading
+
+From 0.1.0 to 0.2.0 nothing changes unless you set a new section, with two exceptions: `cleanup`
+now refuses until the merge is on the base branch or while a write is unresolved, and the error
+code `cancelled` (exit 4) exists for embedders.
 
 The configuration has a schema version. A future incompatible version is refused until you
 migrate it; `comforge doctor` tells you. Local state records are versioned the same way.

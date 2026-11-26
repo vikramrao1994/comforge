@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0
+
+- cleanup proves the merge reached the base (stricter than 0.1.0), removes only an isolated, fully published clone, refuses unresolved writes, and runs journalled, resumable steps: leased remote branch deletion (branches:delete), local branch, primary fast-forward, after hooks.
+- deliver records every attempt (running, complete, incomplete or uncertain) before its first side effect and completes only after reading back the completion record and the pull request link from GitHub.
+- Host-adapter writes (pulls:ready, pulls:assign) are recorded before they run and settled by what GitHub shows, reconciling a dead run instead of retrying; a push is verified by reading the remote; ready requires the published head.
+- comforge migrate imports an earlier lifecycle's state (state.legacy) with dry run, backup, journal, restart and guarded rollback; writes keep their identities in a shared ledger (state.writeLedgerDirectory); cancellable, injectable context.
+- migrate fences the earlier lifecycle: after its sentinel it waits for registered writers to end (--wait), fails closed on live or foreign ones, takes its inventory only then, and checkpoints every stage; a grant spent on cleanup is never shared with a publication.
+- publish runs trusted publication.checks before any push, can take its body from a trusted publication.bodyCommand (checked), adds --closes and a publication marker, and can create a draft then mark it ready with the pulls:ready host adapter.
+- deliver fills issue, ticket and specification digest from the initiative and keeps pullRequest.reason (or publication.reportPullRequestReason) for report PRs; the completion-link block follows publication.linkMarkerNamespace and refuses ambiguous bodies.
+- createLifecycleServices: the lifecycle as injected, transport-neutral services (repository, credential provider, state and write ledger, cancellation) returning typed values or structured errors; the CLI runs through them.
+- verify can validate a fresh, provisioned clone of the exact commit (verification.snapshot), records UNAVAILABLE apart from FAIL, a size-bounded summary artifact, optional commands (--with) and --keep.
+- Provisioning commands may report a checked comforge-provision-result/v1; start gains a remote preflight, a primary-checkout report and phase prerequisites; revise re-creates a missing checkout, fast-forwards only and reports divergence.
+- A write another process still holds is refused as conflict (as in 0.1.0), an unresolved one as ambiguous.
+- Lifecycle services never accept a caller-supplied authorization: it is always established from the trusted configuration inside the call.
+
 ## 0.1.0
 
 - First release: the comforge executable for a governed agent lifecycle in any GitHub repository (init, doctor, start, revise, status, verify, publish, complete, deliver, recover, cleanup, context, capabilities, schema) on exact published core, github and ledger.

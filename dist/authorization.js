@@ -92,11 +92,19 @@ export async function authorizeWrites(ctx, trusted, record, options) {
  * remote write, needs another attempt to run again; its write is then answered from the write
  * ledger (idempotent), never repeated. When the attempts are gone the owner issues a new grant.
  */
+/** Commands whose remote effect is destructive; they never share a grant with any other. */
+export const DESTRUCTIVE_COMMANDS = new Set(["cleanup"]);
 export async function reserveGrantAttempt(ctx, initiative, use) {
     let attempt = 0;
     await ctx.state.update(initiative, (r) => {
         r.grantUses ??= [];
         const used = r.grantUses.filter((u) => u.grantId === use.grantId).length;
+        // Destructive cleanup is separately authorized: a grant spent on cleanup is not spent on a
+        // publication, and a publication's grant does not authorize deleting the branch.
+        const destructive = (command) => DESTRUCTIVE_COMMANDS.has(command);
+        const mixed = r.grantUses.find((u) => u.grantId === use.grantId && destructive(u.command) !== destructive(use.command));
+        if (mixed)
+            throw new CliError("unauthorized", `grant refused: it was used for ${mixed.command}; ${use.command} needs its own grant`, { grantId: use.grantId, usedFor: mixed.command });
         if (used >= use.maxAttempts)
             throw new CliError("unauthorized", "grant refused: its attempts are exhausted (replay refused)", {
                 grantId: use.grantId,

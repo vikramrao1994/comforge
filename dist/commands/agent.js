@@ -3,10 +3,10 @@ import path from "node:path";
 import { createFileLedger } from "@comforge/ledger/file";
 import { CLI_CAPABILITIES, CONFIG_FILE, CONFIG_SCHEMA, parseConfig, readWorkingConfig, trustedChanges, } from "../config.js";
 import { CliError, ERROR_CODES, EXIT, fail } from "../errors.js";
+import { writeLedgerDir } from "../github.js";
 import { locateRepository } from "../repository.js";
 import { checkManifest, routeTask } from "../routing.js";
 import { childEnv, gitRun } from "../runtime.js";
-import { stateDir } from "../state.js";
 export const PACKAGE_VERSION = (() => {
     try {
         return JSON.parse(readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version;
@@ -61,7 +61,7 @@ export const COMMANDS = [
     },
     {
         name: "revise",
-        usage: "revise <PR> [--reviewed-head SHA]",
+        usage: "revise <PR> [--reviewed-head SHA] [--no-provision]",
         summary: "Resume an initiative for a revision of its open pull request.",
         writes: "local state",
         dryRunByDefault: false,
@@ -75,7 +75,7 @@ export const COMMANDS = [
     },
     {
         name: "verify",
-        usage: "verify <TICKET[.phase]> [--commit SHA]",
+        usage: "verify <TICKET[.phase]> [--commit SHA] [--with NAME[,NAME]] [--keep]",
         summary: "Run the trusted validation commands on the exact committed head; record PASS/FAIL.",
         writes: "local state",
         dryRunByDefault: false,
@@ -117,9 +117,16 @@ export const COMMANDS = [
     },
     {
         name: "cleanup",
-        usage: "cleanup <PR|TICKET[.phase]> [--allow-missing-completion] [--execute]",
+        usage: "cleanup <PR|TICKET[.phase]> [--allow-missing-completion] [--grant FILE] [--execute]",
         summary: "After a merge: remove the checkout and close the local record.",
         writes: "local checkout and state",
+        dryRunByDefault: true,
+    },
+    {
+        name: "migrate",
+        usage: "migrate [--rollback] [--wait SECONDS] [--execute]",
+        summary: "Imports an earlier lifecycle's local state (state.legacy); --rollback undoes an import nothing has changed since.",
+        writes: "local state (and a sentinel in the legacy directory)",
         dryRunByDefault: true,
     },
 ];
@@ -294,7 +301,7 @@ export async function doctor(rt) {
     if (commonDir && working) {
         try {
             const inspection = await createFileLedger({
-                directory: stateDir(commonDir),
+                directory: writeLedgerDir(commonDir, working),
                 namespace: working.security.ledgerNamespace,
             }).inspect();
             add("write-ledger", inspection.unreadable.length === 0 ? "pass" : "warn", `${inspection.operations} operations, ${inspection.unreadable.length} unreadable, ${inspection.orphanTempFiles} orphan temp files`);
