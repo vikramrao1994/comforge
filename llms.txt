@@ -1,0 +1,34 @@
+# @comforge/cli
+
+> `comforge`: a governed agent lifecycle for a GitHub repository. Isolated checkout per ticket, published-specification check, exact-commit validation, idempotent PR and completion-record publication. Never merges, deploys, approves, requests reviews or closes issues.
+
+Requirements: Node >= 22.18 or Bun >= 1.4; git; macOS or Linux (Windows refused). Optional: gh (PR assignment, or the gh credential source).
+
+## Use from an agent
+
+- Start with `comforge capabilities --json` (commands, exit codes, error codes) and `comforge status --json`.
+- Always pass `--json`. Output is deterministic JSON; errors are `{"error","message","detail"}` on stderr.
+- Exit: 0 ok, 1 refused (governance), 2 usage/config, 3 environment, 4 incomplete (rerun the same command).
+- Mutating commands are dry runs unless `--execute` (`init` needs `--write`). Dry-run first, read the plan, then execute.
+- `comforge context --task "<text>" --json`: the one routing category for a task (files, validation, size in approx tokens).
+- Instructions and context are guidance; the CLI's checks do not depend on you following them.
+
+## Lifecycle
+
+1. `comforge start <TICKET> --issue <N>`: verifies the published specification; creates `../<repo>-agents/<ticket>` on branch `agent/<ticket>`.
+2. Work there; every commit carries `Ticket: <TICKET>` (configurable).
+3. `comforge verify <TICKET>`: trusted validation commands on the clean committed head; PASS/FAIL recorded.
+4. `comforge deliver <TICKET> --title "<title>" --result result.json --execute`: push, PR, one completion comment, PR link.
+5. People review and merge. Then `comforge cleanup <PR> --execute`.
+Recovery: `comforge recover <TICKET> --execute`, then `--abandon --execute` if a complete search found nothing.
+
+## Trust
+
+- comforge.config.json (strict, versioned `comforge-config/v1`; `comforge schema config`). Sections repository, tickets, validation, specification, completion, security are read from the initiative's base revision; a candidate changing them is refused for publication (`untrusted-config-change`).
+- Writes need an authorization in the trusted configuration: none (default) refuses every write; owner-grant needs `--grant FILE` (owner-signed, bound to commit, branch, spec, expiry, attempts); operator is an explicit owner choice. Candidate text cannot authorize itself; signing keys must be kept out of the agent's reach.
+- Credentials are only named (env variable or gh); never stored, logged or passed to child processes. Validation runs without them. The CLI is not a sandbox.
+- GitHub writes go only through @comforge/github with the @comforge/ledger file ledger in .git/comforge/.
+
+## Library
+
+`import { main, runCommand, ConfigSchema, checkManifest, routeTask } from "@comforge/cli"`; `@comforge/cli/config`, `@comforge/cli/routing`.

@@ -1,0 +1,14 @@
+{
+  "name": "acme-cli-consumer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Independent example consumer of @comforge/cli: drives the installed `comforge` executable through init, doctor, start, verify, status and context in a throwaway non-TypeScript repository (a Makefile project) with a local bare remote. No GitHub access and no credential.",
+  "type": "module",
+  "scripts": {
+    "start": "node demo.mjs",
+    "start:bun": "bun demo.mjs"
+  },
+  "dependencies": {
+    "@comforge/cli": "0.1.0"
+  }
+}
