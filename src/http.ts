@@ -15,7 +15,13 @@
 import { randomUUID } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { type Principal, PrincipalSchema } from "./contracts.ts";
-import type { HostServices, IsolationProvider, RepositoryBinding } from "./host.ts";
+import type {
+  HostServices,
+  IsolationProvider,
+  RemoteHost,
+  RemoteRepositoryBinding,
+  RepositoryBinding,
+} from "./host.ts";
 import { assertIsolation, createComforgeMcpServer } from "./server.ts";
 
 export interface HttpLimits {
@@ -37,6 +43,13 @@ export const DEFAULT_HTTP_LIMITS: HttpLimits = {
 export interface HttpOptions {
   repositories: readonly RepositoryBinding[];
   host: HostServices;
+  /**
+   * Checkout-free repositories (see ComforgeMcpOptions.remoteRepositories): GitHub evidence reads
+   * only, whatever the isolation. Requires `remote`; `repositories` may then be empty.
+   */
+  remoteRepositories?: readonly RemoteRepositoryBinding[];
+  /** The host's trusted-configuration source and credentials for `remoteRepositories`. */
+  remote?: RemoteHost;
   /** The host's authentication: a principal for this request, or null for 401. */
   authenticate(request: Request): Promise<Principal | null> | Principal | null;
   /** Exact `Host` header values served; required, never empty. */
@@ -85,6 +98,8 @@ export interface HttpHandler {
 export function createHttpHandler(options: HttpOptions): HttpHandler {
   if (options.allowedHosts.length === 0) throw new Error("allowedHosts must name the served host");
   if (options.isolation) assertIsolation(options.isolation);
+  if ((options.remoteRepositories?.length ?? 0) > 0 && !options.remote)
+    throw new Error("remoteRepositories need a remote host: { trustedConfig, credentials }");
   const limits = { ...DEFAULT_HTTP_LIMITS, ...options.limits };
   const now = options.now ?? Date.now;
   const sessions = new Map<string, Session>();
@@ -188,6 +203,8 @@ export function createHttpHandler(options: HttpOptions): HttpHandler {
         host: options.host,
         principal,
         transport: "http",
+        ...(options.remoteRepositories ? { remoteRepositories: options.remoteRepositories } : {}),
+        ...(options.remote ? { remote: options.remote } : {}),
         ...(options.isolation ? { isolation: options.isolation } : {}),
         ...(options.compactDiscovery ? { compactDiscovery: true } : {}),
         ...(options.textContent ? { textContent: options.textContent } : {}),

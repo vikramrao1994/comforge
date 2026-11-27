@@ -8,13 +8,18 @@
  * pass `authorized`, a path, a URL or a credential through.
  */
 import { artifactReadable, PACKAGE_VERSION as CLI_VERSION, capabilities as cliCapabilities, context as cliContext, createLifecycleServices, reviewProtocol, specificationProtocol, toServiceError, } from "@comforge/cli";
-import { createFetchTransport, createGitHubEvidence, GitHubAdapterError, listAdvisoryReviews, readSpecificationIssue, } from "@comforge/github";
+import { GitHubAdapterError, readSpecificationIssue, } from "@comforge/github";
 import { CAPABILITIES_SCHEMA, DETAIL_PROFILES, LIMITS, TOOLS, } from "./contracts.js";
 import { withGrantFile } from "./grants.js";
 import { checkSnapshot, repositoryOf, trustedConfig, } from "./host.js";
+import { createEngineeringHost, fetchTransport } from "./hostServices.js";
 import { bound, excerpt, fromServiceError, incompleteDelivery, paginate, success, ToolRefusal, } from "./results.js";
 export const SERVER_NAME = "comforge-mcp";
-export const SERVER_VERSION = "0.1.0";
+/**
+ * Reported as `serverInfo.version`. A literal on purpose: a bundler cannot resolve a runtime
+ * read of package.json. test/version.test.ts fails when it differs from package.json.
+ */
+export const SERVER_VERSION = "0.3.0";
 /** The host's credential provider, wrapped so every value it hands out is redacted later. */
 function credentialsFor(c) {
     const provider = c.binding ? c.host.credentials?.(c.binding, c.principal) : undefined;
@@ -41,9 +46,9 @@ function services(c) {
 }
 /** A checkout-free read as a service result: GitHub refusals keep their codes, others propagate. */
 async function remoteRead(c, read) {
-    const { config, reads } = await evidence(c);
+    const { config, reads, services: host } = await evidence(c);
     try {
-        return { ok: true, value: await read(reads, config), exit: 0 };
+        return { ok: true, value: await read(reads, config, host), exit: 0 };
     }
     catch (error) {
         if (error instanceof ToolRefusal)
@@ -109,29 +114,28 @@ async function remoteEvidence(c) {
     if (!token)
         throw new ToolRefusal("credential-missing", "the server has no GitHub credential for this repository");
     c.secrets.push(token);
-    const reads = createGitHubEvidence({
-        transport: createFetchTransport({
+    // The same read-only host services an embedding application uses (`@comforge/mcp/host`).
+    const services = createEngineeringHost({
+        repository: { owner: binding.owner, name: binding.name },
+        transport: fetchTransport({
             token: () => token,
             ...(host.fetchImpl ? { fetchImpl: host.fetchImpl } : {}),
         }),
-        repository: { owner: binding.owner, name: binding.name },
     });
-    let committed;
+    let confirmed;
     try {
-        committed = await reads.getFileBytesAtCommit(snapshot.revision, "comforge.config.json");
+        confirmed = await services.confirmTrustedConfig(snapshot);
     }
     catch (error) {
-        if (error instanceof GitHubAdapterError &&
-            (error.code === "not-found" || error.code === "wrong-target"))
-            throw new ToolRefusal("config-mismatch", "GitHub has no comforge.config.json at the trusted revision", 2, {
-                repository: binding.id,
-            });
         return githubRefusal(error);
     }
-    if (committed.kind !== "bytes" ||
-        Buffer.compare(Buffer.from(committed.bytes), Buffer.from(snapshot.text, "utf8")) !== 0)
+    if (confirmed === "absent")
+        throw new ToolRefusal("config-mismatch", "GitHub has no comforge.config.json at the trusted revision", 2, {
+            repository: binding.id,
+        });
+    if (confirmed !== "match")
         throw new ToolRefusal("config-mismatch", "the trusted configuration is not what GitHub holds at its revision", 2, { repository: binding.id });
-    return { config, reads };
+    return { config, reads: services.evidence, services };
 }
 async function evidence(c) {
     if (c.remote)
@@ -139,17 +143,14 @@ async function evidence(c) {
     const binding = c.binding;
     const config = trustedConfig(c.rt, binding);
     const token = readToken(c, config);
-    const transport = createFetchTransport({
-        token: () => token,
-        ...(c.rt?.fetchImpl ? { fetchImpl: c.rt.fetchImpl } : {}),
-    });
-    return {
-        config,
-        reads: createGitHubEvidence({
-            transport,
-            repository: { owner: binding.owner, name: binding.name },
+    const services = createEngineeringHost({
+        repository: { owner: binding.owner, name: binding.name },
+        transport: fetchTransport({
+            token: () => token,
+            ...(c.rt?.fetchImpl ? { fetchImpl: c.rt.fetchImpl } : {}),
         }),
-    };
+    });
+    return { config, reads: services.evidence, services };
 }
 /** GitHub adapter refusals as the CLI's codes; anything else is rethrown as internal. */
 function githubRefusal(error) {
@@ -524,14 +525,14 @@ export const HANDLERS = {
     },
     async comforge_reviews(c, input) {
         const r = c.remote
-            ? await remoteRead(c, async (reads, config) => {
+            ? await remoteRead(c, async (reads, config, host) => {
                 const rp = reviewProtocol(config);
                 if (!rp)
                     throw new ToolRefusal("config-invalid", "advisory reviews need a review section", 2);
                 const pr = await reads.getPullRequest(input.pr);
                 return {
                     currentHead: pr.head.sha,
-                    reviews: await listAdvisoryReviews(reads, rp, { number: pr.number, headSha: pr.head.sha }, { trustedAuthors: config.review?.trustedAuthors ?? [] }),
+                    reviews: await host.advisoryReviews(rp, { number: pr.number, headSha: pr.head.sha }, { trustedAuthors: config.review?.trustedAuthors ?? [] }),
                 };
             })
             : await services(c).advisoryReviews({ pr: input.pr });

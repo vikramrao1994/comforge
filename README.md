@@ -5,9 +5,9 @@ over the [Model Context Protocol](https://modelcontextprotocol.io). It calls the
 lifecycle services and `@comforge/github`'s reads in process. It never shells out to `comforge`,
 parses its output, or keeps a second copy of its governance, state or authorization.
 
-This README describes the source in this repository. Capabilities marked "candidate" depend on
-unreleased candidates of `@comforge/core`, `@comforge/github` and `@comforge/cli`, and on this
-package's own unreleased changes; `package.json` still says 0.1.0 until the version PR.
+This README describes the source in this repository, which `package.json` versions as 0.2.0
+(Node >= 22.18 or Bun >= 1.4, and git). Anything marked "unreleased" is in the source but not in
+a published release; the CHANGELOG's "Unreleased" entry lists it.
 
 It never merges, deploys, approves, requests a review, closes an issue or runs an arbitrary command.
 
@@ -21,20 +21,20 @@ It never merges, deploys, approves, requests a review, closes an issue or runs a
 | `comforge_evidence` | all | one section of an initiative's record (validations, publications, completions, revisions, operations), newest first |
 | `comforge_issue` | all | an issue and whether its specification still verifies, or (without `number`) a page of issues; text is untrusted |
 | `comforge_pr` | all | a pull request, optionally its checks, changed files and native GitHub reviews |
-| `comforge_prs` (candidate) | all | a page of the repository's pull requests (`state` open, closed or all) |
-| `comforge_comments` (candidate) | all | a page of an issue's or pull request's comments; text is untrusted |
-| `comforge_reviews` (candidate) | all | a pull request's advisory reviews, with integrity and provenance |
-| `comforge_artifact` (candidate) | all | one file at an exact commit, only under the repository's trusted `artifacts.readable` paths |
+| `comforge_prs` | all | a page of the repository's pull requests (`state` open, closed or all) |
+| `comforge_comments` | all | a page of an issue's or pull request's comments; text is untrusted |
+| `comforge_reviews` | all | a pull request's advisory reviews, with integrity and provenance |
+| `comforge_artifact` | all | one file at an exact commit, only under the repository's trusted `artifacts.readable` paths |
 | `comforge_start` | executor | verifies the specification, creates the isolated checkout |
 | `comforge_revise` | executor | reuses or re-creates a pull request's checkout and syncs it |
 | `comforge_verify` | executor | trusted validation of an exact commit in a clean snapshot |
 | `comforge_deliver` | publisher | push, one pull request, one completion record, read back; `execute:false` plans |
 | `comforge_recover` | publisher | settles uncertain writes from GitHub; `execute:false` reports |
-| `comforge_cleanup` | publisher | plans a cleanup; executing needs operator mode or a cleanup-scoped command grant (candidate; below) |
-| `comforge_publish_review` (candidate) | reviewer | publishes one advisory review comment bound to the reviewed head; `execute:false` plans |
-| `comforge_publish_specification` (candidate) | publisher | publishes a specification issue (idempotent, read back); `execute:false` plans |
+| `comforge_cleanup` | publisher | plans a cleanup; executing needs operator mode or a cleanup-scoped command grant (see Signed command scope) |
+| `comforge_publish_review` | reviewer | publishes one advisory review comment bound to the reviewed head; `execute:false` plans |
+| `comforge_publish_specification` | publisher | publishes a specification issue (idempotent, read back); `execute:false` plans |
 
-The candidate contracts total 18 tools. Advisory reviews are marked comments, never native
+There are 18 tools. Advisory reviews are marked comments, never native
 reviews or approvals.
 The four profiles are `read-only`, `reviewer` (adds patches and full review bodies to reads),
 `executor` and `publisher`. A principal can hold several. A principal discovers only the tools its
@@ -64,10 +64,10 @@ and secret-like text are redacted. Over HTTP, host paths are replaced by `<host>
   `security.authorization`: owner grants or operator mode. A caller passes an owner-signed grant
   envelope in `grant`, and the CLI verifies it against the trusted keys, ticket, specification,
   head and branch. The server cannot authorize anything itself.
-- **Cleanup needs its own authority (candidate).** `comforge_cleanup` with `execute:true` runs
+- **Cleanup needs its own authority.** `comforge_cleanup` with `execute:true` runs
   under operator mode, or under an owner grant that scopes the command to cleanup of the merged
   pull request (`authorizeCommand` in [`@comforge/core`](https://www.npmjs.com/package/@comforge/core)). A grant signed
-  to publish is never valid for cleanup. With the published `@comforge/core` 0.1.x grant format,
+  to publish is never valid for cleanup. With an `@comforge/core` 0.1.x grant format,
   which cannot name a command, `execute:true` is refused with `command-scope-unsupported`; run
   cleanup through the `comforge` CLI.
 - **Repository isolation.** Each principal has an allowlist. An unknown or foreign id gets the same
@@ -91,11 +91,11 @@ and secret-like text are redacted. Over HTTP, host paths are replaced by `<host>
   host passes an `IsolationProvider`. That is the host's attestation that its runtime runs every
   command inside an isolation boundary it operates. A flag cannot stand in for it. This package
   implements no sandbox and claims none.
-- **Remote publication is not remote execution (candidate).** The reads, `comforge_publish_review`
+- **Remote publication is not remote execution.** The reads, `comforge_publish_review`
   and `comforge_publish_specification` run no repository command, so over HTTP they are available
   without an `IsolationProvider`. They still need the principal's profile and the repository's
   trusted authorization. Only the executing tools need the provider.
-- **Host policy (candidate).** `HostServices.hostPolicy(binding)` hands the CLI's `HostPolicy`
+- **Host policy.** `HostServices.hostPolicy(binding)` hands the CLI's `HostPolicy`
   (checkout parent, worker preparation and removal, validation) to the lifecycle for one
   repository. It is host code; no tool input reaches it.
 - **Cancellation.** It is checked between the CLI's stages, never in the middle of a write. An
@@ -121,7 +121,7 @@ and secret-like text are redacted. Over HTTP, host paths are replaced by `<host>
 - `compactDiscovery: true` (or `--compact-discovery`) leaves the output schemas out of
   `tools/list`. Measured: 39-45% fewer discovery tokens (17 tools: 11,019 to 6,759). The results
   keep the same versioned envelope.
-- `textContent: "summary"` (candidate; `--summary-text`; default `"full"`) makes each result's text
+- `textContent: "summary"` (`--summary-text`; default `"full"`) makes each result's text
   content one summary line and leaves `structuredContent` unchanged. Measured: a model that is
   given `structuredContent` reads the same tokens; the wire shrinks to about the structured size.
   A client that reads only text sees just the summary line, so it is opt-in.
@@ -132,10 +132,11 @@ is the smallest equivalent form (pull requests 1,191 vs CLI 1,617 vs raw GitHub 
 is the largest fixed cost of an MCP session. These are per-call counts; no end-to-end saving is
 claimed.
 
-## Repositories without a checkout (candidate)
+## Repositories without a checkout
 
 A host that has no checkout (a web app that answers MCP over HTTP) can still serve the GitHub
-evidence reads: `comforge_capabilities`, `comforge_issue`, `comforge_pr`, `comforge_prs`,
+evidence reads. `createComforgeMcpServer` accepts `remoteRepositories` and `remote` since 0.2.0;
+**unreleased:** `createHttpHandler` forwards them too. The reads are: `comforge_capabilities`, `comforge_issue`, `comforge_pr`, `comforge_prs`,
 `comforge_comments`, `comforge_reviews` and `comforge_artifact` (`REMOTE_READ_TOOLS`).
 
 ```ts
@@ -163,16 +164,73 @@ createHttpHandler({
   `IsolationProvider`: loading a configuration never enables execution or writes. A server with
   only checkout-free repositories does not list those tools at all.
 
-## Signed command scope (candidate)
+Over HTTP the handler keeps every check above for these repositories: authentication (401 and
+the challenge), the `Host` and `Origin` allowlists, profile checks on every call, per-principal
+sessions (a changed principal ends the session) and a refusal of executing tools. Constructing the
+handler with `remoteRepositories` and no `remote` throws.
+
+## Host services
+
+`@comforge/mcp/host` is for an application that serves its own tools, sessions and storage and
+needs the same engineering services in its own process, without a subprocess or a loopback HTTP
+call. The MCP server of this package uses the same services for its evidence reads.
+
+```ts
+import { createEngineeringHost, sqliteOperationStore } from "@comforge/mcp/host";
+
+const host = createEngineeringHost({
+  repository: { owner: "acme", name: "widgets" },
+  transport: myReadTransport, // { get(path, query) }: your client, credential and limits
+});
+await host.evidence.getPullRequest(42);                 // exact-commit, complete-or-refuse reads
+await host.advisoryReviews(reviewProtocol, { number: 42, headSha }, { trustedAuthors });
+await host.trustedConfig({ branch: "main" });           // bytes at one immutable revision
+```
+
+| You inject | The services never take it from a caller |
+|---|---|
+| `repository` | one `owner/name`; every request stays inside it |
+| `transport` | the read path: credential, limits, error mapping |
+| `writes` (optional) | `token`, `capabilities`, `authorize(descriptor)`, `operations` store, `clock` |
+
+There are two profiles. Without `writes` the host is `read-only`: `writes.prepare`, `execute`,
+`reconcile` and `abandon` refuse with `capability-denied` before a request exists. This is the
+profile of a checkout-free network host. With `writes` the host is `governed-writes`, for an
+embedded trusted host: each write is sent once per operation id, only within `capabilities`, only
+after your `authorize` allows that exact descriptor, and an uncertain write is settled by
+`reconcile` against GitHub, never sent again. Your application keeps OAuth, principals, sessions,
+admission and the decision to write at all. The services add no tool, no remote execution and no
+lifecycle write.
+
+`sqliteOperationStore({ database, repository, table?, repositoryColumn?, kindAndStateColumns? })`
+is the durable operation store over your own SQLite handle (`prepare(sql)`): insert-if-absent,
+version-checked replace, a finished record stored with a digest in place of its body, and a
+malformed, foreign or state-inconsistent record refused. It adopts an existing table as it is;
+`inspect()` and `compact({ before, limit })` are the only retention operations and never remove
+an identity. Every refusal is a `HostServiceError` with a stable `code`.
+
+## Signed command scope
 
 `@comforge/core` adds an optional signed `commands` list to a grant, and `@comforge/cli` checks it:
 - a grant **without** the field keeps its meaning for publish, complete, deliver and recover;
 - such a grant is **never** valid for cleanup;
 - a grant **with** the field is valid only for the commands it lists.
 
-`comforge_cleanup` executes under operator mode or such a scoped grant, once these candidates are
-released and pinned. The grant format is documented in the
+`comforge_cleanup` executes under operator mode or such a scoped grant. The grant format is documented in the
 [`@comforge/core` README](https://www.npmjs.com/package/@comforge/core).
+
+## Quick start
+
+Install one interface and pin it exactly: `npm install --save-exact @comforge/mcp@0.2.0`. It
+brings `@comforge/cli`, `@comforge/core`, `@comforge/github` and `@comforge/ledger`; do not install
+them separately for this. Use either `npx comforge-mcp` (stdio, below) or embed `createHttpHandler`, not both.
+You need a repository whose base branch carries `comforge.config.json`, a GitHub credential from
+your host or the repository's `security.credentials` source (never a tool input) and, for any
+write, the trusted `security.authorization` (an owner grant envelope or operator mode).
+
+Measured on one machine (the source repository's onboarding evidence): the MCP example installed in 0.8 s and ran its first verified
+workflow in 0.8 s on Node and 0.5 s on Bun; the CLI example installed in 1.5 s and ran in 2.6 s
+on Node and 1.2 s on Bun. Human setup time (configuration, grants, credentials) was not measured.
 
 ## Run locally
 
@@ -205,9 +263,11 @@ const handler = createHttpHandler({
 - **Repository commands block their process.** They run synchronously through the CLI's runtime,
   so a long validation holds the server for its duration. That is one more reason remote
   execution needs a host-operated worker.
-- **Advisory reviews need the candidates.** Advisory reviews (marked comments) are not readable
-  through the published `@comforge/github`; with it, `comforge_pr` returns native GitHub reviews
-  only and says so. `comforge_reviews` and `comforge_publish_review` need the `@comforge/github`
-  and `@comforge/cli` candidates and the repository's `review` configuration section.
+- **Advisory reviews need configuration.** `comforge_reviews` and `comforge_publish_review` need
+  the repository's trusted `review` configuration section; without it `comforge_pr` returns native
+  GitHub reviews only and says so.
+- **Recovery and concurrency.** Initiative state is a file ledger with compare-and-swap, so a
+  concurrent writer on the same checkout is refused rather than merged. An interrupted delivery
+  is settled by `comforge_recover`, which reads GitHub and never replays a write blindly.
 - **Limits are per process.** Rate and session limits live in one process, so run one instance
   per limit domain.

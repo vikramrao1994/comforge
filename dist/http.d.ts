@@ -1,5 +1,5 @@
 import { type Principal } from "./contracts.ts";
-import type { HostServices, IsolationProvider, RepositoryBinding } from "./host.ts";
+import type { HostServices, IsolationProvider, RemoteHost, RemoteRepositoryBinding, RepositoryBinding } from "./host.ts";
 export interface HttpLimits {
     maxBodyBytes: number;
     maxSessions: number;
@@ -11,6 +11,13 @@ export declare const DEFAULT_HTTP_LIMITS: HttpLimits;
 export interface HttpOptions {
     repositories: readonly RepositoryBinding[];
     host: HostServices;
+    /**
+     * Checkout-free repositories (see ComforgeMcpOptions.remoteRepositories): GitHub evidence reads
+     * only, whatever the isolation. Requires `remote`; `repositories` may then be empty.
+     */
+    remoteRepositories?: readonly RemoteRepositoryBinding[];
+    /** The host's trusted-configuration source and credentials for `remoteRepositories`. */
+    remote?: RemoteHost;
     /** The host's authentication: a principal for this request, or null for 401. */
     authenticate(request: Request): Promise<Principal | null> | Principal | null;
     /** Exact `Host` header values served; required, never empty. */

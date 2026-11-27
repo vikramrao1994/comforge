@@ -13,7 +13,11 @@ import { type INPUTS, type Principal, type ToolName } from "./contracts.ts";
 import { type HostServices, type RemoteHost, type RemoteRepositoryBinding, type RepositoryBinding } from "./host.ts";
 import { type McpError, type ToolSuccess } from "./results.ts";
 export declare const SERVER_NAME = "comforge-mcp";
-export declare const SERVER_VERSION = "0.1.0";
+/**
+ * Reported as `serverInfo.version`. A literal on purpose: a bundler cannot resolve a runtime
+ * read of package.json. test/version.test.ts fails when it differs from package.json.
+ */
+export declare const SERVER_VERSION = "0.3.0";
 export interface CallContext {
     principal: Principal;
     binding: RepositoryBinding | null;

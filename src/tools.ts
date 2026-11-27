@@ -24,13 +24,10 @@ import {
 } from "@comforge/cli";
 import {
   type AdvisoryReview,
-  createFetchTransport,
-  createGitHubEvidence,
   type FileAtCommitEvidence,
   GitHubAdapterError,
   type GitHubEvidence,
   type IssueCommentEvidence,
-  listAdvisoryReviews,
   type PullRequestSummary,
   readSpecificationIssue,
 } from "@comforge/github";
@@ -54,6 +51,7 @@ import {
   repositoryOf,
   trustedConfig,
 } from "./host.ts";
+import { createEngineeringHost, type EngineeringHost, fetchTransport } from "./hostServices.ts";
 import {
   bound,
   excerpt,
@@ -67,7 +65,11 @@ import {
 } from "./results.ts";
 
 export const SERVER_NAME = "comforge-mcp";
-export const SERVER_VERSION = "0.1.0";
+/**
+ * Reported as `serverInfo.version`. A literal on purpose: a bundler cannot resolve a runtime
+ * read of package.json. test/version.test.ts fails when it differs from package.json.
+ */
+export const SERVER_VERSION = "0.3.0";
 
 export interface CallContext {
   principal: Principal;
@@ -123,11 +125,15 @@ function services(c: CallContext): LifecycleServices {
 /** A checkout-free read as a service result: GitHub refusals keep their codes, others propagate. */
 async function remoteRead(
   c: CallContext,
-  read: (reads: GitHubEvidence, config: ComforgeConfig) => Promise<Record<string, unknown>>,
+  read: (
+    reads: GitHubEvidence,
+    config: ComforgeConfig,
+    host: EngineeringHost,
+  ) => Promise<Record<string, unknown>>,
 ): Promise<ServiceResult<Record<string, unknown>>> {
-  const { config, reads } = await evidence(c);
+  const { config, reads, services: host } = await evidence(c);
   try {
-    return { ok: true, value: await read(reads, config), exit: 0 } as ServiceResult<
+    return { ok: true, value: await read(reads, config, host), exit: 0 } as ServiceResult<
       Record<string, unknown>
     >;
   } catch (error) {
@@ -180,14 +186,19 @@ export const REMOTE_READ_TOOLS: readonly ToolName[] = [
 
 const DEFAULT_CONFIG_MAX_AGE_MS = 10 * 60_000;
 
+/** One repository's trusted configuration and the read-only host services over it. */
+interface Evidence {
+  config: ComforgeConfig;
+  reads: GitHubEvidence;
+  services: EngineeringHost;
+}
+
 /**
  * Evidence for a checkout-free repository. The host's snapshot is checked (revision, age, pin,
  * repository) and then against GitHub itself: the configuration must be byte-for-byte what the
  * repository holds at that revision, read with the server's own credential.
  */
-async function remoteEvidence(
-  c: CallContext,
-): Promise<{ config: ComforgeConfig; reads: GitHubEvidence }> {
+async function remoteEvidence(c: CallContext): Promise<Evidence> {
   const binding = c.remote as RemoteRepositoryBinding;
   const host = c.remoteHost as RemoteHost;
   const now = host.now?.() ?? Date.now();
@@ -217,62 +228,52 @@ async function remoteEvidence(
       "the server has no GitHub credential for this repository",
     );
   c.secrets.push(token);
-  const reads = createGitHubEvidence({
-    transport: createFetchTransport({
+  // The same read-only host services an embedding application uses (`@comforge/mcp/host`).
+  const services = createEngineeringHost({
+    repository: { owner: binding.owner, name: binding.name },
+    transport: fetchTransport({
       token: () => token,
       ...(host.fetchImpl ? { fetchImpl: host.fetchImpl } : {}),
     }),
-    repository: { owner: binding.owner, name: binding.name },
   });
-  let committed: Awaited<ReturnType<GitHubEvidence["getFileBytesAtCommit"]>>;
+  let confirmed: Awaited<ReturnType<EngineeringHost["confirmTrustedConfig"]>>;
   try {
-    committed = await reads.getFileBytesAtCommit(snapshot.revision, "comforge.config.json");
+    confirmed = await services.confirmTrustedConfig(snapshot);
   } catch (error) {
-    if (
-      error instanceof GitHubAdapterError &&
-      (error.code === "not-found" || error.code === "wrong-target")
-    )
-      throw new ToolRefusal(
-        "config-mismatch",
-        "GitHub has no comforge.config.json at the trusted revision",
-        2,
-        {
-          repository: binding.id,
-        },
-      );
     return githubRefusal(error);
   }
-  if (
-    committed.kind !== "bytes" ||
-    Buffer.compare(Buffer.from(committed.bytes), Buffer.from(snapshot.text, "utf8")) !== 0
-  )
+  if (confirmed === "absent")
+    throw new ToolRefusal(
+      "config-mismatch",
+      "GitHub has no comforge.config.json at the trusted revision",
+      2,
+      {
+        repository: binding.id,
+      },
+    );
+  if (confirmed !== "match")
     throw new ToolRefusal(
       "config-mismatch",
       "the trusted configuration is not what GitHub holds at its revision",
       2,
       { repository: binding.id },
     );
-  return { config, reads };
+  return { config, reads: services.evidence, services };
 }
 
-async function evidence(
-  c: CallContext,
-): Promise<{ config: ComforgeConfig; reads: GitHubEvidence }> {
+async function evidence(c: CallContext): Promise<Evidence> {
   if (c.remote) return remoteEvidence(c);
   const binding = c.binding as RepositoryBinding;
   const config = trustedConfig(c.rt as Runtime, binding);
   const token = readToken(c, config);
-  const transport = createFetchTransport({
-    token: () => token,
-    ...(c.rt?.fetchImpl ? { fetchImpl: c.rt.fetchImpl } : {}),
-  });
-  return {
-    config,
-    reads: createGitHubEvidence({
-      transport,
-      repository: { owner: binding.owner, name: binding.name },
+  const services = createEngineeringHost({
+    repository: { owner: binding.owner, name: binding.name },
+    transport: fetchTransport({
+      token: () => token,
+      ...(c.rt?.fetchImpl ? { fetchImpl: c.rt.fetchImpl } : {}),
     }),
-  };
+  });
+  return { config, reads: services.evidence, services };
 }
 
 /** GitHub adapter refusals as the CLI's codes; anything else is rethrown as internal. */
@@ -767,15 +768,14 @@ export const HANDLERS: {
 
   async comforge_reviews(c, input) {
     const r: ServiceResult<Record<string, unknown>> = c.remote
-      ? await remoteRead(c, async (reads, config) => {
+      ? await remoteRead(c, async (reads, config, host) => {
           const rp = reviewProtocol(config);
           if (!rp)
             throw new ToolRefusal("config-invalid", "advisory reviews need a review section", 2);
           const pr = await reads.getPullRequest(input.pr);
           return {
             currentHead: pr.head.sha,
-            reviews: await listAdvisoryReviews(
-              reads,
+            reviews: await host.advisoryReviews(
               rp,
               { number: pr.number, headSha: pr.head.sha },
               { trustedAuthors: config.review?.trustedAuthors ?? [] },

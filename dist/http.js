@@ -37,6 +37,8 @@ export function createHttpHandler(options) {
         throw new Error("allowedHosts must name the served host");
     if (options.isolation)
         assertIsolation(options.isolation);
+    if ((options.remoteRepositories?.length ?? 0) > 0 && !options.remote)
+        throw new Error("remoteRepositories need a remote host: { trustedConfig, credentials }");
     const limits = { ...DEFAULT_HTTP_LIMITS, ...options.limits };
     const now = options.now ?? Date.now;
     const sessions = new Map();
@@ -137,6 +139,8 @@ export function createHttpHandler(options) {
                 host: options.host,
                 principal,
                 transport: "http",
+                ...(options.remoteRepositories ? { remoteRepositories: options.remoteRepositories } : {}),
+                ...(options.remote ? { remote: options.remote } : {}),
                 ...(options.isolation ? { isolation: options.isolation } : {}),
                 ...(options.compactDiscovery ? { compactDiscovery: true } : {}),
                 ...(options.textContent ? { textContent: options.textContent } : {}),
