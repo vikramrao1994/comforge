@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { main } from "../src/cli.ts";
 import { MAX_TRANSITION_REPEATS } from "../src/commands/delivery.ts";
 import { createWorld, type World } from "./harness.ts";
+
+// Every case drives real git processes; a loaded CI runner exceeds bun's 5 s default.
+setDefaultTimeout(30_000);
 
 // Review M13: the consumer lifecycle's regression scenarios, ported to the standalone CLI on the
 // published @comforge/github writer and @comforge/ledger: undone transitions (every one inside the
