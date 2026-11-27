@@ -1,0 +1,22 @@
+{
+  "schema": "comforge-documentation-validation/v1",
+  "initiative": "documentation-001",
+  "reviewedRevision": "ea51507",
+  "validatedHead": "023074e",
+  "environment": { "os": "macOS", "node": "26.3.0", "bun": "1.4.1", "clone": "fresh clone of the branch" },
+  "results": [
+    { "gate": "install", "command": "bun install --frozen-lockfile && bun run harness:install", "status": "PASS" },
+    { "gate": "lint", "command": "bun run lint", "status": "PASS", "detail": "0 errors; 27 warnings and 2 infos, unchanged from the base" },
+    { "gate": "typecheck", "command": "bun run typecheck", "status": "PASS", "detail": "6 projects" },
+    { "gate": "validators", "command": "bun run validate", "status": "PASS", "detail": "routing, skills, docs, boundaries, harness, disclosure, reference, invented, versions, recipes, benchmarks" },
+    { "gate": "disclosure", "command": "bun run disclosure", "status": "PASS", "detail": "clean" },
+    { "gate": "reference drift", "command": "bun run docs:check", "status": "PASS" },
+    { "gate": "tests", "command": "COMFORGE_TEST_RUNTIMES=node,bun bun run test", "status": "PASS", "detail": "1,163 pass, 6 skip (worker-user and live-only cases), 0 fail; 86 files, includes all 11 recipes" },
+    { "gate": "release rehearsal", "command": "bun run release:rehearse", "status": "PASS", "detail": "core 0.2.1, github 0.6.1, ledger 0.1.1, cli 0.5.1, mcp 0.3.1; rehearsal only, nothing published" }
+  ],
+  "notRun": [
+    "GitHub CI: the branch was not pushed",
+    "Node 22/24 and Linux locally (the CI matrix covers them)",
+    "any client session, paid model call, live GitHub or npm registry run"
+  ]
+}
