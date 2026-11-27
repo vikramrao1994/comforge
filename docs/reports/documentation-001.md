@@ -54,7 +54,7 @@ No material blocker: the work is documentation, generators, executable fixtures 
 
 ## B–G — What changed
 
-Commits on `docs/comforge-documentation-001` (base `ea51507`); 23 documentation pages before,
+Commits on `docs/documentation-001` (base `ea51507`); 23 documentation pages before,
 54 after; about 5,070 lines added and 210 removed across docs, tooling, tests and evidence. No
 package source, public API, release record or security boundary changed.
 
