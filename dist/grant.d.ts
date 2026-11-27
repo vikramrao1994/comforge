@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { z } from "zod";
-import { type Capability, type RuntimeAction } from "./authorization.ts";
+import { type Capability, type Command, type RuntimeAction } from "./authorization.ts";
 /**
  * Verification of owner-signed authorization grants. Pure: no I/O, no environment,
  * no clock (the caller passes `now`), no private key and no randomness. Issuing and
@@ -18,16 +18,50 @@ import { type Capability, type RuntimeAction } from "./authorization.ts";
 export declare const MAX_GRANT_LIFETIME_MS: number;
 /** Tolerated clock skew between the owner's signing machine and the verifier. */
 export declare const CLOCK_SKEW_MS: number;
+/**
+ * One scoped command. Each scoped-only command carries the bindings it is checked against:
+ * cleanup names the merged pull request and the head that merged; a specification publication
+ * names whether it creates a new issue or replaces one; a review publication names the pull
+ * request and the exact head that was reviewed (and optionally the review's digest).
+ */
+declare const CommandScopeEntrySchema: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    command: z.ZodLiteral<"publish">;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodLiteral<"complete">;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodLiteral<"deliver">;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodLiteral<"recover">;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodLiteral<"cleanup">;
+    pullRequest: z.ZodNumber;
+    mergedHead: z.ZodString;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodLiteral<"publish-specification">;
+    target: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        kind: z.ZodLiteral<"new">;
+    }, z.core.$strict>, z.ZodObject<{
+        kind: z.ZodLiteral<"issue">;
+        number: z.ZodNumber;
+    }, z.core.$strict>], "kind">;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodLiteral<"publish-review">;
+    pullRequest: z.ZodNumber;
+    reviewedHead: z.ZodString;
+    reviewDigest: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>], "command">;
+export type CommandScopeEntry = z.infer<typeof CommandScopeEntrySchema>;
 declare function buildGrantSchema(grantScheme: string, ticketPattern: RegExp): z.ZodObject<{
     schema: z.ZodLiteral<string>;
     grantId: z.ZodString;
     nonce: z.ZodString;
     repository: z.ZodString;
     ticket: z.ZodString;
-    issue: z.ZodNumber;
+    issue: z.ZodOptional<z.ZodNumber>;
     specDigest: z.ZodString;
     mode: z.ZodEnum<{
         audit: "audit";
+        command: "command";
         implementation: "implementation";
         publication: "publication";
         revision: "revision";
@@ -59,6 +93,35 @@ declare function buildGrantSchema(grantScheme: string, ticketPattern: RegExp): z
     }, z.core.$strict>>;
     validation: z.ZodOptional<z.ZodObject<{
         candidateSha: z.ZodString;
+    }, z.core.$strict>>;
+    scope: z.ZodOptional<z.ZodObject<{
+        version: z.ZodLiteral<1>;
+        commands: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            command: z.ZodLiteral<"publish">;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodLiteral<"complete">;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodLiteral<"deliver">;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodLiteral<"recover">;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodLiteral<"cleanup">;
+            pullRequest: z.ZodNumber;
+            mergedHead: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodLiteral<"publish-specification">;
+            target: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                kind: z.ZodLiteral<"new">;
+            }, z.core.$strict>, z.ZodObject<{
+                kind: z.ZodLiteral<"issue">;
+                number: z.ZodNumber;
+            }, z.core.$strict>], "kind">;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodLiteral<"publish-review">;
+            pullRequest: z.ZodNumber;
+            reviewedHead: z.ZodString;
+            reviewDigest: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>], "command">>;
     }, z.core.$strict>>;
 }, z.core.$strict>;
 export type GrantSchemaType = ReturnType<typeof buildGrantSchema>;
@@ -109,6 +172,52 @@ export interface ActionContext {
     reviewDigest?: string;
 }
 /**
+ * The live, verified state a command is checked against. Which fields matter depends on the
+ * command: publication commands need the publication bindings of `ActionContext`; cleanup
+ * needs the merged pull request; a specification publication needs what is being published;
+ * a review publication needs the reviewed pull request and the review.
+ */
+export interface CommandContext {
+    command: Command;
+    ticket: string;
+    revoked: boolean;
+    /** Attempts already spent under this grant, by any command. */
+    attemptsUsed: number;
+    issue?: number;
+    /** The initiative's published specification, verified for this check. */
+    specification?: {
+        ticketId: string;
+        digest: string;
+        digestMatches: boolean;
+    } | null;
+    baseSha?: string;
+    candidateSha?: string;
+    branch?: string;
+    pullRequest?: {
+        number: number;
+        headSha: string;
+        open: boolean;
+        merged: boolean;
+    };
+    /** publish-specification: the specification about to be published and its destination. */
+    publishing?: {
+        ticketId: string;
+        digest: string;
+        issue: number | null;
+    };
+    /** publish-review: the review about to be published. */
+    review?: {
+        pullRequest: number;
+        reviewedHead: string;
+        digest: string;
+    };
+}
+export interface CommandAuthorization {
+    grant: Grant;
+    /** The scope entry that authorized the command; null for an unscoped publication grant. */
+    scope: CommandScopeEntry | null;
+}
+/**
  * Trusted, construction-time configuration: which repository grants must name, the
  * scheme they are signed under, the ticket grammar, and the one branch a ticket's
  * work may be published to. Supplied from committed code, never from a grant.
@@ -127,8 +236,13 @@ export interface GrantProtocol {
     signingBytes(grant: Grant): Buffer;
     /** Signature, schema, trust, repository and validity window. Says nothing about any action. */
     verifyEnvelope(raw: unknown, trusted: TrustedKey[], now: Date): GrantEnvelope;
-    /** The authorization decision for one action; throws `unauthorized` naming the first failed binding. */
+    /**
+     * The authorization decision for one action; throws `unauthorized` naming the first failed
+     * binding. A command-scoped grant is refused here: only `authorizeCommand` reads a scope.
+     */
     authorizeAction(raw: unknown, trusted: TrustedKey[], context: ActionContext, now: Date): Grant;
+    /** The authorization decision for one command (scope version 1). */
+    authorizeCommand(raw: unknown, trusted: TrustedKey[], context: CommandContext, now: Date): CommandAuthorization;
 }
 export declare function createGrantProtocol(config: GrantProtocolConfig): GrantProtocol;
 export declare function requireCapability(grant: Grant, capability: Capability, why: string): void;

@@ -1,11 +1,11 @@
-// npm distribution of a Comforge core release. Runs on Node >= 22 with no dependencies.
+// npm distribution of a Comforge release. Runs on Node >= 22 with no dependencies.
 //
-// The verified Git release (a checkout of releases/core at a release commit) is the only
+// The verified Git release (a checkout of a package's release branch at a release commit) is the only
 // input. The npm package is derived from it by exactly two manifest changes: `private` is
 // removed and `repository` names the release repository, which npm requires for provenance.
 // Every other packed byte is a release file whose SHA-256 is recorded in RELEASE.json.
 //
-//   node npm-release.mjs plan --release-dir DIR --commit SHA --tag core/vX.Y.Z --repository OWNER/REPO --out DIR [--release-branch-ref REF]
+//   node npm-release.mjs plan --release-dir DIR --commit SHA --tag core/vX.Y.Z --repository OWNER/REPO --out DIR [--release-branch-ref REF] [--package NAME]
 //   node npm-release.mjs verify-tarball --plan FILE --tarball FILE
 //   node npm-release.mjs readback --plan FILE [--expect-provenance]
 //
@@ -28,9 +28,23 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 export const REGISTRY = "https://registry.npmjs.org";
+/**
+ * Each Comforge package's identity on the mirror: its tag prefix, and the workflow npm
+ * provenance must name (its Trusted Publisher). A release record must name one of these
+ * packages and carry exactly its prefix. A copy of the source repository's package
+ * registry, because this file runs in the mirror without it; the source repository's
+ * tests fail when the two differ.
+ */
+export const PACKAGES = Object.freeze({
+  "@comforge/core": Object.freeze({ tagPrefix: "core/v", workflow: ".github/workflows/npm-publish.yml" }),
+  "@comforge/github": Object.freeze({ tagPrefix: "github/v", workflow: ".github/workflows/npm-publish-github.yml" }),
+  "@comforge/ledger": Object.freeze({ tagPrefix: "ledger/v", workflow: ".github/workflows/npm-publish-ledger.yml" }),
+  "@comforge/cli": Object.freeze({ tagPrefix: "cli/v", workflow: ".github/workflows/npm-publish-cli.yml" }),
+  "@comforge/mcp": Object.freeze({ tagPrefix: "mcp/v", workflow: ".github/workflows/npm-publish-mcp.yml" }),
+});
 export const PLAN_SCHEMA = "comforge-npm-plan/v1";
 export const RELEASE_SCHEMA = "comforge-release/v1";
-export const WORKFLOW_PATH = ".github/workflows/npm-publish.yml";
+export const WORKFLOW_PATH = PACKAGES["@comforge/core"].workflow;
 export const SLSA_PROVENANCE = "https://slsa.dev/provenance/v1";
 // npm runs these on install or pack; a released package must have none.
 export const LIFECYCLE_SCRIPTS = [
@@ -94,7 +108,7 @@ export function compareVersions(a, b) {
 }
 
 /** The release checkout, verified against its own record and the expected identity. */
-export function verifyRelease({ releaseDir, commit, tag }) {
+export function verifyRelease({ releaseDir, commit, tag, packageName }) {
   const recordPath = path.join(releaseDir, "RELEASE.json");
   if (!existsSync(recordPath)) refuse("release-record-missing", "RELEASE.json is absent");
   let record;
@@ -109,7 +123,11 @@ export function verifyRelease({ releaseDir, commit, tag }) {
   if (!parseVersion(record.version)) refuse("malformed-release", `version ${record.version} is not MAJOR.MINOR.PATCH`);
   if (manifest.name !== record.package || manifest.version !== record.version)
     refuse("manifest-mismatch", "package.json name/version differ from RELEASE.json");
-  if (record.tag !== `core/v${record.version}`) refuse("tag-mismatch", `RELEASE.json tag ${record.tag} does not match its version`);
+  if (packageName !== undefined && record.package !== packageName)
+    refuse("package-mismatch", `the release is ${record.package}, this workflow publishes ${packageName}`);
+  const prefix = Object.hasOwn(PACKAGES, record.package) ? PACKAGES[record.package].tagPrefix : null;
+  if (prefix === null) refuse("package-mismatch", `${record.package} is not a Comforge package`);
+  if (record.tag !== `${prefix}${record.version}`) refuse("tag-mismatch", `RELEASE.json tag ${record.tag} does not match its version`);
   if (tag !== undefined && tag !== record.tag) refuse("tag-mismatch", `expected tag ${tag}, release is ${record.tag}`);
   if (commit !== undefined) {
     if (!/^[0-9a-f]{40}$/.test(commit)) refuse("commit-mismatch", "the expected commit must be a full 40-hex SHA");
@@ -245,8 +263,8 @@ export async function registryState({ name, version, fetchImpl = fetch, registry
  * because gzip output differs across platforms; readback then takes it from the registry and
  * requires the downloaded bytes and any provenance subject to match it.
  */
-export function releaseExpectation({ releaseDir, commit, tag, repository }) {
-  const { record, manifest: releaseManifest } = verifyRelease({ releaseDir, commit, tag });
+export function releaseExpectation({ releaseDir, commit, tag, repository, packageName }) {
+  const { record, manifest: releaseManifest } = verifyRelease({ releaseDir, commit, tag, packageName });
   const { manifest, transforms } = npmManifest(releaseManifest, repository);
   const expected = expectedPackFiles(record, manifest);
   return {
@@ -273,8 +291,8 @@ export function releaseExpectation({ releaseDir, commit, tag, repository }) {
 }
 
 /** Plans the npm artifact for one verified release: staged, listed, packed, re-verified. */
-export async function plan({ releaseDir, commit, tag, repository, outDir, fetchImpl, registry }) {
-  const { record, manifest, expected, expectation } = releaseExpectation({ releaseDir, commit, tag, repository });
+export async function plan({ releaseDir, commit, tag, repository, outDir, fetchImpl, registry, packageName }) {
+  const { record, manifest, expected, expectation } = releaseExpectation({ releaseDir, commit, tag, repository, packageName });
   const state = await registryState({ name: manifest.name, version: manifest.version, fetchImpl, registry });
   mkdirSync(outDir, { recursive: true });
   const stage = mkdtempSync(path.join(tmpdir(), "npm-release-stage-"));
@@ -329,7 +347,8 @@ export function checkProvenance(statement, { name, version, integrity, repositor
   if (subject?.digest?.sha512 !== digest) problems.push("subject digest");
   const workflow = statement?.predicate?.buildDefinition?.externalParameters?.workflow ?? {};
   if (workflow.repository !== `https://github.com/${repository}`) problems.push("workflow repository");
-  if (workflow.path !== WORKFLOW_PATH) problems.push("workflow path");
+  // An unknown package has no expected workflow, so its provenance never passes.
+  if (!Object.hasOwn(PACKAGES, name) || workflow.path !== PACKAGES[name].workflow) problems.push("workflow path");
   if (workflow.ref !== `refs/tags/${tag}`) problems.push("workflow ref");
   const dep = statement?.predicate?.buildDefinition?.resolvedDependencies?.[0];
   if (dep?.digest?.gitCommit !== commit) problems.push("source commit");
@@ -416,6 +435,7 @@ async function main(argv) {
       tag: arg(argv, "--tag"),
       repository: arg(argv, "--repository"),
       outDir: path.resolve(arg(argv, "--out") ?? "npm-release"),
+      packageName: arg(argv, "--package"),
     });
     process.stdout.write(json(result));
   } else if (command === "verify-tarball") {

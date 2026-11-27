@@ -3,10 +3,18 @@ export {
   ACTIONS,
   CAPABILITIES,
   type Capability,
+  COMMAND_SCOPE_VERSION,
+  COMMANDS,
+  type Command,
+  DESTRUCTIVE_COMMANDS,
   GRANT_MODES,
   type GrantMode,
   PROHIBITED_MODES,
+  PUBLICATION_COMMANDS,
+  type PublicationCommand,
   type RuntimeAction,
+  SCOPED_ONLY_COMMANDS,
+  type ScopedOnlyCommand,
 } from "./authorization.ts";
 export { canonicalJson, keyIdFor } from "./canonical.ts";
 export {
@@ -37,6 +45,9 @@ export { FactoryCoreError, type FactoryCoreErrorCode } from "./errors.ts";
 export {
   type ActionContext,
   CLOCK_SKEW_MS,
+  type CommandAuthorization,
+  type CommandContext,
+  type CommandScopeEntry,
   createGrantProtocol,
   EnvelopeSchema,
   envelopeDigest,

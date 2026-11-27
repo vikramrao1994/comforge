@@ -1,6 +1,6 @@
 {
   "name": "@comforge/core",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "description": "Deterministic governance contracts for an engineering lifecycle: specification digests, grant and receipt verification, review and completion-record integrity, lifecycle decisions. Pure: no I/O, no environment, no clock, no private keys.",
   "license": "Apache-2.0",

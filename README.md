@@ -63,7 +63,7 @@ npm install ./artifacts/comforge-core-0.1.0.tgz zod@^4.6.6
 - **Module format:** ESM only.
 - **Imports:** import by package name (`import { … } from "@comforge/core"`), or through a subpath: `@comforge/core/specification`, `/grant`, `/receipt`, `/review`, `/completion` or `/lifecycle`.
 
-A complete, runnable consumer lives in [`examples/factory-core-consumer`](https://github.com/vikramrao1994/comforge/tree/core/v0.1.2/examples/factory-core-consumer). Every code block below is copied from it, and a test fails if they drift.
+A complete, runnable consumer lives in [`examples/factory-core-consumer`](https://github.com/vikramrao1994/comforge/tree/core/v0.2.0/examples/factory-core-consumer). Every code block below is copied from it, and a test fails if they drift.
 
 ## Quick start
 
@@ -216,6 +216,21 @@ const refused = refusal(() =>
 - **`authorizeAction`:** checks the envelope, then the action, ticket, specification, attempts, base, candidate, branch and revision bindings.
 - **`requireCapability`:** checks an extra capability, such as `modify-workflows`.
 - **Time:** you pass `now`. The kernel reads no clock.
+
+### Authorize a command (signed command scopes)
+
+`authorizeCommand(envelope, trustedKeys, context, now)` decides one remote effect of a lifecycle tool. The vocabulary is `COMMANDS`, scope version `COMMAND_SCOPE_VERSION` (1):
+
+| Command | Authorized by | Bound to |
+|---|---|---|
+| `publish`, `complete`, `deliver`, `recover` (`PUBLICATION_COMMANDS`) | a `publication` grant. Without a `scope` it authorizes all four, as in 0.1; with a `scope` only the listed ones | ticket, issue, unedited specification digest, base, candidate commit, branch |
+| `cleanup` | a `command` grant scoping exactly `{ command: "cleanup", pullRequest, mergedHead }` | ticket, issue, specification, base, the merged PR and the head that merged, the ticket's branch |
+| `publish-specification` | a `command` grant scoping `{ command: "publish-specification", target: { kind: "new" } \| { kind: "issue", number } }` | the ticket and digest of the specification being published, and its destination (a new issue has no `issue` field) |
+| `publish-review` | a `command` grant scoping `{ command: "publish-review", pullRequest, reviewedHead, reviewDigest? }` | the reviewed ticket's specification, the open PR, its exact current head, the review's digest when named |
+
+- **Never by omission.** A grant without a scope never authorizes `cleanup`, `publish-specification` or `publish-review` (`SCOPED_ONLY_COMMANDS`). A `command` grant scopes exactly one of them, so a destructive grant is never shared with another command (`DESTRUCTIVE_COMMANDS`).
+- **No widening.** `authorizeAction` refuses a grant that carries a scope; only `authorizeCommand` reads it. A 0.1 verifier refuses a scoped grant at its schema (it cannot enforce the narrowing), and a scope-less 0.1 grant verifies unchanged: its signing bytes are the same.
+- **The caller still owns state.** Revocation (`revoked`) and the attempts already spent (`attemptsUsed`) come from your ledger; spend an attempt atomically after an `allow`.
 
 ### Sign a grant (the owner's side, never the agent's)
 

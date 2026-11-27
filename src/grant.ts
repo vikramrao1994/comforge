@@ -5,10 +5,15 @@ import {
   ACTION_MODES,
   CAPABILITIES,
   type Capability,
+  COMMAND_SCOPE_VERSION,
+  COMMANDS,
+  type Command,
   GRANT_MODES,
   type GrantMode,
   PROHIBITED_MODES,
+  PUBLICATION_COMMANDS,
   type RuntimeAction,
+  SCOPED_ONLY_COMMANDS,
 } from "./authorization.ts";
 import { canonicalJson, keyIdFor } from "./canonical.ts";
 import { FactoryCoreError } from "./errors.ts";
@@ -35,6 +40,46 @@ export const CLOCK_SKEW_MS = 5 * 60 * 1000;
 const Sha40 = z.string().regex(/^[0-9a-f]{40}$/);
 const Sha64 = z.string().regex(/^[0-9a-f]{64}$/);
 const IsoTime = z.string().datetime({ offset: true });
+const Positive = z.number().int().positive();
+
+/**
+ * One scoped command. Each scoped-only command carries the bindings it is checked against:
+ * cleanup names the merged pull request and the head that merged; a specification publication
+ * names whether it creates a new issue or replaces one; a review publication names the pull
+ * request and the exact head that was reviewed (and optionally the review's digest).
+ */
+const CommandScopeEntrySchema = z.discriminatedUnion("command", [
+  z.object({ command: z.literal("publish") }).strict(),
+  z.object({ command: z.literal("complete") }).strict(),
+  z.object({ command: z.literal("deliver") }).strict(),
+  z.object({ command: z.literal("recover") }).strict(),
+  z.object({ command: z.literal("cleanup"), pullRequest: Positive, mergedHead: Sha40 }).strict(),
+  z
+    .object({
+      command: z.literal("publish-specification"),
+      target: z.discriminatedUnion("kind", [
+        z.object({ kind: z.literal("new") }).strict(),
+        z.object({ kind: z.literal("issue"), number: Positive }).strict(),
+      ]),
+    })
+    .strict(),
+  z
+    .object({
+      command: z.literal("publish-review"),
+      pullRequest: Positive,
+      reviewedHead: Sha40,
+      reviewDigest: Sha64.optional(),
+    })
+    .strict(),
+]);
+export type CommandScopeEntry = z.infer<typeof CommandScopeEntrySchema>;
+
+const CommandScopeSchema = z
+  .object({
+    version: z.literal(COMMAND_SCOPE_VERSION),
+    commands: z.array(CommandScopeEntrySchema).min(1).max(COMMANDS.length),
+  })
+  .strict();
 
 function buildGrantSchema(grantScheme: string, ticketPattern: RegExp) {
   return z
@@ -44,7 +89,8 @@ function buildGrantSchema(grantScheme: string, ticketPattern: RegExp) {
       nonce: z.string().regex(/^[0-9a-f]{32}$/),
       repository: z.string().min(3),
       ticket: z.string().regex(ticketPattern),
-      issue: z.number().int().positive(),
+      // Absent only for a command grant that publishes a new specification issue.
+      issue: Positive.optional(),
       specDigest: Sha64,
       mode: z.enum(GRANT_MODES),
       capabilities: z.array(z.enum(CAPABILITIES)).max(CAPABILITIES.length),
@@ -64,9 +110,39 @@ function buildGrantSchema(grantScheme: string, ticketPattern: RegExp) {
         .strict()
         .optional(),
       validation: z.object({ candidateSha: Sha40 }).strict().optional(),
+      scope: CommandScopeSchema.optional(),
     })
     .strict()
     .superRefine((g, ctx) => {
+      const issue = (message: string) => ctx.addIssue({ code: "custom", message });
+      const scope = g.scope;
+      const names = scope?.commands.map((c) => c.command) ?? [];
+      if (new Set(names).size !== names.length) issue("duplicate scoped command");
+      if (g.mode === "command") {
+        if (
+          names.length !== 1 ||
+          !(SCOPED_ONLY_COMMANDS as readonly string[]).includes(names[0] ?? "")
+        )
+          issue(
+            "a command grant scopes exactly one of cleanup, publish-specification, publish-review",
+          );
+      } else if (g.mode === "publication") {
+        if (names.some((n) => !(PUBLICATION_COMMANDS as readonly string[]).includes(n)))
+          issue("a publication grant can scope only publication commands");
+      } else if (scope) issue(`a ${g.mode} grant carries no command scope`);
+      const entry = scope?.commands[0];
+      const newSpecification =
+        g.mode === "command" &&
+        entry?.command === "publish-specification" &&
+        entry.target.kind === "new";
+      if (newSpecification !== (g.issue === undefined))
+        issue("issue is absent exactly for a grant that publishes a new specification");
+      if (
+        entry?.command === "publish-specification" &&
+        entry.target.kind === "issue" &&
+        entry.target.number !== g.issue
+      )
+        issue("a specification publication's target issue is the grant's issue");
       const need = (field: "revision" | "publication" | "validation", mode: GrantMode) => {
         if ((g.mode === mode) !== (g[field] !== undefined))
           ctx.addIssue({
@@ -127,6 +203,37 @@ export interface ActionContext {
 }
 
 /**
+ * The live, verified state a command is checked against. Which fields matter depends on the
+ * command: publication commands need the publication bindings of `ActionContext`; cleanup
+ * needs the merged pull request; a specification publication needs what is being published;
+ * a review publication needs the reviewed pull request and the review.
+ */
+export interface CommandContext {
+  command: Command;
+  ticket: string;
+  revoked: boolean;
+  /** Attempts already spent under this grant, by any command. */
+  attemptsUsed: number;
+  issue?: number;
+  /** The initiative's published specification, verified for this check. */
+  specification?: { ticketId: string; digest: string; digestMatches: boolean } | null;
+  baseSha?: string;
+  candidateSha?: string;
+  branch?: string;
+  pullRequest?: { number: number; headSha: string; open: boolean; merged: boolean };
+  /** publish-specification: the specification about to be published and its destination. */
+  publishing?: { ticketId: string; digest: string; issue: number | null };
+  /** publish-review: the review about to be published. */
+  review?: { pullRequest: number; reviewedHead: string; digest: string };
+}
+
+export interface CommandAuthorization {
+  grant: Grant;
+  /** The scope entry that authorized the command; null for an unscoped publication grant. */
+  scope: CommandScopeEntry | null;
+}
+
+/**
  * Trusted, construction-time configuration: which repository grants must name, the
  * scheme they are signed under, the ticket grammar, and the one branch a ticket's
  * work may be published to. Supplied from committed code, never from a grant.
@@ -146,8 +253,18 @@ export interface GrantProtocol {
   signingBytes(grant: Grant): Buffer;
   /** Signature, schema, trust, repository and validity window. Says nothing about any action. */
   verifyEnvelope(raw: unknown, trusted: TrustedKey[], now: Date): GrantEnvelope;
-  /** The authorization decision for one action; throws `unauthorized` naming the first failed binding. */
+  /**
+   * The authorization decision for one action; throws `unauthorized` naming the first failed
+   * binding. A command-scoped grant is refused here: only `authorizeCommand` reads a scope.
+   */
   authorizeAction(raw: unknown, trusted: TrustedKey[], context: ActionContext, now: Date): Grant;
+  /** The authorization decision for one command (scope version 1). */
+  authorizeCommand(
+    raw: unknown,
+    trusted: TrustedKey[],
+    context: CommandContext,
+    now: Date,
+  ): CommandAuthorization;
 }
 
 const SCHEME = /^[a-z0-9][a-z0-9.-]{0,79}\/v[0-9]{1,4}$/;
@@ -208,8 +325,15 @@ export function createGrantProtocol(config: GrantProtocolConfig): GrantProtocol 
     return { grant: grant.data, keyId: envelope.data.keyId, signature: envelope.data.signature };
   };
 
-  const authorizeAction: GrantProtocol["authorizeAction"] = (raw, trusted, context, now) => {
-    const { grant } = verifyEnvelope(raw, trusted, now);
+  const authorizeAction: GrantProtocol["authorizeAction"] = (raw, trusted, context, now) =>
+    checkAction(verifyEnvelope(raw, trusted, now).grant, context, true);
+
+  const checkAction = (grant: Grant, context: ActionContext, unscopedOnly: boolean): Grant => {
+    // A caller that does not read scopes must not be able to widen a scoped grant.
+    if (unscopedOnly && grant.scope)
+      return deny("A command-scoped grant is authorized per command, not per action", {
+        grantId: grant.grantId,
+      });
     if (!ACTION_MODES[context.action].includes(grant.mode))
       return deny(`A ${grant.mode} grant does not authorize ${context.action}`, {
         mode: grant.mode,
@@ -270,6 +394,123 @@ export function createGrantProtocol(config: GrantProtocolConfig): GrantProtocol 
     return grant;
   };
 
+  const verifiedSpecification = (grant: Grant, context: CommandContext) => {
+    if (grant.issue === undefined || grant.issue !== context.issue)
+      return deny("The grant names another ticket or issue");
+    const spec = context.specification;
+    if (!spec || !spec.digestMatches)
+      return deny("The issue is no longer an unmodified published specification");
+    if (spec.ticketId !== grant.ticket) return deny("The issue specifies another ticket");
+    if (spec.digest !== grant.specDigest)
+      return deny("The specification changed after the grant was issued", {
+        granted: grant.specDigest,
+        current: spec.digest,
+      });
+  };
+
+  const authorizeCommand: GrantProtocol["authorizeCommand"] = (raw, trusted, context, now) => {
+    const { grant } = verifyEnvelope(raw, trusted, now);
+    const command = context.command;
+    if (!(COMMANDS as readonly string[]).includes(command))
+      return deny("The command is not in the scope vocabulary", { command });
+    if (context.revoked) return deny("The grant has been revoked", { grantId: grant.grantId });
+    if (grant.ticket !== context.ticket) return deny("The grant names another ticket or issue");
+    if (context.attemptsUsed >= grant.maxAttempts)
+      return deny("The grant's attempts are exhausted (replay refused)", {
+        maxAttempts: grant.maxAttempts,
+        used: context.attemptsUsed,
+      });
+    const entries = grant.scope?.commands ?? [];
+    if ((PUBLICATION_COMMANDS as readonly string[]).includes(command)) {
+      if (grant.mode !== "publication")
+        return deny(`A ${grant.mode} grant does not authorize ${command}`, {
+          mode: grant.mode,
+          command,
+        });
+      const entry = grant.scope ? entries.find((e) => e.command === command) : null;
+      if (entry === undefined)
+        return deny(`The grant's scope does not include ${command}`, {
+          scoped: entries.map((e) => e.command),
+        });
+      checkAction(
+        grant,
+        {
+          action: "publish",
+          ticket: context.ticket,
+          specification: context.specification ?? null,
+          issue: context.issue ?? -1,
+          revoked: false,
+          attemptsUsed: 0,
+          ...(context.baseSha ? { baseSha: context.baseSha } : {}),
+          ...(context.candidateSha ? { candidateSha: context.candidateSha } : {}),
+          ...(context.branch ? { branch: context.branch } : {}),
+        },
+        false,
+      );
+      return { grant, scope: entry };
+    }
+    // Scoped-only: never authorized by omission, never by another command's scope.
+    const entry = entries[0];
+    if (grant.mode !== "command" || !entry)
+      return deny(`${command} needs a command grant that scopes it; this grant has no such scope`, {
+        mode: grant.mode,
+        command,
+      });
+    if (entry.command !== command)
+      return deny(`The grant is scoped to ${entry.command}, not ${command}`, {
+        scoped: entry.command,
+        command,
+      });
+    if (entry.command === "cleanup") {
+      verifiedSpecification(grant, context);
+      if (grant.base.kind === "exact" && context.baseSha && context.baseSha !== grant.base.sha)
+        return deny("The base revision is not the authorized one");
+      const pr = context.pullRequest;
+      if (!pr || pr.number !== entry.pullRequest)
+        return deny("The cleanup grant names another pull request");
+      if (!pr.merged) return deny("The pull request is not merged");
+      if (pr.headSha !== entry.mergedHead)
+        return deny("The merged head is not the one the cleanup grant names", {
+          authorized: entry.mergedHead,
+          actual: pr.headSha,
+        });
+      if (context.branch !== branchForTicket(grant.ticket))
+        return deny("The cleanup grant names another branch");
+    } else if (entry.command === "publish-specification") {
+      const p = context.publishing;
+      if (!p) return deny("No specification to publish was verified");
+      if (p.ticketId !== grant.ticket) return deny("The specification is for another ticket");
+      if (p.digest !== grant.specDigest)
+        return deny("The specification is not the one the grant names", {
+          granted: grant.specDigest,
+          publishing: p.digest,
+        });
+      const target = entry.target.kind === "new" ? null : entry.target.number;
+      if (p.issue !== target)
+        return deny("The specification's destination is not the one the grant names", {
+          authorized: target,
+          destination: p.issue,
+        });
+    } else if (entry.command === "publish-review") {
+      verifiedSpecification(grant, context);
+      const pr = context.pullRequest;
+      if (!pr || pr.number !== entry.pullRequest)
+        return deny("The review grant names another pull request");
+      if (!pr.open) return deny("The pull request is not open");
+      if (pr.headSha !== entry.reviewedHead)
+        return deny("The review is stale: the pull request head moved after the reviewed head", {
+          reviewedHead: entry.reviewedHead,
+          currentHead: pr.headSha,
+        });
+      const r = context.review;
+      if (!r || r.pullRequest !== entry.pullRequest || r.reviewedHead !== entry.reviewedHead)
+        return deny("The review is not for the pull request and head the grant names");
+      if (entry.reviewDigest && entry.reviewDigest !== r.digest)
+        return deny("The review is not the one the grant names");
+    } else return deny("The grant's scope is not a scoped-only command");
+    return { grant, scope: entry };
+  };
+
   return Object.freeze({
     scheme: grantScheme,
     repository,
@@ -277,6 +518,7 @@ export function createGrantProtocol(config: GrantProtocolConfig): GrantProtocol 
     signingBytes,
     verifyEnvelope,
     authorizeAction,
+    authorizeCommand,
   });
 }
 
