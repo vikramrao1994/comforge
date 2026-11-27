@@ -29,6 +29,10 @@ export const MCP_CODES = {
     "command-scope-unsupported": "the published grant format cannot scope a grant to this command",
     "result-too-large": "the request would return more than the result bound",
     unavailable: "the published dependency does not provide this read",
+    "checkout-required": "the tool needs a repository checkout; this repository is served without one",
+    "config-missing": "the host supplied no trusted configuration for this repository",
+    "config-stale": "the host's trusted configuration snapshot is older than allowed",
+    "config-mismatch": "the configuration is not the pinned one, or not what GitHub holds at its revision",
 };
 const HINTS = {
     "authorization-required": "the trusted configuration has no security.authorization; that is an owner decision",
@@ -43,6 +47,8 @@ const HINTS = {
     "execution-unavailable": "use a local stdio server, or a host that provides isolation",
     "command-scope-unsupported": "run cleanup through the comforge CLI as the owner",
     "unknown-repository": "comforge_capabilities lists the repositories you may use",
+    "checkout-required": "use a local stdio server bound to a checkout of this repository",
+    "config-stale": "the host refreshes its snapshot; retry later",
 };
 /** Retrying the same call can help only for transient failures, never for a refusal. */
 const RETRYABLE = new Set(["git-failed", "github-failed", "io", "ledger"]);
@@ -87,7 +93,8 @@ export function fromRefusal(r) {
         code: r.code,
         message: r.message,
         exit: r.exit,
-        retryable: false,
+        // A server refusal is final, except a snapshot the host will refresh.
+        retryable: r.code === "config-stale",
         ...((r.hint ?? HINTS[r.code]) ? { hint: r.hint ?? HINTS[r.code] } : {}),
         ...(Object.keys(r.detail).length > 0 ? { detail: r.detail } : {}),
     };

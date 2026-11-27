@@ -33,6 +33,10 @@ export declare const MCP_CODES: {
     readonly "command-scope-unsupported": "the published grant format cannot scope a grant to this command";
     readonly "result-too-large": "the request would return more than the result bound";
     readonly unavailable: "the published dependency does not provide this read";
+    readonly "checkout-required": "the tool needs a repository checkout; this repository is served without one";
+    readonly "config-missing": "the host supplied no trusted configuration for this repository";
+    readonly "config-stale": "the host's trusted configuration snapshot is older than allowed";
+    readonly "config-mismatch": "the configuration is not the pinned one, or not what GitHub holds at its revision";
 };
 /** Replaces every value a caller must never see: the call's credentials and secret-like text. */
 export declare function redact(value: unknown, secrets: readonly string[]): unknown;

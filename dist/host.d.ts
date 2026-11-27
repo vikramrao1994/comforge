@@ -1,11 +1,3 @@
-/**
- * What the host gives the server, and the repository allowlist.
- *
- * Trust boundary: the host owns credentials, the runtime that runs repository commands, the
- * state store and the principal. A caller supplies none of them: it names an allowlisted
- * repository id, and the server resolves everything else from the host and from the
- * repository's trusted configuration (its base branch, never the working tree).
- */
 import { type ComforgeConfig, type CredentialProvider, type HostPolicy, type Runtime, type StateStore } from "@comforge/cli";
 import type { Principal } from "./contracts.ts";
 export interface RepositoryBinding {
@@ -66,3 +58,47 @@ export declare const repositoryOf: (b: RepositoryBinding) => {
  * The working tree's copy is ignored. It must name the binding's repository.
  */
 export declare function trustedConfig(rt: Runtime, binding: RepositoryBinding): ComforgeConfig;
+/**
+ * An allowlisted repository the host serves without a local checkout: GitHub evidence reads
+ * only (issue, pull request, pull requests, comments, advisory reviews, artifacts). Lifecycle,
+ * state and executing tools are refused for it (`checkout-required`): they need a checkout and,
+ * remotely, isolation, which loading a configuration never provides.
+ */
+export interface RemoteRepositoryBinding {
+    id: string;
+    owner: string;
+    name: string;
+    /**
+     * sha256 (hex) of the trusted `comforge.config.json` bytes the host pins. When set, any other
+     * configuration is refused (`config-mismatch`), even one committed at the base.
+     */
+    configSha256?: string;
+}
+/** The trusted configuration as the host observed it: bytes at one immutable base revision. */
+export interface TrustedConfigSnapshot {
+    /** Full 40-hex commit of the base branch the host trusts. */
+    revision: string;
+    /** The exact `comforge.config.json` text at `revision`. */
+    text: string;
+    /** When the host observed `revision` as the base head (ms since epoch). */
+    observedAt: number;
+}
+/**
+ * Host code for checkout-free repositories. The server never takes a configuration, revision,
+ * URL or credential from a caller: the host supplies them, and the server checks the snapshot
+ * against GitHub (the same bytes at that revision), its pin, its age and its repository.
+ */
+export interface RemoteHost {
+    trustedConfig(binding: RemoteRepositoryBinding): TrustedConfigSnapshot | Promise<TrustedConfigSnapshot>;
+    /** Server-owned GitHub token for the binding; never returned to a caller. */
+    credentials(binding: RemoteRepositoryBinding, principal: Principal): string | undefined;
+    /** Oldest snapshot accepted; default 10 minutes. */
+    configMaxAgeMs?: number;
+    fetchImpl?: typeof fetch;
+    now?(): number;
+}
+/** Refuses malformed remote bindings, and an id used by a local and a remote binding alike. */
+export declare function assertRemoteBindings(remote: readonly RemoteRepositoryBinding[], local: readonly RepositoryBinding[]): void;
+export declare function resolveRemoteBinding(remote: readonly RemoteRepositoryBinding[], principal: Principal, id: string): RemoteRepositoryBinding | null;
+/** The snapshot's own checks: revision shape, age, pin, parse and repository identity. */
+export declare function checkSnapshot(binding: RemoteRepositoryBinding, snapshot: TrustedConfigSnapshot, now: number, maxAgeMs: number): ComforgeConfig;

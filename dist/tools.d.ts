@@ -10,13 +10,16 @@
 import { type Runtime } from "@comforge/cli";
 import type { z } from "zod";
 import { type INPUTS, type Principal, type ToolName } from "./contracts.ts";
-import { type HostServices, type RepositoryBinding } from "./host.ts";
+import { type HostServices, type RemoteHost, type RemoteRepositoryBinding, type RepositoryBinding } from "./host.ts";
 import { type McpError, type ToolSuccess } from "./results.ts";
 export declare const SERVER_NAME = "comforge-mcp";
 export declare const SERVER_VERSION = "0.1.0";
 export interface CallContext {
     principal: Principal;
     binding: RepositoryBinding | null;
+    /** A checkout-free repository (0.2.0); `binding` and `rt` are null for it. */
+    remote?: RemoteRepositoryBinding | null;
+    remoteHost?: RemoteHost | null;
     /** The runtime for this call: the host's, or the isolation provider's for execution. */
     rt: Runtime | null;
     host: HostServices;
@@ -27,6 +30,8 @@ export interface CallContext {
     /** Static facts capabilities reports. */
     server: {
         bindings: readonly RepositoryBinding[];
+        /** 0.2.0; absent means none. */
+        remoteBindings?: readonly RemoteRepositoryBinding[];
         executionAvailable: boolean;
         isolation: string | null;
         tools: readonly ToolName[];
@@ -34,6 +39,11 @@ export interface CallContext {
 }
 export type HandlerOutcome = ToolSuccess | McpError;
 type Input<N extends ToolName> = z.infer<(typeof INPUTS)[N]>;
+/**
+ * The tools a checkout-free repository serves: GitHub evidence reads under a host-supplied
+ * trusted configuration. Nothing that runs commands, reads lifecycle state or writes.
+ */
+export declare const REMOTE_READ_TOOLS: readonly ToolName[];
 export declare const HANDLERS: {
     [N in ToolName]: (c: CallContext, input: Input<N>) => Promise<HandlerOutcome>;
 };

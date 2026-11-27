@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0
+
+- Checkout-free repositories (remoteRepositories + remote host): GitHub evidence reads under a host-supplied trusted configuration verified against GitHub's bytes, pin, age and identity; reviews carry authorAssociation, commentUrl, updatedAt.
+
 ## 0.1.0
 
 - Depends on @comforge/core 0.2.0, @comforge/github 0.5.0 and @comforge/cli 0.3.0; textContent summary option (--summary-text) so structured results are not sent twice.

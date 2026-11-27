@@ -24,7 +24,10 @@ export {
   assertBindings,
   type HostServices,
   type IsolationProvider,
+  type RemoteHost,
+  type RemoteRepositoryBinding,
   type RepositoryBinding,
+  type TrustedConfigSnapshot,
   trustedConfig,
 } from "./host.ts";
 export {
@@ -42,4 +45,4 @@ export {
   permitted,
 } from "./server.ts";
 export { type StdioOptions, serveStdio } from "./stdio.ts";
-export { SERVER_NAME, SERVER_VERSION } from "./tools.ts";
+export { REMOTE_READ_TOOLS, SERVER_NAME, SERVER_VERSION } from "./tools.ts";

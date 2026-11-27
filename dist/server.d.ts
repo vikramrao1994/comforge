@@ -1,8 +1,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type Principal, type ToolName } from "./contracts.ts";
-import { type HostServices, type IsolationProvider, type RepositoryBinding } from "./host.ts";
+import { type HostServices, type IsolationProvider, type RemoteHost, type RemoteRepositoryBinding, type RepositoryBinding } from "./host.ts";
 export interface ComforgeMcpOptions {
     repositories: readonly RepositoryBinding[];
+    /**
+     * Repositories served without a checkout (0.2.0): GitHub evidence reads only, under a trusted
+     * configuration the host supplies through `remote`. Lifecycle, state and executing tools are
+     * refused for them, whatever the transport or isolation.
+     */
+    remoteRepositories?: readonly RemoteRepositoryBinding[];
+    /** Required with `remoteRepositories`: the host's trusted-configuration source and credentials. */
+    remote?: RemoteHost;
     host: HostServices;
     principal: Principal;
     transport: "stdio" | "http";
@@ -24,7 +32,9 @@ export interface ComforgeMcpOptions {
 }
 export declare function permitted(principal: Principal, tool: ToolName): boolean;
 /** The tools a principal discovers on a transport. */
-export declare function discoverableTools(principal: Principal, transport: "stdio" | "http", isolation?: IsolationProvider): ToolName[];
+export declare function discoverableTools(principal: Principal, transport: "stdio" | "http", isolation?: IsolationProvider, options?: {
+    checkouts?: boolean;
+}): ToolName[];
 /** A provider is code the host wires in; anything else is a configuration error. */
 export declare function assertIsolation(isolation: IsolationProvider): void;
 export declare function createComforgeMcpServer(options: ComforgeMcpOptions): McpServer;

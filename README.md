@@ -132,6 +132,37 @@ is the smallest equivalent form (pull requests 1,191 vs CLI 1,617 vs raw GitHub 
 is the largest fixed cost of an MCP session. These are per-call counts; no end-to-end saving is
 claimed.
 
+## Repositories without a checkout (candidate)
+
+A host that has no checkout (a web app that answers MCP over HTTP) can still serve the GitHub
+evidence reads: `comforge_capabilities`, `comforge_issue`, `comforge_pr`, `comforge_prs`,
+`comforge_comments`, `comforge_reviews` and `comforge_artifact` (`REMOTE_READ_TOOLS`).
+
+```ts
+createHttpHandler({
+  repositories: [],
+  remoteRepositories: [{ id: "widgets", owner: "acme", name: "widgets", configSha256: "<optional pin>" }],
+  remote: {
+    trustedConfig: async (b) => ({ revision, text, observedAt }), // host code: the base head and its comforge.config.json
+    credentials: (b, principal) => serverOwnedToken,
+    configMaxAgeMs: 600_000,
+  },
+  host: { runtime: () => { throw new Error("no runtime"); } },
+  // authenticate, allowedHosts, ... as above
+});
+```
+
+- The host supplies the trusted configuration; a caller never can. The server refuses a
+  snapshot whose revision is not a full SHA (`config-invalid`), that is older than
+  `configMaxAgeMs` or from the future (`config-stale`, retryable), that differs from the pin or
+  from GitHub's bytes at that revision read with the server's credential (`config-mismatch`), or
+  that names another repository (`repository-mismatch`). A source that throws is `config-missing`.
+- Whether the revision is the base branch head is the host's statement; the server verifies the
+  bytes at that revision, not branch membership.
+- Every other tool is refused for such a repository with `checkout-required`, with or without an
+  `IsolationProvider`: loading a configuration never enables execution or writes. A server with
+  only checkout-free repositories does not list those tools at all.
+
 ## Signed command scope (candidate)
 
 `@comforge/core` adds an optional signed `commands` list to a grant, and `@comforge/cli` checks it:

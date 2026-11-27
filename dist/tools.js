@@ -7,11 +7,11 @@
  * @comforge/cli (trusted configuration, owner grants or operator mode); a handler cannot
  * pass `authorized`, a path, a URL or a credential through.
  */
-import { PACKAGE_VERSION as CLI_VERSION, capabilities as cliCapabilities, context as cliContext, createLifecycleServices, specificationProtocol, toServiceError, } from "@comforge/cli";
-import { createFetchTransport, createGitHubEvidence, GitHubAdapterError, readSpecificationIssue, } from "@comforge/github";
+import { artifactReadable, PACKAGE_VERSION as CLI_VERSION, capabilities as cliCapabilities, context as cliContext, createLifecycleServices, reviewProtocol, specificationProtocol, toServiceError, } from "@comforge/cli";
+import { createFetchTransport, createGitHubEvidence, GitHubAdapterError, listAdvisoryReviews, readSpecificationIssue, } from "@comforge/github";
 import { CAPABILITIES_SCHEMA, DETAIL_PROFILES, LIMITS, TOOLS, } from "./contracts.js";
 import { withGrantFile } from "./grants.js";
-import { repositoryOf, trustedConfig } from "./host.js";
+import { checkSnapshot, repositoryOf, trustedConfig, } from "./host.js";
 import { bound, excerpt, fromServiceError, incompleteDelivery, paginate, success, ToolRefusal, } from "./results.js";
 export const SERVER_NAME = "comforge-mcp";
 export const SERVER_VERSION = "0.1.0";
@@ -39,6 +39,18 @@ function services(c) {
         ...(c.host.hostPolicy ? { host: c.host.hostPolicy(binding) } : {}),
     });
 }
+/** A checkout-free read as a service result: GitHub refusals keep their codes, others propagate. */
+async function remoteRead(c, read) {
+    const { config, reads } = await evidence(c);
+    try {
+        return { ok: true, value: await read(reads, config), exit: 0 };
+    }
+    catch (error) {
+        if (error instanceof ToolRefusal)
+            throw error;
+        return githubRefusal(error);
+    }
+}
 function settle(r, shape) {
     return r.ok ? shape(r.value, r.exit) : fromServiceError(r.error);
 }
@@ -60,7 +72,70 @@ function readToken(c, config) {
     c.secrets.push(token);
     return token;
 }
-function evidence(c) {
+/**
+ * The tools a checkout-free repository serves: GitHub evidence reads under a host-supplied
+ * trusted configuration. Nothing that runs commands, reads lifecycle state or writes.
+ */
+export const REMOTE_READ_TOOLS = [
+    "comforge_capabilities",
+    "comforge_issue",
+    "comforge_pr",
+    "comforge_prs",
+    "comforge_comments",
+    "comforge_reviews",
+    "comforge_artifact",
+];
+const DEFAULT_CONFIG_MAX_AGE_MS = 10 * 60_000;
+/**
+ * Evidence for a checkout-free repository. The host's snapshot is checked (revision, age, pin,
+ * repository) and then against GitHub itself: the configuration must be byte-for-byte what the
+ * repository holds at that revision, read with the server's own credential.
+ */
+async function remoteEvidence(c) {
+    const binding = c.remote;
+    const host = c.remoteHost;
+    const now = host.now?.() ?? Date.now();
+    let snapshot;
+    try {
+        snapshot = await host.trustedConfig(binding);
+    }
+    catch {
+        throw new ToolRefusal("config-missing", "the host could not supply a trusted configuration", 3, {
+            repository: binding.id,
+        });
+    }
+    const config = checkSnapshot(binding, snapshot, now, host.configMaxAgeMs ?? DEFAULT_CONFIG_MAX_AGE_MS);
+    const token = host.credentials(binding, c.principal);
+    if (!token)
+        throw new ToolRefusal("credential-missing", "the server has no GitHub credential for this repository");
+    c.secrets.push(token);
+    const reads = createGitHubEvidence({
+        transport: createFetchTransport({
+            token: () => token,
+            ...(host.fetchImpl ? { fetchImpl: host.fetchImpl } : {}),
+        }),
+        repository: { owner: binding.owner, name: binding.name },
+    });
+    let committed;
+    try {
+        committed = await reads.getFileBytesAtCommit(snapshot.revision, "comforge.config.json");
+    }
+    catch (error) {
+        if (error instanceof GitHubAdapterError &&
+            (error.code === "not-found" || error.code === "wrong-target"))
+            throw new ToolRefusal("config-mismatch", "GitHub has no comforge.config.json at the trusted revision", 2, {
+                repository: binding.id,
+            });
+        return githubRefusal(error);
+    }
+    if (committed.kind !== "bytes" ||
+        Buffer.compare(Buffer.from(committed.bytes), Buffer.from(snapshot.text, "utf8")) !== 0)
+        throw new ToolRefusal("config-mismatch", "the trusted configuration is not what GitHub holds at its revision", 2, { repository: binding.id });
+    return { config, reads };
+}
+async function evidence(c) {
+    if (c.remote)
+        return remoteEvidence(c);
     const binding = c.binding;
     const config = trustedConfig(c.rt, binding);
     const token = readToken(c, config);
@@ -101,11 +176,13 @@ const detailFor = (p) => p.profiles.some((x) => DETAIL_PROFILES.includes(x));
 export const HANDLERS = {
     async comforge_capabilities(c) {
         const cli = cliCapabilities().result;
+        const ids = [
+            ...c.server.bindings.map((b) => b.id),
+            ...(c.server.remoteBindings ?? []).map((b) => b.id),
+        ];
         const allowed = c.principal.repositories === "*"
-            ? c.server.bindings.map((b) => b.id)
-            : c.server.bindings
-                .map((b) => b.id)
-                .filter((id) => c.principal.repositories.includes(id));
+            ? ids
+            : ids.filter((id) => c.principal.repositories.includes(id));
         return success("comforge_capabilities", `${c.server.tools.length} tools for ${allowed.length} repositories (${c.principal.profiles.join(", ")})`, {
             schema: CAPABILITIES_SCHEMA,
             server: {
@@ -116,6 +193,16 @@ export const HANDLERS = {
             },
             principal: { id: c.principal.id, profiles: c.principal.profiles },
             repositories: allowed,
+            ...((c.server.remoteBindings ?? []).length > 0
+                ? {
+                    withoutCheckout: {
+                        repositories: (c.server.remoteBindings ?? [])
+                            .map((b) => b.id)
+                            .filter((id) => allowed.includes(id)),
+                        tools: REMOTE_READ_TOOLS,
+                    },
+                }
+                : {}),
             tools: c.server.tools.map((n) => ({
                 name: n,
                 executes: TOOLS[n].executes,
@@ -200,7 +287,7 @@ export const HANDLERS = {
         });
     },
     async comforge_issue(c, input) {
-        const { config, reads } = evidence(c);
+        const { config, reads } = await evidence(c);
         try {
             if (input.number === undefined) {
                 const state = input.state ?? "open";
@@ -250,7 +337,7 @@ export const HANDLERS = {
         }
     },
     async comforge_pr(c, input) {
-        const { reads } = evidence(c);
+        const { reads } = await evidence(c);
         const detail = detailFor(c.principal);
         const include = new Set(input.include ?? []);
         try {
@@ -308,7 +395,7 @@ export const HANDLERS = {
                     })),
                     advisory: {
                         available: false,
-                        reason: "the published @comforge/github 0.4.0 has no issue-comment read",
+                        reason: "advisory reviews are marked comments, read with comforge_reviews",
                     },
                 };
             }
@@ -388,7 +475,11 @@ export const HANDLERS = {
     },
     async comforge_prs(c, input) {
         const state = input.state ?? "open";
-        const r = await services(c).pullRequests({ state });
+        const r = c.remote
+            ? await remoteRead(c, async (reads) => ({
+                pullRequests: await reads.listPullRequests({ state }),
+            }))
+            : await services(c).pullRequests({ state });
         return settle(r, (v) => {
             const all = v.pullRequests.sort((a, b) => b.number - a.number);
             const p = paginate(all, input.cursor, input.pageSize);
@@ -411,7 +502,11 @@ export const HANDLERS = {
         });
     },
     async comforge_comments(c, input) {
-        const r = await services(c).issueComments({ issue: input.number });
+        const r = c.remote
+            ? await remoteRead(c, async (reads) => ({
+                comments: await reads.listIssueComments(input.number),
+            }))
+            : await services(c).issueComments({ issue: input.number });
         const detail = Boolean(input.detail) && detailFor(c.principal);
         return settle(r, (v) => {
             const all = v.comments;
@@ -428,7 +523,18 @@ export const HANDLERS = {
         });
     },
     async comforge_reviews(c, input) {
-        const r = await services(c).advisoryReviews({ pr: input.pr });
+        const r = c.remote
+            ? await remoteRead(c, async (reads, config) => {
+                const rp = reviewProtocol(config);
+                if (!rp)
+                    throw new ToolRefusal("config-invalid", "advisory reviews need a review section", 2);
+                const pr = await reads.getPullRequest(input.pr);
+                return {
+                    currentHead: pr.head.sha,
+                    reviews: await listAdvisoryReviews(reads, rp, { number: pr.number, headSha: pr.head.sha }, { trustedAuthors: config.review?.trustedAuthors ?? [] }),
+                };
+            })
+            : await services(c).advisoryReviews({ pr: input.pr });
         const detail = detailFor(c.principal);
         return settle(r, (v) => {
             const all = v.reviews;
@@ -440,6 +546,10 @@ export const HANDLERS = {
                 reviews: p.items.map((rv) => ({
                     commentId: rv.commentId,
                     author: rv.author,
+                    // 0.2.0: present when the evidence carries them (published @comforge/github 0.6.0).
+                    ...("authorAssociation" in rv ? { authorAssociation: rv.authorAssociation } : {}),
+                    ...("commentUrl" in rv ? { commentUrl: rv.commentUrl } : {}),
+                    ...("updatedAt" in rv ? { updatedAt: rv.updatedAt } : {}),
                     provenance: rv.provenance,
                     integrity: rv.integrity,
                     stale: rv.stale,
@@ -455,7 +565,16 @@ export const HANDLERS = {
         });
     },
     async comforge_artifact(c, input) {
-        const r = await services(c).artifact({ commit: input.commit, path: input.path });
+        const r = c.remote
+            ? await remoteRead(c, async (reads, config) => {
+                // The trusted configuration's artifact policy, exactly as @comforge/cli applies it.
+                if (!artifactReadable(config, input.path))
+                    throw new ToolRefusal("policy-denied", `${input.path} is outside the readable artifact paths`, 1, {
+                        path: input.path,
+                    });
+                return { artifact: await reads.getFileAtCommit(input.commit, input.path) };
+            })
+            : await services(c).artifact({ commit: input.commit, path: input.path });
         const detail = detailFor(c.principal);
         return settle(r, (v) => {
             const a = v.artifact;

@@ -9,7 +9,7 @@
     "start:bun": "bun demo.mjs"
   },
   "dependencies": {
-    "@comforge/mcp": "0.1.0",
+    "@comforge/mcp": "0.2.0",
     "@modelcontextprotocol/sdk": "1.32.2"
   }
 }
