@@ -41,7 +41,7 @@ const files = await github.listPullRequestFiles(7, pr.head.sha); // refuses if t
 if (!checks.ok) throw new Error("required checks are not green for this exact commit");
 ```
 
-A complete, runnable consumer with a fake GitHub transport: [examples/factory-github-consumer](https://github.com/vikramrao1994/comforge/tree/github/v0.4.0/examples/factory-github-consumer/).
+A complete, runnable consumer with a fake GitHub transport: [examples/factory-github-consumer](https://github.com/vikramrao1994/comforge/tree/github/v0.5.0/examples/factory-github-consumer/).
 
 ## The transport
 
@@ -68,6 +68,22 @@ Bring your own `GitHubTransport` (a `gh`-CLI runner, a test fake, a cache) by im
 | `getChecks(sha, required)` | every check run on exactly `sha`; `ok` when each required name has a successful run | `incomplete`, `malformed-response` for a run of another commit |
 
 `ok` is false when `required` is empty: no requirement proves nothing.
+
+More reads, all through the same transport (so the same rate-limit, timeout, size and credential-redaction behaviour):
+
+| Method | Returns | Refuses |
+|---|---|---|
+| `listIssueComments(n, { since? })` | every comment of an issue or pull request, oldest first: `{ id, author, authorType, authorAssociation, createdAt, updatedAt, body }` | `incomplete` beyond `maxPages × perPage` |
+| `listPullRequests({ state?, base? })` | `{ number, state, draft, merged, title, author, headRef, headSha, baseRef, createdAt, updatedAt }`, newest first (`state` default `open`) | `incomplete`; `invalid-input` for an unsafe `base` ref name |
+| `getFileAtCommit(commitSha, path, { maxBytes? })` | `{ commitSha, path, blobSha, size, kind, text? }`; `kind` is `text`, `binary` (NUL or not UTF-8) or `too-large` (over `maxBytes`, default 262 144, or no inline content); `text` only for `text` | `invalid-input` unless `commitSha` is a 40-hex SHA (never a branch or tag) and `path` is a plain relative path (no leading `/`, `\`, `.`, `..`, empty segment or control character; 1 to 1024 chars), checked before any request; `wrong-target` for a directory, symlink, submodule or an answer for another path |
+
+Incompleteness is never silent: a listing that does not fit in `maxPages` pages throws `incomplete`; there is no partial result. Titles, bodies and file text are bounded `UntrustedText` (`maxTextChars`, `truncated`). Raw base64 is never returned.
+
+### Advisory reviews
+
+`listAdvisoryReviews(github, protocol, { number, headSha }, { trustedAuthors })` and `latestAdvisoryReview(...)` (newest by `createdAt`, then comment id; `null` when none) read a pull request's conversation comments and keep those carrying the `ReviewProtocol`'s marker. Each result has `integrity` (`verified`, `mismatch` or `unreadable`, decided by `@comforge/core`), `provenance` (`reviewProvenance` against `trustedAuthors`), `stale` (`isReviewStale` against the head you pass), the verdict, digest and ticket, and the decoded `review` payload only when `integrity` is `verified`. A marker copied from another pull request, an altered payload or a body cut by the text limit never yields a payload.
+
+These are advisory reviews: ordinary PR comments with a hidden, unkeyed marker. They are not native GitHub reviews (`listReviews`), carry no approval state, and prove nothing about who wrote them: act only on `verified` + `trusted_author` + `stale === false`, and even then a review is evidence, never an authorization.
 
 ## Published specifications
 

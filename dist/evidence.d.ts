@@ -142,6 +142,47 @@ export interface CommitComparison {
     behindBy: number;
     mergeBase: string;
 }
+export interface IssueCommentEvidence {
+    id: number;
+    author: string | null;
+    /** GitHub's account type (`User`, `Bot`, ...), when it said. */
+    authorType: string | null;
+    /** GitHub's `author_association` (`OWNER`, `NONE`, ...); empty when GitHub sent none. */
+    authorAssociation: string;
+    createdAt: string;
+    updatedAt: string;
+    body: UntrustedText;
+}
+export interface PullRequestSummary {
+    number: number;
+    state: string;
+    draft: boolean;
+    /** `merged_at` is set. */
+    merged: boolean;
+    title: UntrustedText;
+    author: string | null;
+    headRef: string;
+    headSha: string;
+    baseRef: string;
+    createdAt: string;
+    updatedAt: string;
+}
+export interface FileLimits {
+    /** Largest file read as text, in bytes. Default 262 144. */
+    maxBytes: number;
+}
+export declare const DEFAULT_FILE_LIMITS: FileLimits;
+export interface FileAtCommitEvidence {
+    commitSha: string;
+    path: string;
+    /** The blob's SHA as GitHub reported it. */
+    blobSha: string;
+    size: number;
+    /** `too-large`: over `maxBytes`, or GitHub sent no inline content. `binary`: NUL or not UTF-8. */
+    kind: "text" | "binary" | "too-large";
+    /** Present only for `kind: "text"`. Untrusted data; raw base64 is never returned. */
+    text?: UntrustedText;
+}
 export interface GitHubEvidence {
     readonly repository: string;
     getIssue(number: number): Promise<IssueEvidence>;
@@ -170,6 +211,28 @@ export interface GitHubEvidence {
      * access. Which one to trust when is the caller's policy; this never reports success.
      */
     listWorkflowRuns(sha: string): Promise<WorkflowRunEvidence>;
+    /**
+     * Every comment of an issue or pull request (GitHub's issue-comments endpoint), oldest
+     * first. `since` (ISO 8601) is passed to GitHub. A listing beyond `maxPages` is refused
+     * with `incomplete`, never returned partial. Comment bodies are bounded untrusted text.
+     */
+    listIssueComments(issue: number, options?: {
+        since?: string;
+    }): Promise<IssueCommentEvidence[]>;
+    /**
+     * Pull requests, newest first (`state` default `open`; optionally only those targeting
+     * `base`). Refuses `incomplete` beyond `maxPages`, like every listing.
+     */
+    listPullRequests(options?: {
+        state?: "open" | "closed" | "all";
+        base?: string;
+    }): Promise<PullRequestSummary[]>;
+    /**
+     * A file bound to one immutable revision: `commitSha` must be a full 40-hex commit SHA
+     * (never a branch or tag) and `path` a plain relative path, both checked before any request.
+     * A directory, symlink, submodule or a response for another path is refused.
+     */
+    getFileAtCommit(commitSha: string, path: string, limits?: Partial<FileLimits>): Promise<FileAtCommitEvidence>;
     /** How commit `head` relates to commit `base` (both full SHAs), as GitHub's compare reports it. */
     compareCommits(base: string, head: string): Promise<CommitComparison>;
 }

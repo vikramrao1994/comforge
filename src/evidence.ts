@@ -65,6 +65,34 @@ const PullSchema = z.object({
   base: RefSchema,
   head: RefSchema,
 });
+const CommentSchema = z.object({
+  id: z.number().int(),
+  user: z.object({ login: z.string(), type: z.string().optional() }).nullable().optional(),
+  author_association: z.string().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  body: z.string().nullable().optional(),
+});
+const PullListSchema = z.object({
+  number: z.number().int().positive(),
+  title: z.string(),
+  state: z.string(),
+  draft: z.boolean().optional(),
+  merged_at: z.string().nullable().optional(),
+  user: User,
+  head: z.object({ ref: z.string(), sha: z.string().regex(SHA) }),
+  base: z.object({ ref: z.string() }),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+const ContentsSchema = z.object({
+  type: z.string(),
+  path: z.string(),
+  sha: z.string().regex(SHA),
+  size: z.number().int().nonnegative(),
+  encoding: z.string().optional(),
+  content: z.string().nullable().optional(),
+});
 const FileSchema = z.object({
   filename: z.string(),
   previous_filename: z.string().optional(),
@@ -251,6 +279,65 @@ export interface CommitComparison {
   mergeBase: string;
 }
 
+export interface IssueCommentEvidence {
+  id: number;
+  author: string | null;
+  /** GitHub's account type (`User`, `Bot`, ...), when it said. */
+  authorType: string | null;
+  /** GitHub's `author_association` (`OWNER`, `NONE`, ...); empty when GitHub sent none. */
+  authorAssociation: string;
+  createdAt: string;
+  updatedAt: string;
+  body: UntrustedText;
+}
+
+export interface PullRequestSummary {
+  number: number;
+  state: string;
+  draft: boolean;
+  /** `merged_at` is set. */
+  merged: boolean;
+  title: UntrustedText;
+  author: string | null;
+  headRef: string;
+  headSha: string;
+  baseRef: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FileLimits {
+  /** Largest file read as text, in bytes. Default 262 144. */
+  maxBytes: number;
+}
+export const DEFAULT_FILE_LIMITS: FileLimits = { maxBytes: 262_144 };
+
+export interface FileAtCommitEvidence {
+  commitSha: string;
+  path: string;
+  /** The blob's SHA as GitHub reported it. */
+  blobSha: string;
+  size: number;
+  /** `too-large`: over `maxBytes`, or GitHub sent no inline content. `binary`: NUL or not UTF-8. */
+  kind: "text" | "binary" | "too-large";
+  /** Present only for `kind: "text"`. Untrusted data; raw base64 is never returned. */
+  text?: UntrustedText;
+}
+
+const SAFE_REF = /^[A-Za-z0-9._/-]{1,200}$/;
+
+/** Refuses anything but a plain repository-relative path, before any request is made. */
+function safePath(path: string): string[] {
+  const bad = () => new GitHubAdapterError("invalid-input", "Invalid file path");
+  if (typeof path !== "string" || path.length === 0 || path.length > 1024) throw bad();
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is refused
+  if (path.startsWith("/") || path.includes("\\") || /[\u0000-\u001f\u007f]/.test(path))
+    throw bad();
+  const segments = path.split("/");
+  if (segments.some((s) => s === "" || s === "." || s === ".." || s.includes(".."))) throw bad();
+  return segments;
+}
+
 export interface GitHubEvidence {
   readonly repository: string;
   getIssue(number: number): Promise<IssueEvidence>;
@@ -278,6 +365,30 @@ export interface GitHubEvidence {
    * access. Which one to trust when is the caller's policy; this never reports success.
    */
   listWorkflowRuns(sha: string): Promise<WorkflowRunEvidence>;
+  /**
+   * Every comment of an issue or pull request (GitHub's issue-comments endpoint), oldest
+   * first. `since` (ISO 8601) is passed to GitHub. A listing beyond `maxPages` is refused
+   * with `incomplete`, never returned partial. Comment bodies are bounded untrusted text.
+   */
+  listIssueComments(issue: number, options?: { since?: string }): Promise<IssueCommentEvidence[]>;
+  /**
+   * Pull requests, newest first (`state` default `open`; optionally only those targeting
+   * `base`). Refuses `incomplete` beyond `maxPages`, like every listing.
+   */
+  listPullRequests(options?: {
+    state?: "open" | "closed" | "all";
+    base?: string;
+  }): Promise<PullRequestSummary[]>;
+  /**
+   * A file bound to one immutable revision: `commitSha` must be a full 40-hex commit SHA
+   * (never a branch or tag) and `path` a plain relative path, both checked before any request.
+   * A directory, symlink, submodule or a response for another path is refused.
+   */
+  getFileAtCommit(
+    commitSha: string,
+    path: string,
+    limits?: Partial<FileLimits>,
+  ): Promise<FileAtCommitEvidence>;
   /** How commit `head` relates to commit `base` (both full SHAs), as GitHub's compare reports it. */
   compareCommits(base: string, head: string): Promise<CommitComparison>;
 }
@@ -581,6 +692,96 @@ export function createGitHubEvidence(options: {
           createdAt: r.created_at,
         })),
       };
+    },
+
+    async listIssueComments(number: number, opts: { since?: string } = {}) {
+      if (opts.since !== undefined && Number.isNaN(Date.parse(opts.since)))
+        throw new GitHubAdapterError("invalid-input", "since must be an ISO 8601 timestamp");
+      const comments = await pages(
+        ["issues", positive(number, "issue number"), "comments"],
+        opts.since === undefined ? {} : { since: opts.since },
+        (body) => ({ items: parse(z.array(CommentSchema), body, "issue comments") }),
+      );
+      return comments.map(
+        (c): IssueCommentEvidence => ({
+          id: c.id,
+          author: c.user?.login ?? null,
+          authorType: c.user?.type ?? null,
+          authorAssociation: c.author_association ?? "",
+          createdAt: c.created_at,
+          updatedAt: c.updated_at,
+          body: untrusted(c.body),
+        }),
+      );
+    },
+
+    async listPullRequests(opts: { state?: "open" | "closed" | "all"; base?: string } = {}) {
+      const state = opts.state ?? "open";
+      if (state !== "open" && state !== "closed" && state !== "all")
+        throw new GitHubAdapterError("invalid-input", "Invalid pull request state");
+      if (
+        opts.base !== undefined &&
+        (!SAFE_REF.test(opts.base) ||
+          opts.base.includes("..") ||
+          opts.base.includes("//") ||
+          /^[-/]|[/.]$/.test(opts.base))
+      )
+        throw new GitHubAdapterError("invalid-input", "Invalid base ref name");
+      const pulls = await pages(
+        ["pulls"],
+        {
+          state,
+          sort: "created",
+          direction: "desc",
+          ...(opts.base === undefined ? {} : { base: opts.base }),
+        },
+        (body) => ({ items: parse(z.array(PullListSchema), body, "a pull request listing") }),
+      );
+      return pulls.map(
+        (p): PullRequestSummary => ({
+          number: p.number,
+          state: p.state,
+          draft: p.draft ?? false,
+          merged: p.merged_at !== null && p.merged_at !== undefined,
+          title: untrusted(p.title),
+          author: p.user?.login ?? null,
+          headRef: p.head.ref,
+          headSha: p.head.sha,
+          baseRef: p.base.ref,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        }),
+      );
+    },
+
+    async getFileAtCommit(commitSha: string, path: string, fileLimits: Partial<FileLimits> = {}) {
+      sha(commitSha);
+      const segments = safePath(path);
+      const maxBytes = fileLimits.maxBytes ?? DEFAULT_FILE_LIMITS.maxBytes;
+      if (!Number.isSafeInteger(maxBytes) || maxBytes < 1)
+        throw new GitHubAdapterError("invalid-input", "Invalid file limits");
+      const body = await get(["contents", ...segments], { ref: commitSha });
+      if (Array.isArray(body))
+        throw new GitHubAdapterError("wrong-target", "The path is a directory, not a file");
+      const f = parse(ContentsSchema, body, "file contents");
+      if (f.type !== "file")
+        throw new GitHubAdapterError("wrong-target", `The path is a ${f.type}, not a file`);
+      if (f.path !== path)
+        throw new GitHubAdapterError("wrong-target", "GitHub answered for another path");
+      const base = { commitSha, path, blobSha: f.sha, size: f.size };
+      if (f.size > maxBytes || f.encoding !== "base64" || !f.content)
+        return { ...base, kind: "too-large" as const };
+      const bytes = Buffer.from(f.content.replace(/\s/g, ""), "base64");
+      if (bytes.length !== f.size)
+        throw new GitHubAdapterError("malformed-response", "File content does not match its size");
+      if (bytes.includes(0)) return { ...base, kind: "binary" as const };
+      let text: string;
+      try {
+        text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      } catch {
+        return { ...base, kind: "binary" as const };
+      }
+      return { ...base, kind: "text" as const, text: untrusted(text) };
     },
 
     async compareCommits(baseSha: string, headSha: string) {

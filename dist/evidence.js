@@ -45,6 +45,34 @@ const PullSchema = z.object({
     base: RefSchema,
     head: RefSchema,
 });
+const CommentSchema = z.object({
+    id: z.number().int(),
+    user: z.object({ login: z.string(), type: z.string().optional() }).nullable().optional(),
+    author_association: z.string().optional(),
+    created_at: z.string(),
+    updated_at: z.string(),
+    body: z.string().nullable().optional(),
+});
+const PullListSchema = z.object({
+    number: z.number().int().positive(),
+    title: z.string(),
+    state: z.string(),
+    draft: z.boolean().optional(),
+    merged_at: z.string().nullable().optional(),
+    user: User,
+    head: z.object({ ref: z.string(), sha: z.string().regex(SHA) }),
+    base: z.object({ ref: z.string() }),
+    created_at: z.string(),
+    updated_at: z.string(),
+});
+const ContentsSchema = z.object({
+    type: z.string(),
+    path: z.string(),
+    sha: z.string().regex(SHA),
+    size: z.number().int().nonnegative(),
+    encoding: z.string().optional(),
+    content: z.string().nullable().optional(),
+});
 const FileSchema = z.object({
     filename: z.string(),
     previous_filename: z.string().optional(),
@@ -100,6 +128,21 @@ export const DEFAULT_PATCH_LIMITS = {
     perFileMaxChars: 20_000,
     totalMaxChars: 100_000,
 };
+export const DEFAULT_FILE_LIMITS = { maxBytes: 262_144 };
+const SAFE_REF = /^[A-Za-z0-9._/-]{1,200}$/;
+/** Refuses anything but a plain repository-relative path, before any request is made. */
+function safePath(path) {
+    const bad = () => new GitHubAdapterError("invalid-input", "Invalid file path");
+    if (typeof path !== "string" || path.length === 0 || path.length > 1024)
+        throw bad();
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is refused
+    if (path.startsWith("/") || path.includes("\\") || /[\u0000-\u001f\u007f]/.test(path))
+        throw bad();
+    const segments = path.split("/");
+    if (segments.some((s) => s === "" || s === "." || s === ".." || s.includes("..")))
+        throw bad();
+    return segments;
+}
 function positive(value, what) {
     if (!Number.isSafeInteger(value) || value < 1)
         throw new GitHubAdapterError("invalid-input", `Invalid ${what}`);
@@ -326,6 +369,81 @@ export function createGitHubEvidence(options) {
                     createdAt: r.created_at,
                 })),
             };
+        },
+        async listIssueComments(number, opts = {}) {
+            if (opts.since !== undefined && Number.isNaN(Date.parse(opts.since)))
+                throw new GitHubAdapterError("invalid-input", "since must be an ISO 8601 timestamp");
+            const comments = await pages(["issues", positive(number, "issue number"), "comments"], opts.since === undefined ? {} : { since: opts.since }, (body) => ({ items: parse(z.array(CommentSchema), body, "issue comments") }));
+            return comments.map((c) => ({
+                id: c.id,
+                author: c.user?.login ?? null,
+                authorType: c.user?.type ?? null,
+                authorAssociation: c.author_association ?? "",
+                createdAt: c.created_at,
+                updatedAt: c.updated_at,
+                body: untrusted(c.body),
+            }));
+        },
+        async listPullRequests(opts = {}) {
+            const state = opts.state ?? "open";
+            if (state !== "open" && state !== "closed" && state !== "all")
+                throw new GitHubAdapterError("invalid-input", "Invalid pull request state");
+            if (opts.base !== undefined &&
+                (!SAFE_REF.test(opts.base) ||
+                    opts.base.includes("..") ||
+                    opts.base.includes("//") ||
+                    /^[-/]|[/.]$/.test(opts.base)))
+                throw new GitHubAdapterError("invalid-input", "Invalid base ref name");
+            const pulls = await pages(["pulls"], {
+                state,
+                sort: "created",
+                direction: "desc",
+                ...(opts.base === undefined ? {} : { base: opts.base }),
+            }, (body) => ({ items: parse(z.array(PullListSchema), body, "a pull request listing") }));
+            return pulls.map((p) => ({
+                number: p.number,
+                state: p.state,
+                draft: p.draft ?? false,
+                merged: p.merged_at !== null && p.merged_at !== undefined,
+                title: untrusted(p.title),
+                author: p.user?.login ?? null,
+                headRef: p.head.ref,
+                headSha: p.head.sha,
+                baseRef: p.base.ref,
+                createdAt: p.created_at,
+                updatedAt: p.updated_at,
+            }));
+        },
+        async getFileAtCommit(commitSha, path, fileLimits = {}) {
+            sha(commitSha);
+            const segments = safePath(path);
+            const maxBytes = fileLimits.maxBytes ?? DEFAULT_FILE_LIMITS.maxBytes;
+            if (!Number.isSafeInteger(maxBytes) || maxBytes < 1)
+                throw new GitHubAdapterError("invalid-input", "Invalid file limits");
+            const body = await get(["contents", ...segments], { ref: commitSha });
+            if (Array.isArray(body))
+                throw new GitHubAdapterError("wrong-target", "The path is a directory, not a file");
+            const f = parse(ContentsSchema, body, "file contents");
+            if (f.type !== "file")
+                throw new GitHubAdapterError("wrong-target", `The path is a ${f.type}, not a file`);
+            if (f.path !== path)
+                throw new GitHubAdapterError("wrong-target", "GitHub answered for another path");
+            const base = { commitSha, path, blobSha: f.sha, size: f.size };
+            if (f.size > maxBytes || f.encoding !== "base64" || !f.content)
+                return { ...base, kind: "too-large" };
+            const bytes = Buffer.from(f.content.replace(/\s/g, ""), "base64");
+            if (bytes.length !== f.size)
+                throw new GitHubAdapterError("malformed-response", "File content does not match its size");
+            if (bytes.includes(0))
+                return { ...base, kind: "binary" };
+            let text;
+            try {
+                text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+            }
+            catch {
+                return { ...base, kind: "binary" };
+            }
+            return { ...base, kind: "text", text: untrusted(text) };
         },
         async compareCommits(baseSha, headSha) {
             sha(baseSha, "base");

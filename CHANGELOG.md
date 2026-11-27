@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Accepts @comforge/core ^0.1.2 || ^0.2.0, so a consumer of core 0.2.0 command scopes shares one core copy with github.
+- Additive read-only evidence: listIssueComments, listPullRequests, getFileAtCommit (40-hex commit, strict path, bounded text) and listAdvisoryReviews/latestAdvisoryReview that verify advisory review markers through the core protocol.
+
 ## 0.4.0
 
 - Source compatibility: WriteOperation, WriteKind and WRITE_CAPABILITIES gain pull.update and pulls:update, so an exhaustive TypeScript switch over them needs the new case. Verification now also requires the read-back to be the written resource's own number or id.

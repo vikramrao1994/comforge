@@ -1,6 +1,6 @@
 {
   "name": "@comforge/github",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "GitHub evidence for Comforge governance: typed, exact-SHA reads of issues, pull requests, reviews and checks, and published-specification verification through @comforge/core. Injected transport. An opt-in writer performs caller-authorized issue, comment, review and pull-request writes with a consumer-owned ledger.",
   "license": "Apache-2.0",
@@ -18,7 +18,7 @@
     "./package.json": "./package.json"
   },
   "dependencies": {
-    "@comforge/core": "^0.1.2",
+    "@comforge/core": "^0.1.2 || ^0.2.0",
     "zod": "^4.6.6"
   },
   "engines": {

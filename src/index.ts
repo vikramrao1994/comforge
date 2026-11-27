@@ -9,13 +9,18 @@ export {
   type CheckEvidence,
   type CommitComparison,
   createGitHubEvidence,
+  DEFAULT_FILE_LIMITS,
   type EvidenceLimits,
+  type FileAtCommitEvidence,
+  type FileLimits,
   type GitHubEvidence,
+  type IssueCommentEvidence,
   type IssueEvidence,
   type PatchLimits,
   type PatchStatus,
   type PullRequestEvidence,
   type PullRequestFilesEvidence,
+  type PullRequestSummary,
   type RepositoryRef,
   type ReviewEvidence,
   type UntrustedText,
@@ -31,6 +36,12 @@ export {
   type WriteKind,
   type WriteOperation,
 } from "./operations.ts";
+export {
+  type AdvisoryReview,
+  type AdvisoryReviewOptions,
+  latestAdvisoryReview,
+  listAdvisoryReviews,
+} from "./reviews.ts";
 export {
   type Reconciliation,
   readSpecificationIssue,
