@@ -26,6 +26,7 @@
     "release:candidates": "bun tooling/release/candidates.ts",
     "release:pack": "bun tooling/release/pack.ts",
     "release:build": "bun tooling/release/release.ts",
+    "release:rehearse": "bun tooling/release/rehearse.ts",
     "release:campaign": "bun tooling/release/releaseCampaign.ts",
     "release:record": "bun tooling/release/releaseRecord.ts",
     "release:approve": "bun tooling/release/releaseApprove.ts approve",

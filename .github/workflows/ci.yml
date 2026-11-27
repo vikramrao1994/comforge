@@ -91,3 +91,35 @@ jobs:
         env:
           COMFORGE_WORKER_USER: comforge-worker
         run: bun test --isolate packages/cli/test/workerUser.test.ts
+
+  # The release pipeline exercised on every pull request, without a credential: version commit,
+  # candidate build (reproducible), signed authorization with a synthetic key, npm preparation
+  # and readback against a fake registry, for all five packages in dependency order. A
+  # rehearsal is never a publication: nothing is pushed or published (tooling/release/rehearse.ts).
+  rehearsal:
+    name: Release rehearsal (credential-free, all five packages)
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the release planner reads history
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Rehearse every package's release
+        run: bun run release:rehearse --out release-rehearsal.json
+      - name: Upload the rehearsal report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-rehearsal
+          path: release-rehearsal.json
+          retention-days: 30
+          if-no-files-found: ignore
