@@ -3,8 +3,8 @@
 Status: published. Every refusal is a stable `error` code an agent can branch on. CLI errors go
 to stderr as `{"error": "<code>", "message": "…", "detail": {…}}`; MCP refusals are
 `{"schema": "comforge-mcp-error/v1", "code", "message", "exit", "retryable", "hint"?}`. The
-generated tables are authoritative for the code lists: [CLI](generated/cli-errors.md),
-[MCP](generated/mcp-errors.md).
+generated tables are authoritative for the code lists: [CLI](inventory/cli-errors.md),
+[MCP](inventory/mcp-errors.md).
 
 | Exit | Class | What to do |
 |---|---|---|

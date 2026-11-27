@@ -53,10 +53,10 @@ Status labels used throughout: **published** (in a released npm version), **impl
 [errors](reference/errors.md) · [tool selection](reference/tool-selection.md) ·
 [compatibility](reference/compatibility.md)
 
-Generated from the contracts: [CLI commands](reference/generated/cli-commands.md) ·
-[CLI errors](reference/generated/cli-errors.md) · [MCP tools](reference/generated/mcp-tools.md) ·
-[MCP errors](reference/generated/mcp-errors.md) ·
-[configuration keys](reference/generated/configuration.md) · [API inventory](reference/generated/api.md)
+Generated from the contracts: [CLI commands](reference/inventory/cli-commands.md) ·
+[CLI errors](reference/inventory/cli-errors.md) · [MCP tools](reference/inventory/mcp-tools.md) ·
+[MCP errors](reference/inventory/mcp-errors.md) ·
+[configuration keys](reference/inventory/configuration.md) · [API inventory](reference/inventory/api.md)
 
 ## Benchmarks
 

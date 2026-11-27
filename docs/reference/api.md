@@ -1,7 +1,7 @@
 # Programmatic API
 
 Status: published, at the versions in each heading. This page explains the entry points you
-are most likely to call; the generated [API inventory](generated/api.md) lists **every** runtime
+are most likely to call; the generated [API inventory](inventory/api.md) lists **every** runtime
 export of every published subpath (238 across 16 subpaths), with the first sentence of its
 source documentation. Types ship in each package's `dist/*.d.ts`. Consumers normally depend on
 `@comforge/cli` and `@comforge/mcp` only; the three libraries are their dependencies and are

@@ -11,6 +11,6 @@
 | [Compatibility](compatibility.md) | runtimes, platforms, package versions and formats |
 
 Generated from the packages' own contracts, checked in CI (`bun run docs:check`):
-[CLI commands](generated/cli-commands.md) · [CLI errors](generated/cli-errors.md) ·
-[MCP tools](generated/mcp-tools.md) · [MCP errors](generated/mcp-errors.md) ·
-[configuration keys](generated/configuration.md) · [API inventory](generated/api.md).
+[CLI commands](inventory/cli-commands.md) · [CLI errors](inventory/cli-errors.md) ·
+[MCP tools](inventory/mcp-tools.md) · [MCP errors](inventory/mcp-errors.md) ·
+[configuration keys](inventory/configuration.md) · [API inventory](inventory/api.md).

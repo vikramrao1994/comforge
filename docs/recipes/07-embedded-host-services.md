@@ -98,7 +98,7 @@ GitHub at its exact head.
 
 Authorization still comes from the trusted configuration on the base branch. See
 [host services](../concepts/host-services.md) and the
-[API inventory](../reference/generated/api.md).
+[API inventory](../reference/inventory/api.md).
 
 ## Errors, side effects, cleanup
 

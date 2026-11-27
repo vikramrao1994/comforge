@@ -1,7 +1,7 @@
 # CLI reference — `comforge`
 
 Status: published (`@comforge/cli` 0.5.0). The generated
-[command inventory](generated/cli-commands.md) is the authoritative list of commands and of the
+[command inventory](inventory/cli-commands.md) is the authoritative list of commands and of the
 flags the parser accepts; this page explains them. `comforge capabilities --json` prints the
 same at runtime, and `comforge <command> --help` prints one command's usage.
 

@@ -2,7 +2,7 @@
 
 `comforge.config.json` at the repository root, committed to the base branch. Status: published
 (`comforge-config/v1`, `@comforge/cli` 0.5.0). `comforge schema config` prints the JSON Schema;
-the generated [section and key inventory](generated/configuration.md) is reconciled with it in
+the generated [section and key inventory](inventory/configuration.md) is reconciled with it in
 CI; the [CLI README](../../packages/cli/README.md#configuration) has a full example. Unknown keys
 and unknown schema versions are refused. Commands are argument vectors, never shell strings.
 

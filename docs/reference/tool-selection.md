@@ -1,8 +1,8 @@
 # Choosing an interface and a tool
 
 Status: published. For agents and the people who configure them. Inventories:
-[CLI commands](generated/cli-commands.md), [MCP tools](generated/mcp-tools.md),
-[API](generated/api.md).
+[CLI commands](inventory/cli-commands.md), [MCP tools](inventory/mcp-tools.md),
+[API](inventory/api.md).
 
 ## CLI, MCP or embedded?
 

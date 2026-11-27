@@ -1,6 +1,6 @@
 # MCP reference — `@comforge/mcp`
 
-Status: published (`@comforge/mcp` 0.3.0). The generated [tool inventory](generated/mcp-tools.md)
+Status: published (`@comforge/mcp` 0.3.0). The generated [tool inventory](inventory/mcp-tools.md)
 is authoritative for tools, profiles, launch flags and the remote read set; the package
 [README](../../packages/mcp/README.md) has the full security model.
 
@@ -82,4 +82,4 @@ excerpted unless a reviewer asks for detail. Error codes: [errors](errors.md).
 | `createHttpHandler(options)` | Streamable HTTP handler (`authenticate`, `allowedHosts`, `allowedOrigins`, limits, optional `remoteRepositories` + `remote` for checkout-free reads) |
 | `@comforge/mcp/host` `createEngineeringHost(options)` | the same engineering services for your own server ([recipe 7](../recipes/07-embedded-host-services.md)) |
 
-Every runtime export: [API inventory](generated/api.md#comforgemcp-030).
+Every runtime export: [API inventory](inventory/api.md#comforgemcp-030).
