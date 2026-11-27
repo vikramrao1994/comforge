@@ -218,6 +218,12 @@
       "rule": "owner-identity",
       "contains": "\"owner\": \"vikramrao1994\"",
       "reason": "this repository's own owner, as the configuration must name it"
+    },
+    {
+      "path": "benchmarks/redact.ts",
+      "rule": "local-path",
+      "contains": "C:\\\\Users\\\\",
+      "reason": "the redactor's own home-directory pattern"
     }
   ]
 }
