@@ -927,7 +927,9 @@ export function pushRelease(options: {
 /** A dry run: the same release, in a throwaway copy of the checkout. Nothing is pushed. */
 export function dryRunRelease(candidateDir: string, destDir: string, scratch: string) {
   const copy = mkdtempSync(path.join(scratch, "dry-run-"));
-  cpSync(destDir, copy, { recursive: true });
+  // verbatimSymlinks: a default copy rewrites a relative link (this repository's `main` tracks
+  // `.claude/skills -> ../skills`) to an absolute one, and git then sees the checkout as dirty.
+  cpSync(destDir, copy, { recursive: true, verbatimSymlinks: true });
   // The candidate's own package decides the branch, as it does for the real release.
   checkoutReleaseBranch(
     copy,
