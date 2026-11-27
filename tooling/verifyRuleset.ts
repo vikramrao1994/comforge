@@ -3,7 +3,7 @@
  *
  * Read-only check that the live `protect-main` ruleset enforces at least what
  * `.github/rulesets/protect-main.json` declares: active, on the default branch, no bypass,
- * deletion and force-push blocked, pull requests with code-owner review, and every required
+ * deletion and force-push blocked, pull requests (with code-owner review when the file asks), and every required
  * status check (by name and by the GitHub Actions app). It only reads (`gh api`, GET); applying
  * the ruleset is an owner action. Until this prints PASS, CI is advisory: a direct push to
  * `main` would not wait for it.
