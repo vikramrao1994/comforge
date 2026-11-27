@@ -1,13 +1,13 @@
 /**
- * The Comforge release publisher (ENGINEERING-FACTORY-DISTRIBUTION-001): builds a
+ * The Comforge release publisher: builds a
  * versioned, inspectable copy of one registry package (tooling/release/packages.ts;
- * `@comforge/core` by default) from one committed portfolio revision, syncs it into that
+ * `@comforge/core` by default) from one committed source revision, syncs it into that
  * package's release branch of a checkout of the Comforge repository, and commits, tags
  * and pushes a new immutable release. Each package has its own branch, tag prefix and
  * owned paths; a candidate's package comes from its own RELEASE.json.
  *
- * The portfolio stays the only authoritative source. The mirror is a distribution
- * target: nobody edits it, and the publisher refuses to overwrite anything it did not
+ * This repository's main is the only authoritative source. The release branches are
+ * distribution targets: nobody edits it, and the publisher refuses to overwrite anything it did not
  * write itself. Design reused from the profile publisher (scripts/github-profile):
  * deterministic generation, a scoped set of owned destination paths, dry run first,
  * no-op on identical output, never a force push.
@@ -55,7 +55,7 @@ export const RELEASE_FILE = "RELEASE.json";
 export const OWNERSHIP_FILE = ".comforge-release.json";
 
 /**
- * Licence files shipped when the portfolio source has them. The publisher never chooses
+ * Licence files shipped when the package source has them. The publisher never chooses
  * a licence: a release without one is a publication blocker (`publicationBlockers`).
  */
 export const LICENSE_FILES = ["LICENSE", "NOTICE"] as const;
@@ -202,7 +202,7 @@ export function assertChangelogEntry(changelog: string | null, version: string):
 
 /**
  * Content that must never reach the mirror, even a private one: credentials and key
- * material, personal or machine identifiers, and the portfolio's own identity and
+ * material, personal or machine identifiers, and private repository identities and
  * internal paths. The kernel is published under neutral example identities only.
  */
 export const DISCLOSURE_RULES: ReadonlyArray<{ id: string; pattern: RegExp }> = [
@@ -258,7 +258,7 @@ export function scanForDisclosure(root: string): DisclosureFinding[] {
 
 /**
  * Relative links in the shipped documents (Markdown and llms.txt) must resolve inside the
- * candidate: no links back into the portfolio.
+ * candidate: no links outside the release.
  */
 export function brokenRelativeLinks(root: string): string[] {
   const broken: string[] = [];
@@ -375,7 +375,7 @@ function stageSiblings(
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
 /**
- * Builds the mirror tree for one committed portfolio revision into `outDir/tree`, and the
+ * Builds the mirror tree for one committed source revision into `outDir/tree`, and the
  * npm tarball into `outDir`. The input is `git archive` of `sourceCommit`, never the working
  * tree, so uncommitted edits cannot leak into a release. `stagingRoot` must be inside the
  * repository (the compiler resolves zod and @types/node from its node_modules).
@@ -910,7 +910,7 @@ export function pushRelease(options: {
       if (/workflow/i.test(message) && /(permission|scope)/i.test(message))
         refuse(
           "workflow-permission",
-          `${message} — the credential lacks Workflows: write; see "Workflow changes" in docs/engineering/factory-core-distribution.md`,
+          `${message} — the credential lacks Workflows: write; see "Workflow changes" in docs/release-governance.md`,
         );
       refuse("push-rejected", message);
     }

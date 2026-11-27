@@ -1,6 +1,6 @@
 /**
  * Release intents: the reviewed, version-controlled statement of how a change affects a
- * releasable Comforge package (COMFORGE-RELEASE-AUTOMATION-001).
+ * releasable Comforge package.
  *
  * A Conventional Commit type is not a SemVer signal here. The audit measured it against the
  * real release history of `@comforge/core` and found `feat`/`fix` mostly on publisher and
@@ -36,7 +36,7 @@ export const ReleaseIntentSchema = z
   .object({
     schema: z.literal(INTENT_SCHEMA),
     // One package, or several when one change ships in each of them with the same bump and
-    // changelog line (COMFORGE-GITHUB-001). A single name keeps its original meaning.
+    // changelog line. A single name keeps its original meaning.
     package: z.union([
       z.string().refine(isReleasePackage, "not a releasable package"),
       z

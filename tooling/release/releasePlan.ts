@@ -1,8 +1,8 @@
 /**
- * The deterministic release planner for Comforge packages (COMFORGE-RELEASE-AUTOMATION-001).
+ * The deterministic release planner for Comforge packages.
  *
- *   bun run release:plan [--head REF] [--json] [--registry]
- *   bun run release:version-pr [--head REF] [--open]
+ *  bun run release:plan [--head REF] [--json] [--registry]
+ *  bun run release:version-pr [--head REF] [--open]
  *
  * Inputs, all read from Git at one commit (never the working tree): the consumer pin's
  * RELEASE.json (the last release whose npm artifact was independently read back), the

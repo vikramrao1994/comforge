@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import * as kernel from "../src/index.ts";
 
-// The package's runtime export surface, frozen (ENGINEERING-FACTORY-DX-001). Removing or
+// The package's runtime export surface, frozen. Removing or
 // renaming an export breaks consumers; adding one is a deliberate change to this list and
 // to the README's export reference.
 const EXPORTS = [

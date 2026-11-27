@@ -9,7 +9,7 @@ import {
   reconcileSpecification,
 } from "../src/index.ts";
 
-// COMFORGE-GITHUB-001: the adapter's contract. No network: a fake fetch stands in for
+// the adapter's contract. No network: a fake fetch stands in for
 // GitHub. Each refusal names why GitHub could not supply trustworthy evidence.
 
 const HEAD = "a".repeat(40);

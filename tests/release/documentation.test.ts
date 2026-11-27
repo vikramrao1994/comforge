@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import * as kernel from "@comforge/core";
 
-// The factory-core README and llms.txt (ENGINEERING-FACTORY-DX-001) are the package's
+// The factory-core README and llms.txt are the package's
 // consumer documentation: every code block is a verbatim region of the runnable example
 // consumer, every runtime export is named in the export reference, and every relative
 // link resolves, so the documentation cannot drift from code that is executed.

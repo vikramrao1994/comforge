@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
-// The kernel's dependency boundary (ENGINEERING-FACTORY-CORE-001, -002): pure code
+// The kernel's dependency boundary: pure code
 // that any runtime can import. It may import only its own files, the Node built-ins
 // and the one npm package listed here; it reads no environment, filesystem, clock or
 // Bun API, and it verifies signatures but can never create a key, sign or draw

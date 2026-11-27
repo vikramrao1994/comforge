@@ -1,0 +1,97 @@
+{
+  "description": "Representative tasks and the category routing must choose (tests/repository/routing.test.ts).",
+  "cases": [
+    {
+      "task": "fix the canonical json of a grant envelope",
+      "expect": "core-contracts"
+    },
+    {
+      "task": "add a field to the completion record",
+      "expect": "core-contracts"
+    },
+    {
+      "task": "the fake github server returns the wrong rate limit headers",
+      "expect": "github-transport"
+    },
+    {
+      "task": "sqlite adapter loses an operation under compare and set",
+      "expect": "ledger"
+    },
+    {
+      "task": "add a new exit code to the cli",
+      "expect": "cli-lifecycle"
+    },
+    {
+      "task": "deliver fails after cleanup",
+      "expect": "cli-lifecycle"
+    },
+    {
+      "task": "add an mcp tool for listing branches",
+      "expect": "mcp-server"
+    },
+    {
+      "task": "http handler should reject a missing principal",
+      "expect": "mcp-server"
+    },
+    {
+      "task": "owner grant expiry is not checked",
+      "expect": "security-authorization"
+    },
+    {
+      "task": "prompt injection in an issue comment",
+      "expect": "security-authorization"
+    },
+    {
+      "task": "prepare a version pr for the next release",
+      "expect": "release"
+    },
+    {
+      "task": "npm readback reports missing provenance",
+      "expect": "release"
+    },
+    {
+      "task": "upgrade comforge in the harness",
+      "expect": "dependency-migration"
+    },
+    {
+      "task": "update the readme for the new command",
+      "expect": "docs-and-skills"
+    },
+    {
+      "task": "add a skill for code review",
+      "expect": "docs-and-skills"
+    },
+    {
+      "task": "ci workflow should run on macos",
+      "expect": "testing-ci"
+    },
+    {
+      "task": "which package should own a retry policy",
+      "expect": "architecture"
+    },
+    {
+      "task": "install comforge in my repository",
+      "expect": "use-comforge"
+    },
+    {
+      "task": "deliver says authorization required",
+      "expect": "consumer-authorization"
+    },
+    {
+      "task": "recover an interrupted delivery",
+      "expect": "consumer-recovery"
+    },
+    {
+      "task": "publish a review for pull request 34",
+      "expect": "consumer-reviews"
+    },
+    {
+      "task": "run several agents on one repository",
+      "expect": "consumer-multi-agent"
+    },
+    {
+      "task": "embed the host services in my own server",
+      "expect": "consumer-embedding"
+    }
+  ]
+}

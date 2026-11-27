@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { packDistribution } from "../../tooling/release/pack";
 
-// COMFORGE-GITHUB-001: the independent example consumer of @comforge/github, against the
+// the independent example consumer of @comforge/github, against the
 // built distribution tarball as a consumer installs it: a fresh directory whose
 // node_modules holds only the tarball's contents and copies of its dependencies
 // (@comforge/core as installed here, zod) plus @types/node for the type check. The

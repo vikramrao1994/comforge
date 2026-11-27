@@ -12,7 +12,7 @@ import {
 } from "../../tooling/release/releaseIntent";
 import { promptReleaseIntents } from "../../tooling/release/releaseIntentPrompt";
 
-// COMFORGE-RELEASE-AUTOMATION-001: a release intent is reviewed, strict and immutable;
+// a release intent is reviewed, strict and immutable;
 // `bun commit` suggests one deterministically and records nothing without an answer.
 
 const valid = serializeIntent(draftIntent("@comforge/core", { bump: "patch" }, "Fix a thing."));

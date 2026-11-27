@@ -24,7 +24,7 @@ import {
   writeChangelogSection,
 } from "../../tooling/release/releasePlan";
 
-// COMFORGE-RELEASE-AUTOMATION-001: the planner turns reviewed release intents and the real
+// the planner turns reviewed release intents and the real
 // difference between two candidate builds into a version decision, or refuses.
 
 const sha = (n: number) => n.toString(16).padStart(40, "0");

@@ -362,7 +362,7 @@ describe("R1: comforge migrate", () => {
         security: {
           credentials: { source: "env", variable: "ACME_TOKEN" },
           authorization: { mode: "operator" },
-          markerNamespace: "portfolio-cli",
+          markerNamespace: "legacy-cli",
         },
       }),
     });
@@ -386,7 +386,7 @@ describe("R1: comforge migrate", () => {
       }),
       ledger: createFileLedger({ directory: legacyDir(world), namespace: "writes" }) as never,
       clock: () => world.clock.now,
-      markers: { namespace: "portfolio-cli" },
+      markers: { namespace: "legacy-cli" },
       // While the earlier process runs, its own search for the lost comment fails too, so the
       // write stays unresolved, as after a crash.
       fetchImpl: (async (input: string | URL | Request, init?: RequestInit) =>

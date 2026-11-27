@@ -1,5 +1,5 @@
 /**
- * The releasable Comforge packages (COMFORGE-GITHUB-001): the one registry every release
+ * The releasable Comforge packages: the one registry every release
  * tool reads for a package's identity, source, mirror branch, tag, npm workflow, consumer
  * pin and dependencies. A package not listed here cannot be planned, approved or published.
  *
@@ -20,24 +20,24 @@ export interface PackageProfile {
     | "@comforge/ledger"
     | "@comforge/cli"
     | "@comforge/mcp";
-  /** Portfolio source of the package. */
+  /** Source directory of the package. */
   readonly dir: string;
   /** Independent example consumer shipped on the release branch. */
   readonly example: string;
   readonly tagPrefix: string;
   readonly releaseBranch: string;
-  /** Mirror path → portfolio source of the files the release branch carries for npm. */
+  /** Release-branch path → source of the files the release branch carries for npm. */
   readonly assets: Readonly<Record<string, string>>;
   /** The mirror workflow that publishes this package to npm (its Trusted Publisher identity). */
   readonly npmWorkflow: string;
-  /** The verified release the portfolio pins as this package's planning baseline. */
+  /** The verified release recorded as this package's planning baseline. */
   readonly pinDir: string;
   /** Other registry packages this package's manifest depends on. */
   readonly dependsOn: readonly PackageProfile["name"][];
   /** Test suites of this package; every release candidate and consumer update runs all packages'. */
   readonly tests: readonly string[];
-  /** Whether the portfolio application installs this package from npm. */
-  readonly consumedByPortfolio: boolean;
+  /** Whether a downstream consumer installs this package from npm (adoption is tracked). */
+  readonly consumedDownstream: boolean;
   /**
    * A source literal that must equal the package version (`export const NAME = "x.y.z";`), kept a
    * literal because bundlers cannot follow a runtime package.json read. The version step rewrites it.
@@ -61,7 +61,7 @@ export const PACKAGES: Readonly<Record<PackageProfile["name"], PackageProfile>> 
     pinDir: "releases/baseline/core",
     dependsOn: [],
     tests: ["packages/core/test", "tests/release"],
-    consumedByPortfolio: true,
+    consumedDownstream: true,
   },
   "@comforge/github": {
     id: "github",
@@ -78,9 +78,9 @@ export const PACKAGES: Readonly<Record<PackageProfile["name"], PackageProfile>> 
     pinDir: "releases/baseline/github",
     dependsOn: ["@comforge/core"],
     tests: ["packages/github/test", "tests/github"],
-    // Adopted at 0.1.0 (AGENT-CONTEXT-ARCHITECTURE-001): the engineering gateway's read
+    // Adopted at 0.1.0: the engineering gateway's read
     // transport. The application imports only the installed release, never this source.
-    consumedByPortfolio: true,
+    consumedDownstream: true,
   },
   "@comforge/ledger": {
     id: "ledger",
@@ -98,9 +98,9 @@ export const PACKAGES: Readonly<Record<PackageProfile["name"], PackageProfile>> 
     // Structurally compatible with @comforge/github's OperationLedger, without depending on it.
     dependsOn: [],
     tests: ["packages/ledger/test", "tests/ledger"],
-    // Adopted at 0.1.0 (COMFORGE-PORTABILITY-001.cli): the lifecycle CLI's file ledger and the
+    // Adopted at 0.1.0: the lifecycle CLI's file ledger and the
     // gateway's SQLite ledger are thin adapters over the installed release, never this source.
-    consumedByPortfolio: true,
+    consumedDownstream: true,
   },
   "@comforge/cli": {
     id: "cli",
@@ -118,13 +118,10 @@ export const PACKAGES: Readonly<Record<PackageProfile["name"], PackageProfile>> 
     // Exact published versions of all three: the executable is built and tested against them.
     dependsOn: ["@comforge/core", "@comforge/github", "@comforge/ledger"],
     tests: ["packages/cli/test", "tests/cli"],
-    // Pinned from npm. The portfolio's agent:* and engineering:issue complete commands run
-    // over it only after the owner's cutover (`comforge migrate --execute` writes the sentinel
-    // scripts/git/lifecycle/comforgeRoute.ts routes on); until then they stay local.
-    consumedByPortfolio: true,
+    // Pinned from npm by downstream consumers, which adopt it together with @comforge/mcp.
+    consumedDownstream: true,
   },
-  // COMFORGE-MCP-001: the lifecycle as an MCP server over the published CLI services. The
-  // portfolio does not install it until a release is read back and a reviewed switch pins it.
+  // The lifecycle as an MCP server over the published CLI services.
   "@comforge/mcp": {
     id: "mcp",
     name: "@comforge/mcp",
@@ -141,7 +138,7 @@ export const PACKAGES: Readonly<Record<PackageProfile["name"], PackageProfile>> 
     // @comforge/ledger: the SQLite operation store of the host services (`@comforge/mcp/host`).
     dependsOn: ["@comforge/core", "@comforge/github", "@comforge/ledger", "@comforge/cli"],
     tests: ["packages/mcp/test", "tests/mcp"],
-    consumedByPortfolio: true,
+    consumedDownstream: true,
     versionConstant: { file: "src/tools.ts", name: "SERVER_VERSION" },
   },
 };
@@ -169,7 +166,7 @@ export function profileOf(name: unknown): PackageProfile {
   throw new UnknownPackageError(name);
 }
 
-/** Portfolio paths a release of `p` is built from; a dirty copy of any of them refuses the run. */
+/** Source paths a release of `p` is built from; a dirty copy of any of them refuses the run. */
 export const sourceInputs = (p: PackageProfile): string[] => [
   p.dir,
   p.example,

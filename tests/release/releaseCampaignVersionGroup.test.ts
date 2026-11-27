@@ -15,7 +15,7 @@ import {
 } from "../../tooling/release/releaseCampaign";
 import { groupBranch, groupOrder } from "../../tooling/release/releasePlan";
 
-// COMFORGE-ADOPTION-001 A13: one version PR for a group of packages. It saves a pull request
+// one version PR for a group of packages. It saves a pull request
 // only. Approval, publication, readback and the release record stay per package, and a
 // dependent still waits for its dependency's release.
 

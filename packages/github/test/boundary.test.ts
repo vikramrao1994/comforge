@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-// The adapter's dependency boundary (COMFORGE-GITHUB-001). It talks to GitHub only through
+// The adapter's dependency boundary. It talks to GitHub only through
 // the injected transport, holds no credential of its own, and never reaches into the
 // application: it may import its own files, zod, and @comforge/core *types* (governance
 // stays in core; the adapter needs no core code at runtime). No environment, filesystem,
@@ -34,7 +34,7 @@ const FORBIDDEN_SOURCE = [
   /\bchild_process\b|\bspawn(?:Sync)?\(/,
   /\bgh\s+api\b/,
 ];
-// A write method may be named only in the writer's request module (COMFORGE-GITHUB-003), and never
+// A write method may be named only in the writer's request module, and never
 // DELETE or PUT: the writer creates and edits, it never removes, merges or replaces.
 const WRITE_METHOD = /["'](?:POST|PUT|PATCH|DELETE)["']/;
 const WRITE_MODULE = "src/request.ts";

@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-// COMFORGE-PORTABILITY-001.cli: the release candidate job prepares its mirror checkout through
+// the release candidate job prepares its mirror checkout through
 // git, not an anonymous REST call (which shares the runner address's unauthenticated limit and
 // failed once with HTTP 403). No credential is involved either way.
 

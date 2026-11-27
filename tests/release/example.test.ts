@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { runExample } from "../../examples/core-consumer/src/main.ts";
 
-// The independent example consumer (ENGINEERING-FACTORY-DX-001), run against the
+// The independent example consumer, run against the
 // installed @comforge/core release. The portability pilot runs the same files under
 // Node and Bun against the distribution tarball built from packages/core.
 test("every example use case passes", () => {

@@ -5,7 +5,7 @@ import { main } from "../src/cli.ts";
 import { MAX_TRANSITION_REPEATS } from "../src/commands/delivery.ts";
 import { createWorld, type World } from "./harness.ts";
 
-// Review M13: the portfolio lifecycle's regression scenarios, ported to the standalone CLI on the
+// Review M13: the consumer lifecycle's regression scenarios, ported to the standalone CLI on the
 // published @comforge/github writer and @comforge/ledger: undone transitions (every one inside the
 // synthetic GitHub's frozen second), bounded repeats, competing writers, a writer that died
 // mid-send, lost answers, and stale specifications. No blind retry anywhere.

@@ -1,10 +1,10 @@
 // One independent process for processes.test.ts, run under any Node or Bun. Modes:
 // - write (default): create the contended operation (one process wins), then keep replacing it
-//   from the version it last read; `forever` does so until killed.
+//  from the version it last read; `forever` does so until killed.
 // - compact: keep compacting the operation (file: compactHistory; SQLite: compact every row).
 // - read: keep reading it; counts any read that is missing, goes backwards or fails.
 // - stalled: read the version once, print it, wait for STALL_FLAG to exist, then try to
-//   replace from that version and print whether it won.
+//  replace from that version and print whether it won.
 // Prints one JSON line with its counts (not in `forever`).
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";

@@ -7,7 +7,7 @@ import path from "node:path";
 import { createFileLedger } from "../../packages/ledger/src/file.ts";
 import { createSQLiteLedger, ledgerTableStatements, statementDriver } from "../../packages/ledger/src/sqlite.ts";
 
-// COMFORGE-PORTABILITY-001.ledger (reviews M3, M5, M7): independent OS processes contending for
+// independent OS processes contending for
 // one operation through the file and SQLite adapters: writers, history compactors, readers and
 // a stalled writer at once, and SIGKILL mid-write and mid-compaction. The pass condition is the
 // ledger's whole contract: exactly one creator, every successful replace a distinct version,

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { packDistribution } from "../../tooling/release/pack";
 
-// COMFORGE-PORTABILITY-001.ledger: the independent example consumer of @comforge/ledger,
+// the independent example consumer of @comforge/ledger,
 // against the built distribution tarball as a consumer installs it. A fresh directory whose
 // node_modules holds only the tarball's contents (the package has no dependencies) and
 // @types/node for the type check; run under Node and under Bun. LEDGER_TEST_RUNTIMES

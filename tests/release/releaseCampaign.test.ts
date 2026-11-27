@@ -22,7 +22,7 @@ import {
   type Target,
 } from "../../tooling/release/releaseCampaign";
 
-// COMFORGE-RELEASE-001: the campaign only reads what the release commands did and names the
+// the campaign only reads what the release commands did and names the
 // next step. These scenarios drive it through a simulated world (registry, mirror, PRs, runs)
 // and check that recovery never repeats a step or requests a publication.
 
@@ -37,7 +37,7 @@ const RELEASED: Record<string, string> = {
 };
 /** The same targets adopted one by one: the single-package pin paths. */
 const SOLO: Campaign = { ...CAMPAIGN, id: "solo-campaign", adopt: [] };
-// Mirrors the registry: every package the portfolio installs (mcp since COMFORGE-ADOPTION-001).
+// Mirrors the registry: every package the consumer installs.
 const CONSUMED = new Set(["@comforge/core", "@comforge/github", "@comforge/cli", "@comforge/ledger", "@comforge/mcp"]);
 
 type Pkg = {
@@ -266,7 +266,7 @@ describe("campaign run", () => {
       { action: "open-version-pr", package: "@comforge/cli" },
       { action: "open-pin-pr", package: "@comforge/cli" },
       { action: "open-version-pr", package: "@comforge/mcp" },
-      // Installed since COMFORGE-ADOPTION-001, so its adoption is a consumer-pin PR like the others.
+      // Installed since, so its adoption is a consumer-pin PR like the others.
       { action: "open-pin-pr", package: "@comforge/mcp" },
     ]);
     expect(owner).toEqual([
@@ -321,7 +321,7 @@ describe("campaign run", () => {
       { action: "open-version-pr", package: "@comforge/cli" },
       { action: "open-pin-pr", package: "@comforge/core+@comforge/github+@comforge/cli" },
       { action: "open-version-pr", package: "@comforge/mcp" },
-      // Installed since COMFORGE-ADOPTION-001, so its adoption is a consumer-pin PR like the others.
+      // Installed since, so its adoption is a consumer-pin PR like the others.
       { action: "open-pin-pr", package: "@comforge/mcp" },
     ]);
     expect(owner).toEqual([

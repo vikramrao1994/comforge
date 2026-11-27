@@ -1,0 +1,53 @@
+---
+name: contributor-release
+description: Plan, prepare and publish a package release under owner authorization.
+category: contributor
+---
+
+# contributor-release
+
+Plan, prepare and publish a package release under owner authorization.
+
+## When to use
+
+- The task is to release a package, prepare a version PR, or recover a partial publication.
+
+## Prerequisites
+
+- Merged changes with release intents; the owner available for signing and npm stage approval.
+
+## Examples
+
+```sh
+bun run release:plan
+bun run release:version-pr                 # opens nothing without --open
+# owner: bun run release:approve --package <id>   (signs the CI-built candidate, dispatches)
+bun run release:npm-readback --package @comforge/<id>
+bun run release:record --package <id>
+```
+
+## Decision rules
+
+- Release in dependency order (core → github, ledger → cli → mcp); a dependent's pin must name a published, read-back version.
+- A candidate is built by CI; never build or publish one locally.
+- Use a campaign for several packages.
+
+## Security boundaries
+
+- Only the owner signs release authorizations and approves npm stages; an agent never holds those keys or tokens.
+- Only one publisher is active (`COMFORGE_PUBLISHER`).
+
+## Validation
+
+```sh
+bun test --isolate tests/release && bun run release:plan
+```
+
+## Failure and recovery
+
+- Partial campaign: read back and record what published; retry the rest from its own candidate.
+- `candidate-mismatch`: the rebuild differs; investigate reproducibility, never override.
+
+## References
+
+- [docs/release-governance.md](../../docs/release-governance.md)

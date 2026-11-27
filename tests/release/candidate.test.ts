@@ -5,7 +5,7 @@ import { approvalFromCandidate, buildCandidateRecord, type CandidateInput, Candi
 import { INTENT_SCHEMA } from "../../tooling/release/releaseIntent";
 import { evaluatePlan, type PlanInput } from "../../tooling/release/releasePlan";
 
-// COMFORGE-RELEASE-AUTOMATION-001: the owner approves a candidate, not a typed SHA. The
+// the owner approves a candidate, not a typed SHA. The
 // publishing job derives the approval only from a candidate its own rebuild matches.
 
 const SOURCE = "a".repeat(40);

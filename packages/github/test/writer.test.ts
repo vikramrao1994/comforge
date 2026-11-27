@@ -13,7 +13,7 @@ import {
 } from "../src/index.ts";
 import { BOT, createFakeGitHub, createMemoryLedger, OWNER, REPO, TOKEN } from "./fakeGitHub.ts";
 
-// COMFORGE-GITHUB-003: the caller-authorized writer against a synthetic GitHub. Every test is
+// the caller-authorized writer against a synthetic GitHub. Every test is
 // offline; no test reaches the real service. Scenarios follow the specification's Phase C matrix.
 
 const HEAD = "1".repeat(40);

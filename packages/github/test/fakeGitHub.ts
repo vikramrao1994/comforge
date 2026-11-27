@@ -88,7 +88,7 @@ export function createFakeGitHub(opts: FakeOptions = {}) {
   const root = `/repos/${owner}/${repo}`;
   const rootRe = root.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const token = opts.token ?? TOKEN;
-  /** Requests refused by `requireToken`; never counted among `requests` or `writes()`. */
+  /** Requests refused by `requireToken`; never counted among `requests` or `writes`. */
   const refused: { method: string; path: string; status: number }[] = [];
   let next = 100;
   let tick = 0;

@@ -1,5 +1,5 @@
 /**
- * Owner authorization of one Comforge release candidate (COMFORGE-RELEASE-APPROVAL-001).
+ * Owner authorization of one Comforge release candidate.
  *
  * The owner approves a release by signing a `comforge-release-authorization/v1` record with
  * an Ed25519 key, over `<scheme>\n<canonical JSON>`: the signing contract of the engineering

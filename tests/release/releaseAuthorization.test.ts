@@ -31,7 +31,7 @@ import { INTENT_SCHEMA } from "../../tooling/release/releaseIntent";
 import { evaluatePlan, type PlanInput } from "../../tooling/release/releasePlan";
 import { RELEASE_REPOSITORY_SLUG as ENGINEERING_REPOSITORY_SLUG } from "../../tooling/release/repository";
 
-// COMFORGE-RELEASE-APPROVAL-001: a release is published only with the owner's signed
+// a release is published only with the owner's signed
 // authorization of exactly the candidate being published. Every refusal named in the ticket
 // (Phase C) has a scenario here; the valid case must reach the existing publisher's approval.
 
@@ -159,7 +159,7 @@ describe("valid owner authorization", () => {
   });
 });
 
-describe("refusals (COMFORGE-RELEASE-APPROVAL-001 Phase C)", () => {
+describe("refusals", () => {
   test("missing authorization", () => {
     expect(refusal(() => decodeEnvelope(""))).toBe("authorization-missing");
     expect(refusal(() => decodeEnvelope(undefined))).toBe("authorization-missing");

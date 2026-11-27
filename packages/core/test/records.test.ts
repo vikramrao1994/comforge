@@ -8,9 +8,8 @@ import {
   reviewProvenance,
 } from "../src/index.ts";
 
-// Review and completion-record contracts under a neutral identity. The portfolio's
-// own identity and its published records are frozen in
-// tests/unit/engineeringGateway/reviewCompletionGolden.test.ts.
+// Review and completion-record contracts under a neutral identity. Records published under a
+// consumer's own identity are frozen in that consumer's tests.
 
 const REVIEW: ReviewProtocolConfig = {
   reviewScheme: "example-engineering-review/v1",
@@ -96,7 +95,7 @@ describe("review protocol", () => {
   test("the reserved prefix follows the namespace", () => {
     expect(reviews.reservedMarkerPrefix).toBe("example-bot:");
     expect(reviews.containsReservedMarker({ ...input, summary: "x example-bot:y" })).toBe(true);
-    expect(reviews.containsReservedMarker({ ...input, summary: "x portfolio-mcp:y" })).toBe(false);
+    expect(reviews.containsReservedMarker({ ...input, summary: "x other-mcp:y" })).toBe(false);
   });
 });
 

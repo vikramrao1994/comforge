@@ -1,17 +1,17 @@
 /**
  * `bun run release:adopt-migrate [plan|check|apply] [--id ID] [--execute] [--json]`
  *
- * Prepared consumer migrations: source changes of the portfolio that can only land together
+ * Prepared consumer migrations: source changes of the consumer that can only land together
  * with a release it does not have yet. Each is a reviewed patch plus a manifest naming the
  * package entry points the patch needs (tooling/release/consumer-migration/).
  *
  * - `plan` (default) and `check` write nothing. They report whether the patch still applies to
- *   the working tree, whether its digest is the reviewed one, and whether the installed
- *   packages already expose what it needs.
+ *  the working tree, whether its digest is the reviewed one, and whether the installed
+ *  packages already expose what it needs.
  * - `apply --execute` applies one migration atomically (`git apply` changes every file or
- *   none) and removes its patch and manifest. It refuses unless the installed packages expose
- *   every required entry point and the files it touches are unmodified. It is one step of the
- *   adoption change that pins those releases; it commits, pushes and installs nothing.
+ *  none) and removes its patch and manifest. It refuses unless the installed packages expose
+ *  every required entry point and the files it touches are unmodified. It is one step of the
+ *  adoption change that pins those releases; it commits, pushes and installs nothing.
  *
  * Undoing an applied migration is reverting that change: the patch is in Git history.
  */
@@ -36,7 +36,7 @@ export const MigrationSchema = z
       z.string().regex(/^@comforge\/[a-z]+$/),
       z.array(z.string().regex(/^\.\/[a-z-]+$/)).min(1),
     ),
-    /** Direct dependencies the portfolio no longer needs once the patch is applied. */
+    /** Direct dependencies the consumer no longer needs once the patch is applied. */
     removesDependencies: z.array(z.string().regex(/^@comforge\/[a-z]+$/)),
   })
   .strict();

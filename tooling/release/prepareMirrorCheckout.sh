@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Prepares the release candidate's mirror checkout without a credential and without the REST
-# API (COMFORGE-PORTABILITY-001.cli). The previous probe, an anonymous GET on
+# API. The previous probe, an anonymous GET on
 # api.github.com/repos/<mirror>, shares the per-IP limit of 60 unauthenticated requests an hour
 # with every other job on the runner's address and failed with HTTP 403 (run 45814971405). Git's
 # smart-HTTP protocol reads a public repository without that API, so the probe is `git ls-remote`.
 #
-#   prepareMirrorCheckout.sh <repository-url> <destination>
+#  prepareMirrorCheckout.sh <repository-url> <destination>
 #
 # Exists (empty or not): cloned. Missing: an empty local repository on main, so the dry run can
 # plan a first release. Anything else (network, server error): fails; nothing is guessed.

@@ -1,6 +1,6 @@
 /**
  * `bun run release:candidates [ensure|check|plan]` — wires unpublished sibling candidates
- * into the one package that declares them (COMFORGE-MCP-001 M14).
+ * into the one package that declares them.
  *
  * A package whose manifest pins a sibling at a version other than the release the
  * repository has installed (root node_modules, the published pin) depends on that sibling's
@@ -73,7 +73,7 @@ export function candidateDependencies(name: PackageName, repo = REPO): PackageNa
 
 /**
  * Where the verified readback of a published version is committed when its adoption waits for
- * its adoption group (COMFORGE-RELEASE-001): `<dir>/npm-pin.json` and `RELEASE.json`, written by
+ * its adoption group: `<dir>/npm-pin.json` and `RELEASE.json`, written by
  * `release:npm-readback --write-pin`. It proves the version is on npm and matches its Git
  * release; it installs nothing.
  */

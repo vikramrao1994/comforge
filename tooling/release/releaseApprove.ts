@@ -1,8 +1,8 @@
 /**
- * The owner's release approval (COMFORGE-RELEASE-APPROVAL-001).
+ * The owner's release approval.
  *
- *   bun run release:keygen [--login LOGIN] [--out FILE]
- *   bun run release:approve [--run ID | --build] [--key FILE] [--minutes N] [--no-dispatch --out FILE]
+ *  bun run release:keygen [--login LOGIN] [--out FILE]
+ *  bun run release:approve [--run ID | --build] [--key FILE] [--minutes N] [--no-dispatch --out FILE]
  *
  * `approve` downloads the candidate the publishing workflow built for the current origin/main
  * (a dry-run dispatch), shows it, asks the owner to type its version, unlocks the owner's

@@ -21,12 +21,12 @@ import { baseConfig, createWorld, TOKEN, type World } from "./harness.ts";
 // process is the supervisor; candidate validation runs as `COMFORGE_WORKER_USER` through
 // `sudo -n -u`, and the host hands checkouts and snapshots to that user with POSIX ACLs.
 // It runs only where that user exists and the supervisor may `sudo -n -u` it (the Linux runtime
-// job and scripts/diagnostics/comforge-mcp-001/runtime-matrix.sh); elsewhere it is skipped and
+// job in CI); elsewhere it is skipped and
 // the evidence records it as not exercised.
 
 const WORKER = process.env.COMFORGE_WORKER_USER ?? "";
 const run = (argv: string[]) => Bun.spawnSync(argv, { stdout: "pipe", stderr: "pipe" });
-// `id -un`, not os.userInfo(): Bun reports "unknown" for an account without a passwd shell entry.
+// `id -un`, not os.userInfo: Bun reports "unknown" for an account without a passwd shell entry.
 const SUPERVISOR = run(["id", "-un"]).stdout.toString().trim();
 const available =
   WORKER !== "" &&

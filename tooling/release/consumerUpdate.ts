@@ -1,8 +1,8 @@
 /**
  * `bun run release:adopt [--package NAME [--version X.Y.Z]]… [--rollback] [--open]`
  *
- * After a `@comforge/core` version is public on npm, prepares the portfolio's consumer
- * update on its own branch (COMFORGE-RELEASE-AUTOMATION-001): the exact dependency,
+ * After a `@comforge/core` version is public on npm, prepares the consumer's consumer
+ * update on its own branch: the exact dependency,
  * bun.lock, and the consumer pin record written by `release:npm-readback --commit
  * <release commit> --expect-provenance --write-pin`, which verifies the registry tarball
  * file by file against the public Git release and its provenance. A version that is only
@@ -10,7 +10,7 @@
  * tests run against the fresh install; any failure restores the starting branch, files and
  * install, so the previous exact version stays in place. Several `--package` pairs move together
  * on one branch: an adoption group whose released versions require each other's new versions,
- * so no installed release keeps a nested copy of another (COMFORGE-RELEASE-001). A prepared
+ * so no installed release keeps a nested copy of another. A prepared
  * consumer migration (`release:adopt-migrate`) whose required entry points the new install
  * exposes is applied in the same commit, and undone by the same restore. `--open`
  * pushes the branch and opens a PR; nothing here merges or deploys.
@@ -133,10 +133,10 @@ async function main(argv: string[]): Promise<number> {
     const profile = profileOf(r.name);
     // The application installs only released packages it has chosen to consume; adopting a new
     // one (adding the dependency and its pin) is an owner decision, not an update.
-    if (!profile.consumedByPortfolio)
+    if (!profile.consumedDownstream)
       throw new ConsumerRefusal(
         "not-consumed",
-        `the portfolio does not consume ${profile.name} from npm yet; adopting it is a reviewed change (packages.ts consumedByPortfolio, the dependency and its first pin)`,
+        `the consumer does not consume ${profile.name} from npm yet; adopting it is a reviewed change (packages.ts consumedDownstream, the dependency and its first pin)`,
       );
     const current = (
       JSON.parse(readFileSync(path.join(REPO, profile.pinDir, "npm-pin.json"), "utf8")) as {
@@ -154,7 +154,7 @@ async function main(argv: string[]): Promise<number> {
       rollback: rollbackFlag,
     });
     if (decision.action === "current")
-      console.log(`the portfolio already pins ${profile.name}@${current}`);
+      console.log(`the consumer already pins ${profile.name}@${current}`);
     else
       updates.push({
         profile,

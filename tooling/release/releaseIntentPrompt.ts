@@ -1,5 +1,5 @@
 /**
- * The release-intent step of `bun commit` (COMFORGE-RELEASE-AUTOMATION-001). When the
+ * The release-intent step of `bun commit`. When the
  * staged change touches what a releasable Comforge package ships and stages no intent of its
  * own, the developer is offered a deterministic suggestion — from the diff, never from a
  * model — and accepts, edits or declines it. Nothing is recorded without that answer:

@@ -7,8 +7,8 @@ import {
   type SpecificationProtocolConfig,
 } from "../src/index.ts";
 
-// The kernel under a neutral publisher identity. The portfolio's own identity and
-// its published issues are frozen in tests/unit/engineeringGateway/specificationGolden.test.ts.
+// The kernel under a neutral publisher identity. Issues published under a consumer's own
+// identity are frozen in that consumer's tests.
 
 const CONFIG: SpecificationProtocolConfig = {
   digestScheme: "example-engineering-spec/v1",
@@ -80,11 +80,11 @@ describe("a configured protocol", () => {
   });
 
   test("another publisher's markers are not recognised", () => {
-    const portfolioLike = createSpecificationProtocol({ ...CONFIG, markerNamespace: "other-mcp" });
+    const otherPublisher = createSpecificationProtocol({ ...CONFIG, markerNamespace: "other-mcp" });
     const { body } = publish();
-    expect(portfolioLike.parsePublishedMarker(body)).toBeNull();
-    expect(portfolioLike.verifyPublishedSpecification({ title: "Demo", body })).toBeNull();
-    expect(portfolioLike.extractSpecificationBody(body)).toBeNull();
+    expect(otherPublisher.parsePublishedMarker(body)).toBeNull();
+    expect(otherPublisher.verifyPublishedSpecification({ title: "Demo", body })).toBeNull();
+    expect(otherPublisher.extractSpecificationBody(body)).toBeNull();
   });
 
   test("the marker grammar is fixed: lowercase tickets, uppercase hex and wrong lengths are not markers", () => {

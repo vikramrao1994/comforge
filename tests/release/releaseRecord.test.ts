@@ -9,7 +9,7 @@ import { groupBranch, parseTargets } from "../../tooling/release/consumerUpdate"
 import { PACKAGES } from "../../tooling/release/packages";
 import { parseCampaign } from "../../tooling/release/releaseCampaign";
 
-// COMFORGE-RELEASE-001 (adoption): a sibling released ahead of its adoption group counts as
+// a sibling released ahead of its adoption group counts as
 // released for planning only through a committed, verified record of exactly the declared
 // version, built from the source still at the planned head.
 

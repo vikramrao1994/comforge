@@ -14,9 +14,8 @@ import {
   requireCapability,
 } from "../src/index.ts";
 
-// Grant and receipt verification under a neutral identity. Keys are generated per run
-// here; the portfolio's frozen signed records live in
-// tests/unit/engineeringRuntime/authorizationGolden.test.ts.
+// Grant and receipt verification under a neutral identity. Keys are generated per run here;
+// records published under a consumer's own identity are frozen in that consumer's tests.
 
 const NOW = new Date("2030-01-01T12:00:00.000Z");
 const CONFIG: GrantProtocolConfig = {
@@ -104,7 +103,7 @@ describe("grant protocol", () => {
       code: "unauthorized",
       message: "The grant names another repository",
     });
-    expect(() => grant({ ticket: "ENGINEERING-DEMO-001" })).toThrow();
+    expect(() => grant({ ticket: "DEMO-PHASE-ONE-001" })).toThrow();
     const publication = grant({
       mode: "publication",
       publication: { candidateSha: "c".repeat(40), branch: "work/wid-1" },

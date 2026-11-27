@@ -1,6 +1,6 @@
 /**
  * `bun run release:pack [--out DIR]` — builds the consumer distribution of
- * packages/core as a local tarball (ENGINEERING-FACTORY-DX-001).
+ * packages/core as a local tarball.
  *
  * The source package exports TypeScript source, which Bun and this repository's
  * bundler load directly. Node refuses to strip types under node_modules

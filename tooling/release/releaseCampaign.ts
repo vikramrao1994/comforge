@@ -2,17 +2,17 @@
  * `bun run release:campaign <plan|status|resume|unlock> [--campaign FILE] [--execute] [--retry-failed] [--json]`
  *
  * One resumable, dependency-ordered release campaign over the existing release commands
- * (COMFORGE-RELEASE-001). It is not a release system. The planner, the version PR, the
+ *. It is not a release system. The planner, the version PR, the
  * owner's signed approval, the publisher, the npm workflows and the consumer update each
  * stay the only writer of what they write today. The campaign only reads their results and
  * says which step is next:
  *
  * - `plan` reads the committed campaign file and the observed state, and prints the
- *   per-package stages. It writes nothing.
+ *  per-package stages. It writes nothing.
  * - `status` does the same under the campaign lock, then records a non-secret checkpoint.
  * - `resume` also takes the next step, if an agent may take it. Only two such steps exist:
- *   `release:version-pr --open` and `release:adopt --open`. Without
- *   `--execute` it only prints that step. At most one step runs per invocation.
+ *  `release:version-pr --open` and `release:adopt --open`. Without
+ *  `--execute` it only prints that step. At most one step runs per invocation.
  * - `unlock` removes a lock whose holder process is gone.
  *
  * Publication, signing and merging are never campaign steps. Approving a candidate, the
@@ -74,7 +74,7 @@ export const CampaignSchema = z
       .min(1),
     hold: z.array(z.object({ package: Name, version: Version }).strict()).default([]),
     /**
-     * Packages the portfolio adopts together, in one consumer update. Needed when an installed
+     * Packages the consumer adopts together, in one consumer update. Needed when an installed
      * release requires another package's previous version exactly (cli 0.2.0 pins core 0.1.2),
      * so adopting one alone would install a nested copy. Unlisted packages adopt alone.
      */
@@ -464,7 +464,7 @@ export function derivePackage(input: {
     }
   }
 
-  const consumed = profile.consumedByPortfolio;
+  const consumed = profile.consumedDownstream;
   if (
     obs.pin?.version === target.version &&
     (!consumed || obs.installed === target.version) &&
@@ -479,9 +479,7 @@ export function derivePackage(input: {
     facts.integrity ??= obs.registry.integrity ?? undefined;
     facts.tagCommit ??= obs.tagCommit ?? undefined;
     if (!consumed)
-      notes.push(
-        "pinned only: the portfolio does not install it; production integration is a separate gate",
-      );
+      notes.push("pinned only: no consumer installs it; production integration is a separate gate");
     return state("adopted", "adopted", null);
   }
 
@@ -570,7 +568,7 @@ export function derivePackage(input: {
       return state("pinning", "published", {
         by: "owner",
         action: "authorize-adoption-pr",
-        detail: `${target.package} is not installed by the portfolio, so its pin is a reviewed implementation change: read it back${target.firstRelease ? " (without --expect-provenance for the bootstrap version)" : " --expect-provenance"} and commit the pin record`,
+        detail: `${target.package} is not installed by a consumer, so its pin is a reviewed implementation change: read it back${target.firstRelease ? " (without --expect-provenance for the bootstrap version)" : " --expect-provenance"} and commit the pin record`,
         command: `bun run release:npm-readback ${flag} --commit ${obs.tagCommit}${target.firstRelease ? "" : " --expect-provenance"} --write-pin ${profile.pinDir}`,
       });
     return state("pinning", "published", {
@@ -594,7 +592,7 @@ export function derivePackage(input: {
       action: "approve-npm-publication",
       detail: obs.npmRunInFlight
         ? `approve the waiting ${profile.npmWorkflow.split("/").pop()} run (environment npm-${profile.id}) in ${MIRROR_REPOSITORY}, then \`npm stage approve\` with 2FA`
-        : `the tag exists but no npm run is in flight and the version is not public: check the ${profile.npmWorkflow.split("/").pop()} run for ${profile.tagPrefix}${target.version} and the staged list. The tag is immutable, so never dispatch the portfolio publisher again for this version`,
+        : `the tag exists but no npm run is in flight and the version is not public: check the ${profile.npmWorkflow.split("/").pop()} run for ${profile.tagPrefix}${target.version} and the staged list. The tag is immutable, so never dispatch the release workflow again for this version`,
     });
   }
 

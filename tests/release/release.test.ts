@@ -36,7 +36,7 @@ import { CORE } from "../../tooling/release/packages";
 
 const RELEASE_BRANCH = CORE.releaseBranch;
 
-// The @comforge/core release publisher (ENGINEERING-FACTORY-DISTRIBUTION-001) against
+// The @comforge/core release publisher against
 // disposable local git repositories: a bare repository stands in for the Comforge
 // repository, so every push, refusal and readback is real git, and nothing leaves the
 // machine. Its `main` holds an owner-written file the publisher must never touch; releases
@@ -485,7 +485,7 @@ describe("publish gates", () => {
   });
 });
 
-describe("workflow changes (COMFORGE-NPM-AUTOMATION-001)", () => {
+describe("workflow changes", () => {
   test("a release that adds the npm workflow needs its own approval naming the file and digest", () => {
     const { remote, dest } = mirror("workflow-unapproved");
     const outcome = releaseMirror(candidate.dir, dest);
@@ -550,7 +550,7 @@ describe("workflow changes (COMFORGE-NPM-AUTOMATION-001)", () => {
   });
 });
 
-describe("public release gates (COMFORGE-PUBLIC-RELEASE-001)", () => {
+describe("public release gates", () => {
   test("example links point at the release tag (they resolve from npm too), and other links are checked", () => {
     const base = exampleLinkBase(candidate.release.version);
     expect(base).toBe(`https://github.com/${MIRROR_REPOSITORY}/tree/core/v${candidate.release.version}/examples/`);
@@ -630,7 +630,7 @@ describe("public release gates (COMFORGE-PUBLIC-RELEASE-001)", () => {
     expect(git(remote, ["for-each-ref"])).toBe("");
   });
 
-  test("a push URL rewritten away from the approved mirror is refused (COMFORGE-GITHUB-001)", () => {
+  test("a push URL rewritten away from the approved mirror is refused", () => {
     const { remote, dest } = mirror("push-redirect");
     const outcome = releaseMirror(candidate.dir, dest);
     const elsewhere = path.join(work, "push-redirect-elsewhere.git");
@@ -654,7 +654,7 @@ describe("public release gates (COMFORGE-PUBLIC-RELEASE-001)", () => {
   });
 
   test("the workflow mints and uses the write credential only for an authorized publish run", () => {
-    // COMFORGE-RELEASE-APPROVAL-001: the credential lives only in job `release`, which needs the
+    // the credential lives only in job `release`, which needs the
     // credential-free `authorize` job and verifies the owner's signed authorization again
     // before the credential step; the candidate job reads anonymously.
     const workflow = Bun.YAML.parse(readFileSync(path.join(REPO, ".github", "workflows", "release.yml"), "utf8")) as {

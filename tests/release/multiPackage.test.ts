@@ -37,12 +37,12 @@ import { INTENT_SCHEMA, parseIntent, ReleaseIntentSchema } from "../../tooling/r
 import { applyBump, evaluatePlan, type PlanInput, satisfiesRange, UNRELEASED } from "../../tooling/release/releasePlan";
 import { RELEASE_REPOSITORY_SLUG as ENGINEERING_REPOSITORY_SLUG } from "../../tooling/release/repository";
 
-// COMFORGE-GITHUB-001: two packages released independently from one registry. Core keeps its
+// two packages released independently from one registry. Core keeps its
 // exact identity; neither package's version, tag, branch, npm workflow or owner approval can
 // stand in for the other's.
 
 const REPO = path.resolve(import.meta.dir, "../..");
-/** The version the portfolio pinned for a package after reading its release back. */
+/** The version the consumer pinned for a package after reading its release back. */
 const pinnedVersion = (name: string) =>
   (JSON.parse(readFileSync(path.join(REPO, profileOf(name).pinDir, "npm-pin.json"), "utf8")) as { version: string }).version;
 const GITHUB = PACKAGES["@comforge/github"];
@@ -107,7 +107,7 @@ describe("the @comforge/ledger profile", () => {
       releaseBranch: "releases/ledger",
       npmWorkflow: ".github/workflows/npm-publish-ledger.yml",
       dependsOn: [],
-      consumedByPortfolio: true,
+      consumedDownstream: true,
     });
     const manifest = JSON.parse(readFileSync(path.join(REPO, LEDGER.dir, "package.json"), "utf8"));
     // The version moves with each version PR; only its form and the example's pin are fixed here.
@@ -147,12 +147,12 @@ describe("the @comforge/cli profile", () => {
       releaseBranch: "releases/cli",
       npmWorkflow: ".github/workflows/npm-publish-cli.yml",
       dependsOn: ["@comforge/core", "@comforge/github", "@comforge/ledger"],
-      consumedByPortfolio: true,
+      consumedDownstream: true,
     });
     const manifest = JSON.parse(readFileSync(path.join(REPO, CLI.dir, "package.json"), "utf8"));
     expect(manifest).toMatchObject({ name: "@comforge/cli", private: true, bin: { comforge: "./src/cli.ts" } });
     expect(manifest.version).toMatch(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/);
-    // Exact versions, and exactly the ones the portfolio pinned after reading each release back.
+    // Exact versions, and exactly the ones the consumer pinned after reading each release back.
     // Each is the pinned release, or an unreleased sibling candidate the planner refuses to
     // version until it is published and pinned (dependency order, tooling/release/candidates.ts).
     const candidates = candidateDependencies(CLI.name);
@@ -181,11 +181,11 @@ describe("the @comforge/mcp profile", () => {
       releaseBranch: "releases/mcp",
       npmWorkflow: ".github/workflows/npm-publish-mcp.yml",
       dependsOn: ["@comforge/core", "@comforge/github", "@comforge/ledger", "@comforge/cli"],
-      consumedByPortfolio: true,
+      consumedDownstream: true,
     });
     const manifest = JSON.parse(readFileSync(path.join(REPO, MCP.dir, "package.json"), "utf8"));
     expect(manifest).toMatchObject({ name: "@comforge/mcp", private: true, bin: { "comforge-mcp": "./src/bin.ts" } });
-    // Exactly the versions the portfolio pinned after reading each release back.
+    // Exactly the versions the consumer pinned after reading each release back.
     // Each is the pinned release, or an unreleased sibling candidate the planner refuses to
     // version until it is published and pinned (dependency order, tooling/release/candidates.ts).
     const candidates = candidateDependencies(MCP.name);
@@ -341,7 +341,7 @@ describe("planning each package independently", () => {
     expect(refusalOf(() => evaluatePlan(input({ publishedVersions: ["0.1.0"] })))).toBe("version-published");
   });
 
-  // COMFORGE-RELEASE-001: offline (the publisher's candidate job), a committed release record
+  // offline (the publisher's candidate job), a committed release record
   // is the same fact, so a released-but-not-yet-adopted version is never planned again.
   test("a version with a committed release record is refused offline too", () => {
     expect(refusalOf(() => evaluatePlan(input({ releasedVersions: ["0.1.0"] })))).toBe("version-published");
@@ -525,7 +525,7 @@ describe("the publish workflow follows the registry", () => {
 test("every package's shipped source, documents and example pass the disclosure scan, as they are now", () => {
   // The release scans the candidate built from a commit, in CI; this catches a private path
   // in a README, llms.txt, CHANGELOG, source file or example before it is committed (a README
-  // line once pointed at a portfolio document and refused the candidate build).
+  // line once pointed at a private document and refused the candidate build).
   for (const p of Object.values(PACKAGES)) {
     const dir = mkdtempSync(path.join(tmpdir(), `shipped-${p.id}-`));
     try {
@@ -544,7 +544,7 @@ test("every package's shipped source, documents and example pass the disclosure 
 
 test("every package's shipped release assets pass the disclosure scan, as they are now", () => {
   // The scan runs on candidates built from commits; this catches a private path in an
-  // asset before it is committed (a comment once named portfolio files).
+  // asset before it is committed (a comment once named private files).
   for (const p of Object.values(PACKAGES)) {
     const dir = mkdtempSync(path.join(tmpdir(), `assets-${p.id}-`));
     try {
@@ -588,7 +588,7 @@ describe("consumer update", () => {
     expect(decide("0.1.0")).toEqual({ action: "current", version: "0.1.0" });
     expect(() => decide("0.1.1")).toThrow("not-published");
     expect(() => decide("0.0.0-stage")).toThrow("malformed-version");
-    expect(GITHUB.consumedByPortfolio).toBe(true);
+    expect(GITHUB.consumedDownstream).toBe(true);
   });
 });
 

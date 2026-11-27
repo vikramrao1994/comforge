@@ -17,8 +17,8 @@ import {
   WORKFLOW_PATH,
 } from "../../tooling/release/assets/npm-release.mjs";
 
-// npm distribution of a Comforge core release (COMFORGE-NPM-DISTRIBUTION-001,
-// COMFORGE-NPM-AUTOMATION-001). The fixture is a Git release rebuilt from the installed npm
+// npm distribution of a Comforge core release (,
+// ). The fixture is a Git release rebuilt from the installed npm
 // package (its real dist/, README, LICENSE, llms.txt): the manifest made private again without
 // `repository`, plus a CHANGELOG, an unpacked source file and a RELEASE.json recording every
 // digest, committed on releases/core in a disposable repository. The registry is a fake, so

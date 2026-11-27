@@ -3,9 +3,9 @@
  * `@comforge/core`), from the
  * owner's machine. It never publishes and never reads an npm credential.
  *
- *   bun run release:npm-plan --commit <release commit> [--out DIR]
- *   bun run release:npm-readback --plan DIR/npm-plan.json [--expect-provenance]
- *   bun run release:npm-readback --commit <release commit> [--expect-provenance] [--write-pin DIR]
+ *  bun run release:npm-plan --commit <release commit> [--out DIR]
+ *  bun run release:npm-readback --plan DIR/npm-plan.json [--expect-provenance]
+ *  bun run release:npm-readback --commit <release commit> [--expect-provenance] [--write-pin DIR]
  *
  * `plan` clones the public release repository anonymously, checks that the release tag
  * points at exactly that commit, and runs the same verifier the Comforge workflow runs
@@ -15,21 +15,16 @@
  * existing package. `readback --commit` needs no plan: it derives every expected file digest
  * from the cloned Git release itself, so it also verifies a version this machine never packed
  * (a Trusted-Publishing release). `--write-pin` records that verified result as the
- * portfolio's consumer pin (COMFORGE-NPM-AUTOMATION-001). See
- * docs/engineering/factory-core-distribution.md, "npm distribution".
+ * consumer pin. See
+ * docs/release-governance.md, "npm distribution".
  */
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { NpmReleaseRefusal, plan, readback, releaseExpectation } from "./assets/npm-release.mjs";
 import { MIRROR_REPOSITORY } from "./mirror";
 import { profileOf } from "./packages";
-import {
-  NpmReleaseRefusal,
-  plan,
-  readback,
-  releaseExpectation,
-} from "./assets/npm-release.mjs";
 
 export const PIN_SCHEMA = "comforge-npm-pin/v1";
 

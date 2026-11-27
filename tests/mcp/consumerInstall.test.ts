@@ -6,7 +6,7 @@ import path from "node:path";
 import { packCandidates } from "../../tooling/release/candidates";
 import { packDistribution } from "../../tooling/release/pack";
 
-// COMFORGE-MCP-001: @comforge/mcp as a consumer installs it. Its distribution tarball goes
+// @comforge/mcp as a consumer installs it. Its distribution tarball goes
 // into a copy of the independent example; every dependency (the published @comforge
 // packages, the MCP SDK and theirs) resolves from the npm registry at the exact versions the
 // manifest names, as it would for any consumer (`--prefer-offline` reuses npm's cache). The

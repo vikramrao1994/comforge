@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { packDistribution } from "../../tooling/release/pack";
 
-// COMFORGE-ADOPTION-001 A12: an ordinary consumer whose only Comforge dependencies are the
+// an ordinary consumer whose only Comforge dependencies are the
 // @comforge/cli and @comforge/mcp candidates, installed fresh from their distribution tarballs
 // with strict (isolated) resolution, so nothing it did not declare is importable. A plain
 // JavaScript host runs under each runtime, and a TypeScript host type-checks against the

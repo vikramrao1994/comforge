@@ -7,7 +7,7 @@ import {
   type LifecycleDecision,
 } from "../src/index.ts";
 
-// Lifecycle decisions (ENGINEERING-FACTORY-CORE-004): allow, deny or insufficient
+// Lifecycle decisions: allow, deny or insufficient
 // evidence over observations the caller supplies, with stable reason codes. The
 // consumers' own refusal wording is pinned by their golden vectors; this file pins the
 // kernel's decisions, reason codes and the properties every decision shares.

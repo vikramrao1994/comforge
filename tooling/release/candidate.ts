@@ -1,10 +1,10 @@
 /**
- * The immutable release candidate (COMFORGE-RELEASE-AUTOMATION-001): everything the owner
+ * The immutable release candidate: everything the owner
  * approves, derived from one source commit, with a digest that binds it.
  *
  * The publisher workflow builds the candidate in a job without credentials. The owner
  * approves exactly that candidate by signing a release authorization over its digest
- * (tooling/release/releaseAuthorization.ts, COMFORGE-RELEASE-APPROVAL-001). The
+ *. The
  * publishing job then rebuilds from the same commit and refuses unless the rebuild matches
  * the candidate exactly, so the approval reaches only what was shown. The approval value
  * `VERSION@SOURCE_SHA` is derived from the candidate, never typed.

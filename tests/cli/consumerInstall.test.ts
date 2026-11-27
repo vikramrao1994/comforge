@@ -8,7 +8,7 @@ import { BOT, createFakeGitHub, TOKEN } from "../../packages/github/test/fakeGit
 import { packCandidates } from "../../tooling/release/candidates";
 import { packDistribution } from "../../tooling/release/pack";
 
-// COMFORGE-PORTABILITY-001.cli: @comforge/cli as a consumer installs it. The distribution
+// @comforge/cli as a consumer installs it. The distribution
 // tarball and its four published dependencies are installed with `npm install --offline`
 // into a copy of the independent example; npm links the `comforge` executable. The example
 // (a Makefile project, no TypeScript) and the full governed workflow then run through that

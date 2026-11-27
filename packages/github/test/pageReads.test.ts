@@ -59,7 +59,7 @@ const issue = (number: number, extra: Record<string, unknown> = {}) => ({
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-02T00:00:00Z",
   author_association: "OWNER",
-  performed_via_github_app: { slug: "portfolio-mcp" },
+  performed_via_github_app: { slug: "example-app" },
   closed_at: null,
   comments: 3,
   ...extra,
@@ -101,7 +101,7 @@ describe("page windows", () => {
     expect(calls).toHaveLength(1);
     expect(w.items[0]).toMatchObject({
       authorAssociation: "OWNER",
-      performedViaGitHubApp: "portfolio-mcp",
+      performedViaGitHubApp: "example-app",
       closedAt: null,
       commentCount: 3,
     });
@@ -164,7 +164,7 @@ describe("page windows", () => {
             updated_at: "u",
             body: "x",
             html_url: "https://github.com/acme/widgets/issues/5#issuecomment-1",
-            performed_via_github_app: { slug: "portfolio-mcp" },
+            performed_via_github_app: { slug: "example-app" },
           },
         ]);
       if (url.pathname.endsWith("/issues/5/events"))
@@ -193,7 +193,7 @@ describe("page windows", () => {
     const comments = await evidence.listIssueCommentsPage(5, { perPage: 50 });
     expect(comments.items[0]).toMatchObject({
       url: "https://github.com/acme/widgets/issues/5#issuecomment-1",
-      performedViaGitHubApp: "portfolio-mcp",
+      performedViaGitHubApp: "example-app",
       authorType: "Bot",
     });
     const events = await evidence.listIssueEventsPage(5, { perPage: 100 });

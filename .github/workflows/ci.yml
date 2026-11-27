@@ -1,0 +1,93 @@
+name: CI
+
+# The authoritative gate for every pull request and every push to main. Local hooks
+# (.githooks) run the fast subset earlier; this workflow decides. No job holds a credential,
+# calls a model, or writes anything outside its runner.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types, repository validators, security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the release planner reads history
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.1
+      - name: Install
+        run: bun install --frozen-lockfile && bun run harness:install
+      - name: Format and lint
+        run: bun run lint
+      - name: Typecheck (each package, then tooling and tests)
+        run: bun run typecheck
+      - name: Repository validators (routing, skills, docs, boundaries, harness, disclosure)
+        run: bun run validate
+      - name: Security regression suites
+        run: bun test --isolate packages/cli/test/authorization.test.ts packages/cli/test/hostPolicy.test.ts packages/mcp/test/adversarial.test.ts packages/core/test/authorization.test.ts tests/release/releaseAuthorization.test.ts tests/repository
+      - name: Public API and release plan (every shipped change has a reviewed intent)
+        run: bun test --isolate tests/cli/contracts.test.ts packages/core/test/surface.test.ts tests/release/releasePlan.test.ts && bun run release:plan
+
+  test:
+    name: Tests · ${{ matrix.os }} · Node ${{ matrix.node }} + Bun
+    needs: checks
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install
+        run: bun install --frozen-lockfile && bun run harness:install
+      # Unit, integration, conformance, process and packed-tarball consumer tests: each package is
+      # built, packed and installed from its tarball, and its example runs under Node and Bun.
+      - name: All tests
+        env:
+          COMFORGE_TEST_RUNTIMES: node,bun
+        run: bun run test
+
+  worker-user:
+    name: Host policy with a real second OS user (Linux)
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.1
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Create the worker user and ACL support
+        run: |
+          sudo apt-get install -y acl >/dev/null
+          sudo useradd --create-home comforge-worker
+          echo "$USER ALL=(comforge-worker) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/comforge-worker >/dev/null
+      - name: Host policy tests
+        env:
+          COMFORGE_WORKER_USER: comforge-worker
+        run: bun test --isolate packages/cli/test/workerUser.test.ts

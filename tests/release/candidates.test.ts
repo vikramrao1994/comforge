@@ -4,7 +4,7 @@ import path from "node:path";
 import { candidateClosure, candidateDependencies, ensure, isCurrent } from "../../tooling/release/candidates";
 import { PACKAGES, type PackageName } from "../../tooling/release/packages";
 
-// COMFORGE-MCP-001 M14: unreleased sibling candidates are wired only into the package that
+// unreleased sibling candidates are wired only into the package that
 // pins them, and nothing the application builds can resolve one.
 
 const REPO = path.resolve(import.meta.dir, "../..");

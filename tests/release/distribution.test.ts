@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { DOCUMENTS, distributionManifest, PACKAGE_DIR } from "../../tooling/release/pack";
 
-// The consumer distribution manifest (ENGINEERING-FACTORY-DX-001): every source export
+// The consumer distribution manifest: every source export
 // maps to compiled JavaScript plus declarations, nothing but dist and the documents
 // ship, and the package stays private so it cannot be published by accident.
 const source = JSON.parse(readFileSync(path.join(PACKAGE_DIR, "package.json"), "utf8"));
