@@ -52,3 +52,5 @@ npx comforge doctor --json   # every check PASS, or each FAIL names its fix
 - [docs/getting-started/quickstart-cli.md](../../docs/getting-started/quickstart-cli.md)
 - [docs/reference/compatibility.md](../../docs/reference/compatibility.md)
 - [packages/cli/README.md#install](../../packages/cli/README.md#install)
+- [docs/recipes/01-first-governed-initiative.md](../../docs/recipes/01-first-governed-initiative.md)
+- [docs/reference/cli.md](../../docs/reference/cli.md)

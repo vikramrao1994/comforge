@@ -133,7 +133,7 @@ function at(value: unknown, dotted: string): unknown {
 }
 
 /** The synthetic world, its fixture hooks and the bash state the blocks share. */
-async function world(kind: Recipe["world"], runtime: string) {
+export async function createWorld(kind: Recipe["world"], runtime: string) {
   const root = mkdtempSync(path.join(tmpdir(), "comforge-recipe-"));
   const bin = path.join(root, ".bin");
   const home = path.join(root, ".home");
@@ -268,7 +268,7 @@ async function world(kind: Recipe["world"], runtime: string) {
 }
 
 export async function runRecipe(recipe: Recipe, runtime = "node"): Promise<RecipeResult> {
-  const w = await world(recipe.world, runtime);
+  const w = await createWorld(recipe.world, runtime);
   const steps: StepResult[] = [];
   try {
     for (const block of recipe.blocks) {

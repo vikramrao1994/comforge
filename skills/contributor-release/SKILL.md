@@ -51,3 +51,4 @@ bun test --isolate tests/release && bun run release:plan
 ## References
 
 - [docs/contributing/release-governance.md](../../docs/contributing/release-governance.md)
+- [docs/recipes/10-governed-npm-release.md](../../docs/recipes/10-governed-npm-release.md)

@@ -92,6 +92,18 @@
     {
       "task": "embed the host services in my own server",
       "expect": "consumer-embedding"
+    },
+    {
+      "task": "add a recipe for a go project",
+      "expect": "docs-and-skills"
+    },
+    {
+      "task": "regenerate the benchmark summary",
+      "expect": "docs-and-skills"
+    },
+    {
+      "task": "codex setup for a new repository",
+      "expect": "use-comforge"
     }
   ]
 }

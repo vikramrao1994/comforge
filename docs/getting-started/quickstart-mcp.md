@@ -24,3 +24,6 @@ The HTTP handler (`createHttpHandler`) is for a host that authenticates principa
 [host services](../concepts/host-services.md) and the [MCP reference](../../packages/mcp/README.md#deploying-the-http-handler).
 The server never merges, approves, deploys, or runs a lifecycle write without the repository's
 authorization mode allowing it.
+
+Tested in CI, with what an agent sees per profile: [recipe 2](../recipes/02-mcp-for-coding-agents.md).
+Per client: [integrations](../integrations/README.md). Every tool and flag: [MCP reference](../reference/mcp.md).

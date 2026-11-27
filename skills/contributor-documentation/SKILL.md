@@ -35,7 +35,9 @@ bun tooling/validate.ts docs skills
 ## Validation
 
 ```sh
-bun tooling/validate.ts docs skills && bun run disclosure
+bun run docs:generate      # after a change to a command, flag, tool, error code, config key or export
+bun tooling/validate.ts docs skills reference invented versions recipes benchmarks && bun run disclosure
+bun run docs:recipes       # every recipe, as written, against the published harness
 ```
 
 ## Failure and recovery
@@ -45,3 +47,5 @@ bun tooling/validate.ts docs skills && bun run disclosure
 ## References
 
 - [docs/README.md](../../docs/README.md)
+- [docs/recipes/README.md](../../docs/recipes/README.md)
+- [docs/benchmarks/README.md](../../docs/benchmarks/README.md)

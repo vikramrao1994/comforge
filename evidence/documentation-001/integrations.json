@@ -1,0 +1,37 @@
+{
+  "schema": "comforge-documentation-integrations/v1",
+  "date": "2026-11-27",
+  "server": "@comforge/mcp 0.3.0 (published, harness/)",
+  "clients": [
+    {
+      "client": "Claude Code",
+      "version": "2.1.276",
+      "verified": "registration",
+      "command": "claude mcp add -s project comforge -- node <harness>/@comforge/mcp/dist/bin.js --repository . --profile read-only --compact-discovery",
+      "observed": "wrote .mcp.json {mcpServers.comforge: {type: stdio, command: node, args: [...]}}; `claude mcp get comforge` read it back with status 'Pending approval (run claude to approve)'",
+      "notVerified": "the client's own connection and tool calls: project servers need interactive approval in a claude session, and a session would run a model"
+    },
+    {
+      "client": "Codex CLI",
+      "version": "codex-cli 0.144.6",
+      "verified": "registration",
+      "command": "CODEX_HOME=<temp> codex mcp add comforge -- node <harness>/@comforge/mcp/dist/bin.js --repository <dir> --profile read-only",
+      "observed": "wrote [mcp_servers.comforge] command/args to config.toml; `codex mcp list` showed it enabled",
+      "notVerified": "a Codex session using the tools (would run a model)"
+    },
+    {
+      "client": "Cursor",
+      "version": null,
+      "verified": "none",
+      "observed": "not installed on the verification machine",
+      "notVerified": "everything; the guide gives the configuration shape only"
+    },
+    {
+      "client": "MCP TypeScript SDK client (standing in for any client)",
+      "version": "@modelcontextprotocol/sdk 1.32.2 (bundled with @comforge/mcp 0.3.0)",
+      "verified": "handshake, tools/list per profile, one tool call",
+      "observed": "recipe 2 in CI: read-only lists 10 tools, read-only+executor+publisher 17; comforge_status returns ok",
+      "notVerified": "agent behaviour"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Task \u2192 context routing for agents working in this repository. Guidance only: no command reads it to decide a permission. Route with `bun tooling/route.ts \"<task>\"` or the published harness's `comforge context --task`.",
+  "description": "Task → context routing for agents working in this repository. Guidance only: no command reads it to decide a permission. Route with `bun tooling/route.ts \"<task>\"` or the published harness's `comforge context --task`.",
   "categories": {
     "core-contracts": {
       "label": "@comforge/core contracts",
@@ -76,7 +76,8 @@
         "contributor-package-development"
       ],
       "docs": [
-        "docs/concepts/persistence-and-reconciliation.md"
+        "docs/concepts/persistence-and-reconciliation.md",
+        "docs/recipes/08-file-and-sqlite-persistence.md"
       ],
       "validation": [
         "bun test --isolate packages/ledger/test tests/ledger"
@@ -108,7 +109,8 @@
       ],
       "docs": [
         "docs/reference/tool-selection.md",
-        "docs/reference/configuration.md"
+        "docs/reference/configuration.md",
+        "docs/reference/cli.md"
       ],
       "validation": [
         "bun test --isolate packages/cli/test tests/cli"
@@ -135,7 +137,8 @@
       ],
       "docs": [
         "docs/concepts/host-services.md",
-        "docs/getting-started/quickstart-mcp.md"
+        "docs/getting-started/quickstart-mcp.md",
+        "docs/reference/mcp.md"
       ],
       "validation": [
         "bun test --isolate packages/mcp/test tests/mcp"
@@ -199,7 +202,8 @@
       ],
       "docs": [
         "docs/contributing/release-governance.md",
-        "docs/contributing/release-transition.md"
+        "docs/contributing/release-transition.md",
+        "docs/recipes/10-governed-npm-release.md"
       ],
       "validation": [
         "bun test --isolate tests/release",
@@ -242,7 +246,11 @@
         "claude md",
         "agents md",
         "routing manifest",
-        "context routing"
+        "context routing",
+        "recipe",
+        "benchmark summary",
+        "reference docs",
+        "integration guide"
       ],
       "files": [
         "docs",
@@ -250,16 +258,23 @@
         "CLAUDE.md",
         "AGENTS.md",
         "llms.txt",
-        "context/routing.json"
+        "context/routing.json",
+        "tooling/docs",
+        "tooling/benchmarks",
+        "evidence"
       ],
       "skills": [
         "contributor-documentation"
       ],
       "docs": [
-        "docs/README.md"
+        "docs/README.md",
+        "docs/recipes/README.md",
+        "docs/reference/README.md",
+        "docs/benchmarks/README.md"
       ],
       "validation": [
-        "bun tooling/validate.ts docs skills routing"
+        "bun tooling/validate.ts docs skills routing reference invented versions recipes benchmarks",
+        "bun test --isolate tests/docs"
       ]
     },
     "testing-ci": {
@@ -327,7 +342,10 @@
         "onboarding",
         "quickstart",
         "use comforge in",
-        "configure a repository"
+        "configure a repository",
+        "claude code setup",
+        "codex setup",
+        "cursor setup"
       ],
       "files": [
         "docs/getting-started/quickstart-cli.md",
@@ -340,7 +358,10 @@
         "comforge-mcp-setup"
       ],
       "docs": [
-        "docs/getting-started/overview.md"
+        "docs/getting-started/overview.md",
+        "docs/recipes/01-first-governed-initiative.md",
+        "docs/integrations/README.md",
+        "docs/reference/cli.md"
       ],
       "validation": [
         "npx comforge doctor --json"
@@ -363,7 +384,8 @@
         "comforge-authorization"
       ],
       "docs": [
-        "docs/security/authorization-and-trust.md"
+        "docs/security/authorization-and-trust.md",
+        "docs/recipes/05-owner-grants.md"
       ],
       "validation": [
         "npx comforge doctor --json"
@@ -388,7 +410,9 @@
       ],
       "docs": [
         "docs/concepts/persistence-and-reconciliation.md",
-        "docs/troubleshooting/migration-and-recovery.md"
+        "docs/troubleshooting/migration-and-recovery.md",
+        "docs/recipes/04-interrupted-handover-and-recovery.md",
+        "docs/troubleshooting/troubleshooting.md"
       ],
       "validation": [
         "npx comforge status --json"
@@ -410,7 +434,8 @@
         "comforge-evidence-and-reviews"
       ],
       "docs": [
-        "docs/concepts/protocols-and-authority.md"
+        "docs/concepts/protocols-and-authority.md",
+        "docs/recipes/06-specification-review-revision.md"
       ],
       "validation": [
         "npx comforge review list <PR> --json"
@@ -432,7 +457,8 @@
         "comforge-multi-agent"
       ],
       "docs": [
-        "docs/reference/tool-selection.md"
+        "docs/reference/tool-selection.md",
+        "docs/recipes/03-parallel-initiatives.md"
       ],
       "validation": [
         "npx comforge status --json"
@@ -456,7 +482,9 @@
       ],
       "docs": [
         "docs/concepts/host-services.md",
-        "docs/concepts/protocols-and-authority.md"
+        "docs/concepts/protocols-and-authority.md",
+        "docs/recipes/07-embedded-host-services.md",
+        "docs/reference/api.md"
       ],
       "validation": [
         "bun test --isolate tests/mcp/twoPackageConsumer.test.ts"

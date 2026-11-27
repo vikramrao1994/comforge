@@ -23,4 +23,14 @@ comforge context check --json
 routing runs through MCP as `comforge_context`, and in this repository as
 `bun tooling/route.ts "<task>"`.
 
-**Side effects:** none; both commands only read.
+## Errors
+
+| Code | Cause |
+|---|---|
+| `config-invalid` | the configuration has no `context.manifest`, or the manifest is missing, unreadable or fails its schema |
+
+## Side effects, security, cleanup
+
+- **Writes:** none; both commands only read. No cleanup.
+- **Security:** routing output is guidance. It never grants a permission, and an agent must not
+  treat it as one.

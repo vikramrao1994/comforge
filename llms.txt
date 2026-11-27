@@ -1,12 +1,16 @@
 # Comforge
 
-> A governed engineering workflow for coding agents: verified specifications, isolated checkouts, validation of an exact commit, governed pull requests, advisory reviews, evidence and recovery. Five npm packages; consumers use @comforge/cli and @comforge/mcp.
+> Deterministic engineering infrastructure for coding agents: verified specifications, isolated checkouts, validation of an exact commit, governed pull requests, advisory reviews, evidence and recovery. Five npm packages; consumers use @comforge/cli and @comforge/mcp.
 
 ## Use Comforge
 - [Overview](docs/getting-started/overview.md): what it is and is not
 - [CLI quickstart](docs/getting-started/quickstart-cli.md): install, configure, one initiative end to end
 - [MCP quickstart](docs/getting-started/quickstart-mcp.md): tool profiles for agent clients
 - [Configuration](docs/reference/configuration.md): comforge.config.json
+- [Recipes](docs/recipes/README.md): eleven executable walk-throughs, tested in CI
+- [CLI reference](docs/reference/cli.md) · [MCP reference](docs/reference/mcp.md) · [errors](docs/reference/errors.md) · [API](docs/reference/api.md)
+- [Agent integrations](docs/integrations/README.md): Claude Code, Codex, Cursor, any MCP client
+- [Benchmarks](docs/benchmarks/README.md): component-level measurements and their limits
 - [Authorization](docs/security/authorization-and-trust.md): operator vs owner-grant, trust boundaries
 - [@comforge/cli reference](packages/cli/README.md) · [llms.txt](packages/cli/llms.txt)
 - [@comforge/mcp reference](packages/mcp/README.md) · [llms.txt](packages/mcp/llms.txt)

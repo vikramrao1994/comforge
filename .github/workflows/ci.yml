@@ -36,7 +36,7 @@ jobs:
         run: bun run lint
       - name: Typecheck (each package, then tooling and tests)
         run: bun run typecheck
-      - name: Repository validators (routing, skills, docs, boundaries, harness, disclosure)
+      - name: Repository validators (routing, skills, docs, boundaries, harness, disclosure, reference drift, invented flags, versions, recipes, benchmarks)
         run: bun run validate
       - name: Security regression suites
         run: bun test --isolate packages/cli/test/authorization.test.ts packages/cli/test/hostPolicy.test.ts packages/mcp/test/adversarial.test.ts packages/core/test/authorization.test.ts tests/release/releaseAuthorization.test.ts tests/repository

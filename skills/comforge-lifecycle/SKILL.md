@@ -58,3 +58,6 @@ npx comforge status ACME-101 --json   # stage advances start → verified → pu
 - [docs/getting-started/quickstart-cli.md](../../docs/getting-started/quickstart-cli.md)
 - [docs/reference/tool-selection.md](../../docs/reference/tool-selection.md)
 - [packages/cli/README.md#commands](../../packages/cli/README.md#commands)
+- [docs/recipes/01-first-governed-initiative.md](../../docs/recipes/01-first-governed-initiative.md)
+- [docs/reference/cli.md](../../docs/reference/cli.md)
+- [docs/reference/errors.md](../../docs/reference/errors.md)

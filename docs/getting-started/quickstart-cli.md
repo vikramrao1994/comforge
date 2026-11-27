@@ -30,5 +30,9 @@ Every writing command is a dry run without `--execute`. Output is JSON with `--j
 and error codes are listed by `comforge capabilities` and in the
 [CLI reference](../../packages/cli/README.md#exit-codes-and-errors).
 
-Next: [configuration](../reference/configuration.md), [commands](../reference/tool-selection.md),
+The same workflow with every command, configuration and expected output, tested in CI:
+[recipe 1](../recipes/01-first-governed-initiative.md).
+
+Next: [configuration](../reference/configuration.md), [CLI reference](../reference/cli.md),
+[commands](../reference/tool-selection.md),
 [recovery](../troubleshooting/migration-and-recovery.md).
