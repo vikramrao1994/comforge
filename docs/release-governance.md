@@ -25,13 +25,17 @@ recorded; one that did not is retried from its own candidate.
 
 ## Branch protection
 
-**Status: planned** (owner configuration). `.github/rulesets/protect-main.json` is the exact
-ruleset for `main`: no deletion or force-push, pull requests with code-owner review, and every
-CI job (bound to the GitHub Actions app) required on an up-to-date branch. Until
-`bun tooling/verifyRuleset.ts` prints `PASS` against the live repository, CI is advisory, not
-the enforcement boundary: a direct push to `main` would not wait for it. With a single
-maintainer, code-owner review cannot be given by the pull request's own author; the owner
-decides whether to add a second code owner or relax that one parameter, and records it here.
+**Status: enforced** (applied 2026-11-27 at the owner's request). `.github/rulesets/protect-main.json`
+is the exact ruleset for `main`: no deletion or force-push, every change through a pull request,
+and every CI job (bound to the GitHub Actions app) required on an up-to-date branch, with no
+bypass. `bun tooling/verifyRuleset.ts` compares the live ruleset with the file; CI is the
+enforcement boundary only while it prints `PASS`.
+
+Code-owner review is **off**: with a single maintainer, GitHub never counts a pull request
+author's own approval, so requiring it would block every owner change to `.github/`,
+`tooling/release/` and the other owned paths. `CODEOWNERS` still requests the review. Turn
+`require_code_owner_review` on in the file and the ruleset together once a second code owner
+exists.
 
 ## Single publisher, and the switch-over
 
