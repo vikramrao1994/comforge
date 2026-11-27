@@ -2,15 +2,18 @@ import { existsSync } from "node:fs";
 import { readWorkingConfig } from "./config.js";
 import { fail } from "./errors.js";
 import { openGitHub } from "./github.js";
+import { resolveHost } from "./host.js";
 import { locateRepository, trustedConfigAt } from "./repository.js";
 import { openState } from "./state.js";
 export function openContext(rt, options = {}) {
     const repo = options.repository ?? locateRepository(rt);
     let working = null;
     const access = new Map();
+    const host = resolveHost(options.host, repo.root);
     return {
         rt,
         repo,
+        host,
         state: options.state ?? openState(repo.commonDir),
         working: () => {
             working ??= readWorkingConfig(repo.root);

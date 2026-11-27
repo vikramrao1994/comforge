@@ -1,5 +1,13 @@
 import { complete, deliver, publish, recover } from "./commands/delivery.ts";
 import {
+  advisoryReviews,
+  artifact,
+  issueComments,
+  publishReview,
+  publishSpecification,
+  pullRequests,
+} from "./commands/governance.ts";
+import {
   type CommandResult,
   cleanup,
   revise,
@@ -54,6 +62,8 @@ export interface StartResult {
   provisioned: string[];
   provisioning: ProvisionStep[];
   primaryCheckout: { untouched: boolean; trackedChanges: number; untrackedFiles: number };
+  /** Present from attempt 2 on (`reopen`); a first attempt omits it. */
+  attempt?: number;
 }
 export interface ReviseResult {
   initiative: string;
@@ -103,6 +113,22 @@ export interface LifecycleServices {
   recover(options: Parameters<typeof recover>[1]): Promise<ServiceResult<EvidenceResult>>;
   cleanup(options: Parameters<typeof cleanup>[1]): Promise<ServiceResult<EvidenceResult>>;
   migrate(options: Parameters<typeof migrate>[1]): Promise<ServiceResult<EvidenceResult>>;
+  /** Publishes (or replays) a specification issue; owner-grant needs a publish-specification grant. */
+  publishSpecification(
+    options: Parameters<typeof publishSpecification>[1],
+  ): Promise<ServiceResult<EvidenceResult>>;
+  /** Publishes an advisory review comment bound to the reviewed head; never a native review. */
+  publishReview(
+    options: Parameters<typeof publishReview>[1],
+  ): Promise<ServiceResult<EvidenceResult>>;
+  issueComments(
+    options: Parameters<typeof issueComments>[1],
+  ): Promise<ServiceResult<EvidenceResult>>;
+  pullRequests(options: Parameters<typeof pullRequests>[1]): Promise<ServiceResult<EvidenceResult>>;
+  advisoryReviews(
+    options: Parameters<typeof advisoryReviews>[1],
+  ): Promise<ServiceResult<EvidenceResult>>;
+  artifact(options: Parameters<typeof artifact>[1]): Promise<ServiceResult<EvidenceResult>>;
 }
 
 export type { DeliveryAttempt };
@@ -149,5 +175,11 @@ export function createLifecycleServices(options: LifecycleServicesOptions): Life
     recover: call(recover),
     cleanup: call(cleanup),
     migrate: call(migrate),
+    publishSpecification: call(publishSpecification),
+    publishReview: call(publishReview),
+    issueComments: call(issueComments),
+    pullRequests: call(pullRequests),
+    advisoryReviews: call(advisoryReviews),
+    artifact: call(artifact),
   };
 }

@@ -29,6 +29,8 @@ export interface Validation {
   summary?: { path: string; sha256: string; bytes: number; content: unknown } | null;
   /** Why the status is UNAVAILABLE. */
   reason?: string;
+  /** "host": the embedder's trusted validation policy ran instead of the configuration's. */
+  policy?: "host";
 }
 
 /** One provisioning step: a configured command and what it reported (verification evidence). */
@@ -137,6 +139,19 @@ export interface InitiativeRecord {
   /** Writes made through a host adapter (gh), recorded before they run and settled by reading GitHub. */
   hostOperations?: HostOperation[];
   cleanup?: CleanupJournal;
+  /** Set when the checkout was created under a host policy's checkout parent (not checkout.parent). */
+  hostCheckoutParent?: string;
+  /** The attempt this record is on: absent = 1. A cleaned initiative reopened by start is 2, … */
+  attempt?: number;
+  /** Earlier attempts of a reopened initiative, each exactly as it ended (append-only). */
+  attempts?: ArchivedAttempt[];
+}
+
+/** One finished attempt of an initiative, kept verbatim when start reopens it. */
+export interface ArchivedAttempt {
+  attempt: number;
+  archivedAt: string;
+  record: Omit<InitiativeRecord, "attempts" | "grantUses" | "version" | "schema">;
 }
 
 interface IndexRecord {

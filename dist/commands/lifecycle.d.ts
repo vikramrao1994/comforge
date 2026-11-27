@@ -11,6 +11,8 @@ export declare function start(ctx: CommandContext, options: {
     issue?: number;
     expectDigest?: string;
     provision?: boolean;
+    /** Starts a cleaned initiative again as its next attempt, keeping every earlier one. */
+    reopen?: boolean;
 }): Promise<CommandResult>;
 export declare const credentialVariables: (config: ComforgeConfig) => string[];
 export declare function revise(ctx: CommandContext, options: {

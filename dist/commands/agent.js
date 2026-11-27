@@ -129,6 +129,41 @@ export const COMMANDS = [
         writes: "local state (and a sentinel in the legacy directory)",
         dryRunByDefault: true,
     },
+    {
+        name: "spec",
+        usage: "spec publish <TICKET> --title T --body-file FILE [--issue N] [--key K] [--grant FILE] [--execute]",
+        summary: "Publishes a specification issue (digest marker, idempotent, read back); --issue replaces one. Owner-grant needs a publish-specification command grant (the dry run prints its template).",
+        writes: "one GitHub issue",
+        dryRunByDefault: true,
+    },
+    {
+        name: "review",
+        usage: "review publish --review-file FILE [--grant FILE] [--execute] | review list <PR>",
+        summary: "Publishes an advisory review comment bound to the reviewed head (never a native review or approval; not of one's own PR), or lists a PR's advisory reviews with integrity and provenance.",
+        writes: "one pull-request comment (publish)",
+        dryRunByDefault: true,
+    },
+    {
+        name: "comments",
+        usage: "comments <ISSUE|PR>",
+        summary: "Every comment of an issue or pull request, as bounded untrusted text.",
+        writes: "nothing",
+        dryRunByDefault: false,
+    },
+    {
+        name: "prs",
+        usage: "prs [--state open|closed|all]",
+        summary: "The repository's pull requests (title as untrusted text, head, base, merged).",
+        writes: "nothing",
+        dryRunByDefault: false,
+    },
+    {
+        name: "artifact",
+        usage: "artifact <COMMIT> <PATH>",
+        summary: "A file at an exact commit, under the trusted artifacts.readable paths (text, binary or too-large; never raw bytes).",
+        writes: "nothing",
+        dryRunByDefault: false,
+    },
 ];
 export function capabilities() {
     return {
@@ -137,7 +172,7 @@ export function capabilities() {
             version: PACKAGE_VERSION,
             configSchema: CONFIG_SCHEMA,
             commands: COMMANDS,
-            globalFlags: ["--json", "--help", "--version", "--cwd DIR"],
+            globalFlags: ["--json", "--help", "--version", "--cwd DIR", "--compact", "--summary"],
             exitCodes: EXIT,
             errorCodes: Object.fromEntries(Object.entries(ERROR_CODES)),
             github: {

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { createFetchTransport, createGitHubEvidence, createGitHubWriter, GitHubAdapterError, } from "@comforge/github";
 import { createFileLedger } from "@comforge/ledger/file";
-import { CLI_CAPABILITIES } from "./config.js";
+import { CLI_CAPABILITIES, GOVERNANCE_CAPABILITIES } from "./config.js";
 import { CliError, fail } from "./errors.js";
 import { childEnv } from "./runtime.js";
 import { stateDir } from "./state.js";
@@ -92,7 +92,8 @@ export function openGitHub(rt, config, commonDir, provider, ledgerFactory) {
         repository: { owner, name },
         token,
         // Only SDK capabilities reach the writer; host capabilities are checked by their adapter.
-        capabilities: config.security.capabilities.filter((c) => CLI_CAPABILITIES.includes(c)),
+        capabilities: config.security.capabilities.filter((c) => CLI_CAPABILITIES.includes(c) ||
+            GOVERNANCE_CAPABILITIES.includes(c)),
         authorize: (descriptor) => authorized !== null && descriptor.digest === authorized
             ? { allow: true, descriptorDigest: descriptor.digest, expiresAt: rt.now() + 60_000 }
             : { allow: false, reason: "not the operation this command prepared" },

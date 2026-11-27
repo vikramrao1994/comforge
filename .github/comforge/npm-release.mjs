@@ -40,6 +40,7 @@ export const PACKAGES = Object.freeze({
   "@comforge/github": Object.freeze({ tagPrefix: "github/v", workflow: ".github/workflows/npm-publish-github.yml" }),
   "@comforge/ledger": Object.freeze({ tagPrefix: "ledger/v", workflow: ".github/workflows/npm-publish-ledger.yml" }),
   "@comforge/cli": Object.freeze({ tagPrefix: "cli/v", workflow: ".github/workflows/npm-publish-cli.yml" }),
+  "@comforge/mcp": Object.freeze({ tagPrefix: "mcp/v", workflow: ".github/workflows/npm-publish-mcp.yml" }),
 });
 export const PLAN_SCHEMA = "comforge-npm-plan/v1";
 export const RELEASE_SCHEMA = "comforge-release/v1";

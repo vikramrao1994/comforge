@@ -1,6 +1,10 @@
 import { createPrivateKey, createPublicKey, randomBytes, randomUUID, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
+  DESTRUCTIVE_COMMANDS as CORE_DESTRUCTIVE_COMMANDS,
+  type Command,
+  type CommandScopeEntry,
+  type CommandContext as CoreCommandContext,
   createGrantProtocol,
   envelopeDigest,
   FactoryCoreError,
@@ -10,12 +14,14 @@ import {
   keyIdFor,
 } from "@comforge/core";
 import { readSpecificationIssue } from "@comforge/github";
+import { LedgerError } from "@comforge/ledger";
+import { createFileLedger } from "@comforge/ledger/file";
 import type { ComforgeConfig } from "./config.ts";
 import type { CommandContext } from "./context.ts";
 import { CliError, fail } from "./errors.ts";
 import { githubError } from "./github.ts";
 import { specificationProtocol } from "./protocols.ts";
-import { type InitiativeRecord, nowIso } from "./state.ts";
+import { type InitiativeRecord, nowIso, stateDir } from "./state.ts";
 
 /**
  * Who may cause a GitHub write. Holding the CLI and a credential is not authority by itself.
@@ -43,6 +49,8 @@ export type Authorized =
       keyId: string;
       expiresAt: string;
       envelopeDigest: string;
+      /** The scoped command that authorized the write; null for a scope-less publication grant. */
+      scope: string | null;
     };
 
 export function grantProtocol(config: ComforgeConfig, record: InitiativeRecord): GrantProtocol {
@@ -68,9 +76,11 @@ export async function authorizeWrites(
   options: {
     head: string;
     grantFile?: string;
-    command: string;
+    command: Command;
     /** False for a command with no remote write (recover): the grant is verified, no attempt is spent. */
     consume?: boolean;
+    /** Cleanup: the merged pull request, as cleanup proved it. */
+    pullRequest?: { number: number; headSha: string; open: boolean; merged: boolean };
   },
 ): Promise<Authorized> {
   const a = trusted.security.authorization;
@@ -101,23 +111,30 @@ export async function authorizeWrites(
     record.specification.issueNumber,
   ).catch(githubError);
   let grant: Grant;
+  let scope: CommandScopeEntry | null;
   try {
-    grant = grantProtocol(trusted, record).authorizeAction(
+    // Signed command scopes (@comforge/core): a scope-less publication grant authorizes the
+    // publication commands as before; cleanup needs a command grant naming the merged PR.
+    const grantId = (raw as { grant?: { grantId?: unknown } } | null)?.grant?.grantId;
+    ({ grant, scope } = grantProtocol(trusted, record).authorizeCommand(
       raw,
       a.trustedKeys,
       {
-        action: "publish",
+        command: options.command,
         ticket: record.ticket,
         specification: issue.verification,
         issue: record.specification.issueNumber,
-        revoked: false,
+        // Revocation is the owner's, merged to the base: candidate text cannot un-revoke.
+        revoked: typeof grantId === "string" && (a.revokedGrants ?? []).includes(grantId),
+        // Spent attempts are counted atomically below (reserveGrantAttempt).
         attemptsUsed: 0,
         baseSha: record.base.sha,
         candidateSha: options.head,
         branch: record.branch,
+        ...(options.pullRequest ? { pullRequest: options.pullRequest } : {}),
       },
       new Date(ctx.rt.now()),
-    );
+    ));
   } catch (error) {
     if (error instanceof FactoryCoreError)
       throw new CliError("unauthorized", `grant refused: ${error.message}`, {
@@ -142,6 +159,7 @@ export async function authorizeWrites(
     keyId: envelope.keyId,
     expiresAt: grant.expiresAt,
     envelopeDigest: digest,
+    scope: scope ? scope.command : null,
   };
 }
 
@@ -157,7 +175,7 @@ export async function authorizeWrites(
  * ledger (idempotent), never repeated. When the attempts are gone the owner issues a new grant.
  */
 /** Commands whose remote effect is destructive; they never share a grant with any other. */
-export const DESTRUCTIVE_COMMANDS = new Set(["cleanup"]);
+export const DESTRUCTIVE_COMMANDS = new Set<string>(CORE_DESTRUCTIVE_COMMANDS);
 
 export async function reserveGrantAttempt(
   ctx: Pick<CommandContext, "state">,
@@ -210,6 +228,8 @@ export function grantTemplate(
   head: string,
   now: number,
   hours: number,
+  /** A command grant instead of a publication grant: cleanup of the merged pull request. */
+  command?: { command: "cleanup"; pullRequest: number },
 ): Grant {
   const a = trusted.security.authorization;
   if (a?.mode !== "owner-grant")
@@ -231,7 +251,18 @@ export function grantTemplate(
     maxAttempts: 3,
     issuedAt: new Date(now).toISOString(),
     expiresAt: new Date(now + hours * 3_600_000).toISOString(),
-    publication: { candidateSha: head, branch: record.branch },
+    ...(command
+      ? {
+          mode: "command" as const,
+          maxAttempts: 1,
+          scope: {
+            version: 1 as const,
+            commands: [
+              { command: "cleanup" as const, pullRequest: command.pullRequest, mergedHead: head },
+            ],
+          },
+        }
+      : { publication: { candidateSha: head, branch: record.branch } }),
   };
 }
 
@@ -256,4 +287,166 @@ export function signGrant(
     keyId: keyIdFor(publicKeyPem),
     signature: sign(null, protocol.signingBytes(parsed.data), key).toString("base64url"),
   };
+}
+
+/**
+ * Authorization of a governance write that belongs to no initiative (publishing a specification
+ * or an advisory review). Operator mode decides as for any write; owner-grant mode needs a
+ * command grant scoping exactly this command, verified by @comforge/core against live state the
+ * caller read, and spends one of its attempts atomically in a grant-use ledger (the same
+ * compare-and-swap discipline as an initiative's grant uses).
+ */
+export async function authorizeGovernanceWrite(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  options: {
+    grantFile?: string;
+    context: Omit<CoreCommandContext, "revoked" | "attemptsUsed">;
+  },
+): Promise<Authorized> {
+  const a = trusted.security.authorization;
+  if (!a)
+    return fail(
+      "authorization-required",
+      "GitHub writes are not authorized in this repository: the trusted configuration sets no security.authorization",
+    );
+  if (a.mode === "operator") return { mode: "operator" };
+  if (!options.grantFile)
+    return fail(
+      "authorization-required",
+      "this write needs --grant FILE, an owner-signed command grant",
+    );
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(options.grantFile, "utf8"));
+  } catch {
+    return fail("usage", `${options.grantFile} is not a readable JSON grant`);
+  }
+  const protocol = governanceGrantProtocol(trusted);
+  const grantId = (raw as { grant?: { grantId?: unknown } } | null)?.grant?.grantId;
+  let grant: Grant;
+  let scope: CommandScopeEntry | null;
+  try {
+    ({ grant, scope } = protocol.authorizeCommand(
+      raw,
+      a.trustedKeys,
+      {
+        ...options.context,
+        revoked: typeof grantId === "string" && (a.revokedGrants ?? []).includes(grantId),
+        attemptsUsed: 0,
+      },
+      new Date(ctx.rt.now()),
+    ));
+  } catch (error) {
+    if (error instanceof FactoryCoreError)
+      throw new CliError("unauthorized", `grant refused: ${error.message}`, {
+        ...(error.detail ?? {}),
+      });
+    throw error;
+  }
+  const digest = envelopeDigest(raw as GrantEnvelope);
+  await spendCommandGrant(ctx, grant, {
+    command: options.context.command,
+    envelopeDigest: digest,
+    at: nowIso(ctx.rt.now()),
+  });
+  return {
+    mode: "owner-grant",
+    grantId: grant.grantId,
+    keyId: (raw as GrantEnvelope).keyId,
+    expiresAt: grant.expiresAt,
+    envelopeDigest: digest,
+    scope: scope ? scope.command : null,
+  };
+}
+
+interface CommandGrantUses {
+  operationId: string;
+  version: number;
+  uses: { command: string; envelopeDigest: string; at: string }[];
+}
+
+async function spendCommandGrant(
+  ctx: CommandContext,
+  grant: Grant,
+  use: CommandGrantUses["uses"][number],
+): Promise<void> {
+  const ledger = createFileLedger<CommandGrantUses>({
+    directory: stateDir(ctx.repo.commonDir),
+    namespace: "command-grants",
+    validate: (r) => {
+      if (!Array.isArray((r as CommandGrantUses).uses))
+        throw new LedgerError("foreign", "not a command grant use record");
+    },
+  });
+  for (let n = 0; n < 16; n++) {
+    const current = await ledger.get(grant.grantId);
+    const uses = current?.uses ?? [];
+    if (uses.length >= grant.maxAttempts)
+      fail("unauthorized", "grant refused: its attempts are exhausted (replay refused)", {
+        grantId: grant.grantId,
+        maxAttempts: grant.maxAttempts,
+      });
+    const next: CommandGrantUses = {
+      operationId: grant.grantId,
+      version: (current?.version ?? 0) + 1,
+      uses: [...uses, use],
+    };
+    if (
+      current
+        ? await ledger.replace(grant.grantId, current.version, next)
+        : await ledger.create(next)
+    )
+      return;
+  }
+  fail("ledger", "the grant's use record is changing too fast; rerun");
+}
+
+/**
+ * An unsigned command grant for one governance write, for the owner to review and sign
+ * (`comforge grant sign`): the exact scope entry, digest and destination the dry run computed.
+ */
+export function commandGrantTemplate(
+  trusted: ComforgeConfig,
+  options: {
+    ticket: string;
+    issue: number | null;
+    specDigest: string;
+    scope: CommandScopeEntry;
+    now: number;
+    hours?: number;
+  },
+): Record<string, unknown> | null {
+  const a = trusted.security.authorization;
+  if (a?.mode !== "owner-grant") return null;
+  const hours = options.hours ?? 24;
+  return {
+    schema: a.grantScheme,
+    grantId: randomUUID(),
+    nonce: randomBytes(16).toString("hex"),
+    repository: `${trusted.repository.owner}/${trusted.repository.name}`,
+    ticket: options.ticket,
+    ...(options.issue !== null ? { issue: options.issue } : {}),
+    specDigest: options.specDigest,
+    mode: "command",
+    capabilities: [],
+    base: { kind: "origin-main" },
+    maxAttempts: 1,
+    issuedAt: new Date(options.now).toISOString(),
+    expiresAt: new Date(options.now + hours * 3_600_000).toISOString(),
+    scope: { version: 1, commands: [options.scope] },
+  };
+}
+
+/** The grant protocol for writes that belong to no initiative (each ticket's default branch). */
+export function governanceGrantProtocol(trusted: ComforgeConfig): GrantProtocol {
+  const a = trusted.security.authorization;
+  if (a?.mode !== "owner-grant")
+    return fail("config-invalid", "owner-grant authorization is not configured");
+  return createGrantProtocol({
+    grantScheme: a.grantScheme,
+    repository: `${trusted.repository.owner}/${trusted.repository.name}`,
+    ticketPattern: new RegExp(trusted.tickets.pattern),
+    branchForTicket: (ticket) => `${trusted.tickets.branchPrefix}${ticket.toLowerCase()}`,
+  });
 }

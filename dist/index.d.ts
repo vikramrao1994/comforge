@@ -5,12 +5,14 @@
 export { main, parseArgs, renderHuman, runCommand } from "./cli.ts";
 export { COMMANDS, capabilities, context, doctor, PACKAGE_VERSION } from "./commands/agent.ts";
 export { assertCompletionLinkUnambiguous, complete, completionLinkBlock, deliver, publish, recover, withCompletionLink, } from "./commands/delivery.ts";
+export { advisoryReviews, artifact, artifactReadable, issueComments, publishReview, publishSpecification, pullRequests, } from "./commands/governance.ts";
 export { init } from "./commands/init.ts";
 export { type CommandResult, cleanup, revise, start, status, verify, } from "./commands/lifecycle.ts";
 export { LEGACY_FORMAT, migrate } from "./commands/migrate.ts";
 export { CLI_CAPABILITIES, CONFIG_FILE, CONFIG_SCHEMA, type ComforgeConfig, ConfigSchema, configJsonSchema, HOST_CAPABILITIES, parseConfig, SECTION_DEFAULTS, TRUSTED_SECTIONS, trustedChanges, } from "./config.ts";
 export { type CommandContext, type ContextOptions, type CredentialProvider, openContext, } from "./context.ts";
 export { CliError, ERROR_CODES, type ErrorCode, EXIT, type ExitStatus } from "./errors.ts";
+export { type HostPolicy, type ResolvedHost, resolveHost } from "./host.ts";
 export { stableJson } from "./json.ts";
 export { completionProtocol, currentResults, detectSecrets, specificationProtocol, TRUSTED_ASSOCIATIONS, } from "./protocols.ts";
 export { PROVISION_RESULT_SCHEMA } from "./provision.ts";

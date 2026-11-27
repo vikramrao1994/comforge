@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+- Depends on @comforge/core 0.2.0 (command scopes) and @comforge/github 0.5.0 (evidence reads); released only after both are published, read back and pinned.
+- Opt-in --compact (one-line deterministic JSON) and --summary (bounded projection) output; default JSON unchanged. grant sign - signs governance command grants. Cleanup compares real paths, so checkouts under symlinked directories are recognised.
+- Governance services and commands: spec publish (idempotent, read back), review publish/list (advisory comment bound to the reviewed head, never native, not one's own PR), comments, prs, artifact (trusted artifacts.readable). Owner-grant needs a scoped command grant; dry runs print its template.
+- Trusted host policy for embedders (checkout parent, prepare and remove hooks, validation), start --reopen as a new attempt keeping earlier ones, writes authorized by @comforge/core command scopes (cleanup needs its own scoped grant), revokedGrants, grant template --command cleanup.
+- StartResult declares the attempt number a reopened start returns (type only; the value was already returned).
+- Trusted-policy commands refuse a working config naming another base than the base revision's; artifact paths and readable entries must be canonical and unique; moving evidence.reportDir under the default policy is a trusted change; snapshots use the host's prepare and remove hooks.
+
 ## 0.2.0
 
 - cleanup proves the merge reached the base (stricter than 0.1.0), removes only an isolated, fully published clone, refuses unresolved writes, and runs journalled, resumable steps: leased remote branch deletion (branches:delete), local branch, primary fast-forward, after hooks.

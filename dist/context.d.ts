@@ -2,6 +2,7 @@ import type { OperationRecord } from "@comforge/github";
 import type { Ledger } from "@comforge/ledger";
 import { type ComforgeConfig } from "./config.ts";
 import { type GitHubAccess } from "./github.ts";
+import { type HostPolicy, type ResolvedHost } from "./host.ts";
 import { type Repository } from "./repository.ts";
 import type { Runtime } from "./runtime.ts";
 import { type InitiativeRecord, type StateStore } from "./state.ts";
@@ -16,6 +17,8 @@ export interface CommandContext {
     github(trusted: ComforgeConfig): GitHubAccess;
     /** Throws `cancelled` once the caller's signal is aborted; commands call it between stages. */
     checkpoint(): void;
+    /** The embedder's trusted host policy (defaults when none: the trusted configuration decides). */
+    host: ResolvedHost;
 }
 /** Supplies the GitHub token for one trusted configuration; never written or logged. */
 export type CredentialProvider = (config: ComforgeConfig) => string;
@@ -30,6 +33,8 @@ export interface ContextOptions {
     state?: StateStore;
     /** The GitHub write ledger in the embedder's own store (for example @comforge/ledger SQLite). */
     writeLedger?: (config: ComforgeConfig) => Ledger<OperationRecord>;
+    /** Trusted host policy of an embedding supervisor (see host.ts); never from a tool input. */
+    host?: HostPolicy;
 }
 export declare function openContext(rt: Runtime, options?: ContextOptions): CommandContext;
 /** An initiative's record and the trusted configuration it started from. */

@@ -98,6 +98,36 @@ export declare const COMMANDS: readonly [{
     readonly summary: "Imports an earlier lifecycle's local state (state.legacy); --rollback undoes an import nothing has changed since.";
     readonly writes: "local state (and a sentinel in the legacy directory)";
     readonly dryRunByDefault: true;
+}, {
+    readonly name: "spec";
+    readonly usage: "spec publish <TICKET> --title T --body-file FILE [--issue N] [--key K] [--grant FILE] [--execute]";
+    readonly summary: "Publishes a specification issue (digest marker, idempotent, read back); --issue replaces one. Owner-grant needs a publish-specification command grant (the dry run prints its template).";
+    readonly writes: "one GitHub issue";
+    readonly dryRunByDefault: true;
+}, {
+    readonly name: "review";
+    readonly usage: "review publish --review-file FILE [--grant FILE] [--execute] | review list <PR>";
+    readonly summary: "Publishes an advisory review comment bound to the reviewed head (never a native review or approval; not of one's own PR), or lists a PR's advisory reviews with integrity and provenance.";
+    readonly writes: "one pull-request comment (publish)";
+    readonly dryRunByDefault: true;
+}, {
+    readonly name: "comments";
+    readonly usage: "comments <ISSUE|PR>";
+    readonly summary: "Every comment of an issue or pull request, as bounded untrusted text.";
+    readonly writes: "nothing";
+    readonly dryRunByDefault: false;
+}, {
+    readonly name: "prs";
+    readonly usage: "prs [--state open|closed|all]";
+    readonly summary: "The repository's pull requests (title as untrusted text, head, base, merged).";
+    readonly writes: "nothing";
+    readonly dryRunByDefault: false;
+}, {
+    readonly name: "artifact";
+    readonly usage: "artifact <COMMIT> <PATH>";
+    readonly summary: "A file at an exact commit, under the trusted artifacts.readable paths (text, binary or too-large; never raw bytes).";
+    readonly writes: "nothing";
+    readonly dryRunByDefault: false;
 }];
 export declare function capabilities(): CommandResult;
 export declare function context(rt: Runtime, options: {

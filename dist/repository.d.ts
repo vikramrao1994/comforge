@@ -33,4 +33,15 @@ export declare function checkoutParent(config: ComforgeConfig, root: string): st
 export declare const checkoutDir: (config: ComforgeConfig, root: string, initiative: Initiative) => string;
 /** Fetches `<remote>/<baseBranch>` into the primary and returns its commit. */
 export declare function fetchBase(rt: Runtime, root: string, config: ComforgeConfig): string;
+/**
+ * The trusted base and its configuration. The working configuration only names where the base
+ * is (remote and branch); the configuration committed there must name the same place, so an edit
+ * of the working file cannot point the CLI at another branch's policy (review authors, readable
+ * artifacts, capabilities). Every command that reads trusted policy goes through here.
+ */
+export declare function trustedBase(rt: Runtime, root: string, working: ComforgeConfig): {
+    base: string;
+    config: ComforgeConfig;
+    digest: string;
+};
 export declare const repositorySlug: (config: ComforgeConfig) => string;

@@ -1,4 +1,4 @@
-import { type CompletionProtocol, type Redaction, type SpecificationProtocol } from "@comforge/core";
+import { type CompletionProtocol, type Redaction, type ReviewProtocol, type SpecificationProtocol } from "@comforge/core";
 import type { ComforgeConfig } from "./config.ts";
 /**
  * The @comforge/core specification and completion protocols, bound to the identity in the
@@ -7,6 +7,17 @@ import type { ComforgeConfig } from "./config.ts";
  * names produces byte-identical records.
  */
 export declare function specificationProtocol(config: ComforgeConfig): SpecificationProtocol | null;
+/** Credential shapes a completion record must never carry. Pattern-based: a floor, not a proof. */
+/** Bounds of a published advisory review; generous, fixed, and part of no digest. */
+export declare const REVIEW_LIMITS: {
+    readonly summaryMaxChars: 4000;
+    readonly findingsMax: 50;
+    readonly findingTitleMaxChars: 200;
+    readonly findingTextMaxChars: 4000;
+    readonly notesMax: 20;
+    readonly noteMaxChars: 1000;
+};
+export declare function reviewProtocol(config: ComforgeConfig): ReviewProtocol | null;
 export declare function detectSecrets(value: string): Redaction;
 export declare function completionProtocol(config: ComforgeConfig): CompletionProtocol;
 /** Comment authors GitHub reports as owning the repository; a result by anyone else is never current. */

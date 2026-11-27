@@ -4,6 +4,7 @@ import type { Ledger } from "@comforge/ledger";
 import { type ComforgeConfig, readWorkingConfig } from "./config.ts";
 import { fail } from "./errors.ts";
 import { type GitHubAccess, openGitHub } from "./github.ts";
+import { type HostPolicy, type ResolvedHost, resolveHost } from "./host.ts";
 import { locateRepository, type Repository, trustedConfigAt } from "./repository.ts";
 import type { Runtime } from "./runtime.ts";
 import { type InitiativeRecord, openState, type StateStore } from "./state.ts";
@@ -19,6 +20,8 @@ export interface CommandContext {
   github(trusted: ComforgeConfig): GitHubAccess;
   /** Throws `cancelled` once the caller's signal is aborted; commands call it between stages. */
   checkpoint(): void;
+  /** The embedder's trusted host policy (defaults when none: the trusted configuration decides). */
+  host: ResolvedHost;
 }
 
 /** Supplies the GitHub token for one trusted configuration; never written or logged. */
@@ -35,15 +38,19 @@ export interface ContextOptions {
   state?: StateStore;
   /** The GitHub write ledger in the embedder's own store (for example @comforge/ledger SQLite). */
   writeLedger?: (config: ComforgeConfig) => Ledger<OperationRecord>;
+  /** Trusted host policy of an embedding supervisor (see host.ts); never from a tool input. */
+  host?: HostPolicy;
 }
 
 export function openContext(rt: Runtime, options: ContextOptions = {}): CommandContext {
   const repo = options.repository ?? locateRepository(rt);
   let working: ComforgeConfig | null = null;
   const access = new Map<string, GitHubAccess>();
+  const host = resolveHost(options.host, repo.root);
   return {
     rt,
     repo,
+    host,
     state: options.state ?? openState(repo.commonDir),
     working: () => {
       working ??= readWorkingConfig(repo.root);

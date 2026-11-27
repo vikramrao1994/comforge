@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
-import { grantProtocol, grantTemplate, signGrant } from "../authorization.ts";
+import {
+  governanceGrantProtocol,
+  grantProtocol,
+  grantTemplate,
+  signGrant,
+} from "../authorization.ts";
 import { type CommandContext, loadInitiative, requireCheckout } from "../context.ts";
 import { fail } from "../errors.ts";
+import { trustedBase } from "../repository.ts";
 import { git } from "../runtime.ts";
 import type { CommandResult } from "./lifecycle.ts";
 
@@ -14,9 +20,23 @@ import type { CommandResult } from "./lifecycle.ts";
 export const grantCommand = {
   async template(
     ctx: CommandContext,
-    options: { id: string; hours: number },
+    options: { id: string; hours: number; command?: string },
   ): Promise<CommandResult> {
     const { record, trusted } = await loadInitiative(ctx, options.id);
+    if (options.command !== undefined && options.command !== "cleanup")
+      fail("usage", "--command takes cleanup (other scoped commands have their own services)");
+    if (options.command === "cleanup") {
+      // Cleanup is bound to the pull request and the head that was published (and merged).
+      const published = record.publications.at(-1);
+      if (!published)
+        return fail("usage", `${options.id} has no published pull request to clean up`);
+      return {
+        result: grantTemplate(trusted, record, published.commit, ctx.rt.now(), options.hours, {
+          command: "cleanup",
+          pullRequest: published.prNumber,
+        }) as unknown as Record<string, unknown>,
+      };
+    }
     const head = git(ctx.rt, requireCheckout(record), ["rev-parse", "HEAD"]);
     return {
       result: grantTemplate(
@@ -32,7 +52,15 @@ export const grantCommand = {
     ctx: CommandContext,
     options: { id: string; grantFile: string; keyFile: string },
   ): Promise<CommandResult> {
-    const { record, trusted } = await loadInitiative(ctx, options.id);
+    // "-": a governance command grant (specification or review publication), which belongs to
+    // no initiative; it is signed under the base revision's trusted configuration.
+    const { protocol } =
+      options.id === "-"
+        ? { protocol: governanceGrantProtocol(trustedAtBase(ctx)) }
+        : await (async () => {
+            const { record, trusted } = await loadInitiative(ctx, options.id);
+            return { protocol: grantProtocol(trusted, record) };
+          })();
     let grant: unknown;
     let key: string;
     try {
@@ -42,10 +70,11 @@ export const grantCommand = {
       return fail("usage", "--grant must be a JSON file and --key a PEM private key file");
     }
     return {
-      result: signGrant(grantProtocol(trusted, record), grant, key) as unknown as Record<
-        string,
-        unknown
-      >,
+      result: signGrant(protocol, grant, key) as unknown as Record<string, unknown>,
     };
   },
 };
+
+function trustedAtBase(ctx: CommandContext) {
+  return trustedBase(ctx.rt, ctx.repo.root, ctx.working()).config;
+}

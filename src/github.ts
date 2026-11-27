@@ -12,7 +12,7 @@ import {
 } from "@comforge/github";
 import type { Ledger } from "@comforge/ledger";
 import { createFileLedger } from "@comforge/ledger/file";
-import { CLI_CAPABILITIES, type ComforgeConfig } from "./config.ts";
+import { CLI_CAPABILITIES, type ComforgeConfig, GOVERNANCE_CAPABILITIES } from "./config.ts";
 import { CliError, type ErrorCode, fail } from "./errors.ts";
 import { childEnv, type Runtime } from "./runtime.ts";
 import { stateDir } from "./state.ts";
@@ -142,8 +142,9 @@ export function openGitHub(
       token,
       // Only SDK capabilities reach the writer; host capabilities are checked by their adapter.
       capabilities: config.security.capabilities.filter(
-        (c): c is (typeof CLI_CAPABILITIES)[number] =>
-          (CLI_CAPABILITIES as readonly string[]).includes(c),
+        (c): c is (typeof CLI_CAPABILITIES)[number] | (typeof GOVERNANCE_CAPABILITIES)[number] =>
+          (CLI_CAPABILITIES as readonly string[]).includes(c) ||
+          (GOVERNANCE_CAPABILITIES as readonly string[]).includes(c),
       ),
       authorize: (descriptor) =>
         authorized !== null && descriptor.digest === authorized

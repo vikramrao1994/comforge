@@ -7,7 +7,7 @@ import { createFileLedger } from "@comforge/ledger/file";
 import { z } from "zod";
 import { fail } from "../errors.js";
 import { canonical } from "../json.js";
-import { checkoutDir, fetchBase, parseInitiative, trustedConfigAt } from "../repository.js";
+import { checkoutDir, parseInitiative, trustedBase } from "../repository.js";
 import { nowIso, stateDir } from "../state.js";
 /**
  * R1: `comforge migrate` imports an earlier lifecycle's local state (`state.legacy` in the
@@ -331,8 +331,7 @@ export async function legacyUnmigrated(ctx, config, id) {
 }
 export async function migrate(ctx, options) {
     const { rt, repo } = ctx;
-    const baseSha = fetchBase(rt, repo.root, ctx.working());
-    const { config: trusted, digest } = trustedConfigAt(rt, repo.root, baseSha);
+    const { base: baseSha, config: trusted, digest } = trustedBase(rt, repo.root, ctx.working());
     const legacy = trusted.state.legacy;
     if (!legacy)
         return fail("config-invalid", "state.legacy is not set in the trusted configuration; nothing to migrate");

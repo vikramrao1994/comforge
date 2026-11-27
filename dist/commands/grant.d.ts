@@ -10,6 +10,7 @@ export declare const grantCommand: {
     template(ctx: CommandContext, options: {
         id: string;
         hours: number;
+        command?: string;
     }): Promise<CommandResult>;
     sign(ctx: CommandContext, options: {
         id: string;

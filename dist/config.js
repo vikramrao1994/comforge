@@ -46,6 +46,11 @@ export const CLI_CAPABILITIES = ["pulls:create", "pulls:update", "issues:comment
  */
 export const HOST_CAPABILITIES = ["pulls:assign", "pulls:ready", "branches:delete"];
 /**
+ * SDK writes of the governance services (specification publication), never granted by default:
+ * a repository opts in by listing them, and owner-grant mode still needs a scoped grant.
+ */
+export const GOVERNANCE_CAPABILITIES = ["issues:create", "issues:update"];
+/**
  * Sections added after 0.1.0. Each defaults to 0.1.0 behaviour and is left out of the trusted
  * digest while it equals its default, so initiatives started under 0.1.0 keep their digest.
  */
@@ -126,7 +131,49 @@ const CleanupSection = z
     after: z.array(NAMED_COMMAND).max(5).default([]),
 })
     .strict();
+/**
+ * Advisory reviews (@comforge/core review protocol): the identity reviews are published and read
+ * under, and the logins whose reviews count as trusted provenance. Absent: no review services.
+ */
+const ReviewSection = z
+    .object({
+    reviewScheme: z.string().regex(/^[a-z0-9][a-z0-9.-]{0,63}\/v\d+$/),
+    markerNamespace: NAMESPACE,
+    publisherName: z.string().min(1).max(80),
+    publishToolName: z.string().regex(/^[a-z0-9_]{1,64}$/),
+    trustedAuthors: z
+        .array(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/))
+        .max(20)
+        .default([]),
+})
+    .strict()
+    .nullable();
+/**
+ * A canonical repository path: `/`-separated, no empty, `.` or `..` segment, no backslash, no
+ * control character, no leading or trailing slash. Prefix matching is only sound on paths in
+ * this one spelling; anything else is refused rather than normalized.
+ */
+export function isCanonicalRepoPath(p) {
+    if (typeof p !== "string" || p.length === 0 || p.length > 1024)
+        return false;
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is refused
+    if (p.includes("\\") || /[\u0000-\u001f\u007f]/.test(p))
+        return false;
+    return p.split("/").every((s) => s !== "" && s !== "." && s !== "..");
+}
+/** Repository files a remote reader may fetch at a commit (prefixes); empty = the report directory only. */
+const ArtifactsSection = z
+    .object({
+    readable: z
+        .array(z.string().max(300).refine(isCanonicalRepoPath, "a canonical repository path"))
+        .max(50)
+        .refine((a) => new Set(a).size === a.length, "readable paths must be unique")
+        .default([]),
+})
+    .strict();
 export const SECTION_DEFAULTS = {
+    review: null,
+    artifacts: ArtifactsSection.parse({}),
     state: StateSection.parse({}),
     lifecycle: LifecycleSection.parse({}),
     verification: VerificationSection.parse({}),
@@ -245,11 +292,13 @@ export const ConfigSchema = z
     verification: VerificationSection.default(SECTION_DEFAULTS.verification),
     publication: PublicationSection.default(SECTION_DEFAULTS.publication),
     cleanup: CleanupSection.default(SECTION_DEFAULTS.cleanup),
+    review: ReviewSection.default(null),
+    artifacts: ArtifactsSection.default(SECTION_DEFAULTS.artifacts),
     security: z
         .object({
         capabilities: z
-            .array(z.enum([...CLI_CAPABILITIES, ...HOST_CAPABILITIES]))
-            .max(CLI_CAPABILITIES.length + HOST_CAPABILITIES.length)
+            .array(z.enum([...CLI_CAPABILITIES, ...HOST_CAPABILITIES, ...GOVERNANCE_CAPABILITIES]))
+            .max(CLI_CAPABILITIES.length + HOST_CAPABILITIES.length + GOVERNANCE_CAPABILITIES.length)
             .default([...CLI_CAPABILITIES]),
         /**
          * Who authorizes GitHub writes. Absent: every write is refused. `owner-grant`: each
@@ -274,6 +323,8 @@ export const ConfigSchema = z
                     .strict())
                     .min(1)
                     .max(10),
+                /** Grant ids the owner revoked (merged to the base): refused even when valid. */
+                revokedGrants: z.array(z.string().uuid()).max(1000).optional(),
             })
                 .strict(),
             z.object({ mode: z.literal("operator") }).strict(),
@@ -329,6 +380,8 @@ export const TRUSTED_SECTIONS = [
     "verification",
     "publication",
     "cleanup",
+    "review",
+    "artifacts",
 ];
 /** Trusted sections added after 0.1.0: in the digest only when they differ from their default. */
 const LATER_SECTIONS = new Set(Object.keys(SECTION_DEFAULTS));
@@ -375,9 +428,23 @@ export function readWorkingConfig(root) {
 }
 export const trustedPart = (config) => Object.fromEntries(TRUSTED_SECTIONS.filter((k) => !LATER_SECTIONS.has(k) ||
     canonical(config[k]) !== canonical(SECTION_DEFAULTS[k])).map((k) => [k, config[k]]));
-/** Trusted sections in which `candidate` differs from `trusted`. */
+/**
+ * The path prefixes a remote reader may fetch. The default (an empty `artifacts.readable`) is the
+ * report directory, so the effective set is what is compared and authorized, never the raw list.
+ */
+export const readableArtifacts = (config) => config.artifacts.readable.length > 0
+    ? config.artifacts.readable
+    : [config.evidence.reportDir.replace(/\/+$/, "")];
+/**
+ * Trusted sections in which `candidate` differs from `trusted`. `artifacts` is also reported when
+ * only its effective default moved (an `evidence.reportDir` edit widens what may be read).
+ */
 export function trustedChanges(trusted, candidate) {
-    return TRUSTED_SECTIONS.filter((k) => canonical(trusted[k]) !== canonical(candidate[k]));
+    const changed = TRUSTED_SECTIONS.filter((k) => canonical(trusted[k]) !== canonical(candidate[k]));
+    if (!changed.includes("artifacts") &&
+        canonical(readableArtifacts(trusted)) !== canonical(readableArtifacts(candidate)))
+        changed.push("artifacts");
+    return changed;
 }
 /** The JSON Schema of the configuration, for editors and agents (`comforge schema config`). */
 export function configJsonSchema() {

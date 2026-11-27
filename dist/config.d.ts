@@ -24,7 +24,22 @@ export declare const CLI_CAPABILITIES: readonly ["pulls:create", "pulls:update",
  * initiative's own merged branch under a lease during cleanup.
  */
 export declare const HOST_CAPABILITIES: readonly ["pulls:assign", "pulls:ready", "branches:delete"];
+/**
+ * SDK writes of the governance services (specification publication), never granted by default:
+ * a repository opts in by listing them, and owner-grant mode still needs a scoped grant.
+ */
+export declare const GOVERNANCE_CAPABILITIES: readonly ["issues:create", "issues:update"];
+/**
+ * A canonical repository path: `/`-separated, no empty, `.` or `..` segment, no backslash, no
+ * control character, no leading or trailing slash. Prefix matching is only sound on paths in
+ * this one spelling; anything else is refused rather than normalized.
+ */
+export declare function isCanonicalRepoPath(p: unknown): p is string;
 export declare const SECTION_DEFAULTS: {
+    readonly review: null;
+    readonly artifacts: {
+        readable: string[];
+    };
     readonly state: {
         writeLedgerDirectory: string;
         legacy: {
@@ -163,10 +178,22 @@ export declare const ConfigSchema: z.ZodObject<{
             run: z.ZodArray<z.ZodString>;
         }, z.core.$strict>>>;
     }, z.core.$strict>>;
+    review: z.ZodDefault<z.ZodNullable<z.ZodObject<{
+        reviewScheme: z.ZodString;
+        markerNamespace: z.ZodString;
+        publisherName: z.ZodString;
+        publishToolName: z.ZodString;
+        trustedAuthors: z.ZodDefault<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>>>;
+    artifacts: z.ZodDefault<z.ZodObject<{
+        readable: z.ZodDefault<z.ZodArray<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>>;
+    }, z.core.$strict>>;
     security: z.ZodDefault<z.ZodObject<{
         capabilities: z.ZodDefault<z.ZodArray<z.ZodEnum<{
             "branches:delete": "branches:delete";
             "issues:comment": "issues:comment";
+            "issues:create": "issues:create";
+            "issues:update": "issues:update";
             "pulls:assign": "pulls:assign";
             "pulls:create": "pulls:create";
             "pulls:ready": "pulls:ready";
@@ -180,6 +207,7 @@ export declare const ConfigSchema: z.ZodObject<{
                 publicKeyPem: z.ZodString;
                 label: z.ZodString;
             }, z.core.$strict>>;
+            revokedGrants: z.ZodOptional<z.ZodArray<z.ZodString>>;
         }, z.core.$strict>, z.ZodObject<{
             mode: z.ZodLiteral<"operator">;
         }, z.core.$strict>], "mode">>>;
@@ -199,12 +227,14 @@ export declare const ConfigSchema: z.ZodObject<{
 export type ComforgeConfig = z.infer<typeof ConfigSchema>;
 export type ConfigInput = z.input<typeof ConfigSchema>;
 /** Sections a candidate revision may not change for its own publication. */
-export declare const TRUSTED_SECTIONS: readonly ["schema", "repository", "tickets", "validation", "specification", "completion", "security", "state", "lifecycle", "verification", "publication", "cleanup"];
+export declare const TRUSTED_SECTIONS: readonly ["schema", "repository", "tickets", "validation", "specification", "completion", "security", "state", "lifecycle", "verification", "publication", "cleanup", "review", "artifacts"];
 export declare function parseConfig(text: string, source: string): ComforgeConfig;
 /** The working tree's configuration (candidate text: guidance and local settings only). */
 export declare function readWorkingConfig(root: string): ComforgeConfig;
 export declare const trustedPart: (config: ComforgeConfig) => {
     [k: string]: "comforge-config/v1" | {
+        readable: string[];
+    } | {
         writeLedgerDirectory: string;
         legacy: {
             directory: string;
@@ -260,7 +290,13 @@ export declare const trustedPart: (config: ComforgeConfig) => {
         };
         publishCommand: string;
     } | {
-        capabilities: ("branches:delete" | "issues:comment" | "pulls:assign" | "pulls:create" | "pulls:ready" | "pulls:update")[];
+        reviewScheme: string;
+        markerNamespace: string;
+        publisherName: string;
+        publishToolName: string;
+        trustedAuthors: string[];
+    } | {
+        capabilities: ("branches:delete" | "issues:comment" | "issues:create" | "issues:update" | "pulls:assign" | "pulls:create" | "pulls:ready" | "pulls:update")[];
         authorization: {
             mode: "owner-grant";
             grantScheme: string;
@@ -269,6 +305,7 @@ export declare const trustedPart: (config: ComforgeConfig) => {
                 publicKeyPem: string;
                 label: string;
             }[];
+            revokedGrants?: string[] | undefined;
         } | {
             mode: "operator";
         } | null;
@@ -298,7 +335,15 @@ export declare const trustedPart: (config: ComforgeConfig) => {
         timeoutSeconds: number;
     } | null;
 };
-/** Trusted sections in which `candidate` differs from `trusted`. */
+/**
+ * The path prefixes a remote reader may fetch. The default (an empty `artifacts.readable`) is the
+ * report directory, so the effective set is what is compared and authorized, never the raw list.
+ */
+export declare const readableArtifacts: (config: ComforgeConfig) => readonly string[];
+/**
+ * Trusted sections in which `candidate` differs from `trusted`. `artifacts` is also reported when
+ * only its effective default moved (an `evidence.reportDir` edit widens what may be read).
+ */
 export declare function trustedChanges(trusted: ComforgeConfig, candidate: ComforgeConfig): string[];
 /** The JSON Schema of the configuration, for editors and agents (`comforge schema config`). */
 export declare function configJsonSchema(): unknown;

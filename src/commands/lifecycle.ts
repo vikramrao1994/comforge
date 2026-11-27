@@ -1,5 +1,14 @@
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { readSpecificationIssue } from "@comforge/github";
@@ -16,7 +25,7 @@ import {
   fetchBase,
   initiativeFromBranch,
   parseInitiative,
-  trustedConfigAt,
+  trustedBase,
 } from "../repository.ts";
 import { childEnv, git, gitOk, gitRun } from "../runtime.ts";
 import { type InitiativeRecord, nowIso, type ProvisionStep, type Validation } from "../state.ts";
@@ -32,23 +41,17 @@ export interface CommandResult {
 
 export async function start(
   ctx: CommandContext,
-  options: { id: string; issue?: number; expectDigest?: string; provision?: boolean },
+  options: {
+    id: string;
+    issue?: number;
+    expectDigest?: string;
+    provision?: boolean;
+    /** Starts a cleaned initiative again as its next attempt, keeping every earlier one. */
+    reopen?: boolean;
+  },
 ): Promise<CommandResult> {
   const { rt, repo } = ctx;
-  const working = ctx.working();
-  const baseSha = fetchBase(rt, repo.root, working);
-  const { config: trusted, digest } = trustedConfigAt(rt, repo.root, baseSha);
-  if (
-    trusted.repository.remote !== working.repository.remote ||
-    trusted.repository.baseBranch !== working.repository.baseBranch
-  )
-    fail(
-      "untrusted-config-change",
-      "the working configuration names another remote or base branch than the base revision's",
-      {
-        base: { remote: trusted.repository.remote, branch: trusted.repository.baseBranch },
-      },
-    );
+  const { base: baseSha, config: trusted, digest } = trustedBase(rt, repo.root, ctx.working());
   const initiative = parseInitiative(options.id, trusted);
   if (await legacyUnmigrated(ctx, trusted, initiative.id))
     fail(
@@ -58,14 +61,22 @@ export async function start(
         initiative: initiative.id,
       },
     );
-  if (await ctx.state.get(initiative.id))
+  const existing = await ctx.state.get(initiative.id);
+  if (existing && !(options.reopen && existing.cleanedAt))
     fail(
       "conflict",
-      `${initiative.id} is already started; use comforge status or comforge revise`,
+      existing.cleanedAt
+        ? `${initiative.id} was cleaned up; start it again with --reopen (a new attempt)`
+        : `${initiative.id} is already started; use comforge status or comforge revise`,
       {
         initiative: initiative.id,
+        ...(existing.cleanedAt ? { cleanedAt: existing.cleanedAt } : {}),
       },
     );
+  if (options.reopen && !existing)
+    fail("not-found", `${initiative.id} has never been started; start it without --reopen`);
+  if (existing?.migratedFrom?.retiredAt)
+    fail("conflict", `${initiative.id} was retired by migrate --rollback; it cannot be reopened`);
 
   // A phase must start from the same specification its ticket started from.
   const parent = initiative.phase ? await ctx.state.get(initiative.ticket) : null;
@@ -98,35 +109,46 @@ export async function start(
   const { remote, baseBranch } = trusted.repository;
   if (trusted.lifecycle.remotePreflight) await remotePreflight(ctx, trusted, initiative.branch);
 
-  const checkout = checkoutDir(trusted, repo.root, initiative);
+  const parentDir = ctx.host.checkoutParent ?? checkoutParent(trusted, repo.root);
+  const checkout = ctx.host.checkoutParent
+    ? path.join(parentDir, initiative.id.toLowerCase())
+    : checkoutDir(trusted, repo.root, initiative);
   if (existsSync(checkout)) fail("would-overwrite", `${checkout} already exists`, { checkout });
-  mkdirSync(checkoutParent(trusted, repo.root), { recursive: true });
+  mkdirSync(parentDir, { recursive: true });
   const provisioning = createCheckout(ctx, trusted, checkout, {
     branch: initiative.branch,
     at: baseSha,
     fetch: [baseBranch],
     provision: options.provision !== false,
   });
-  const record = await ctx.state.create(
-    {
-      ticket: initiative.ticket,
-      phase: initiative.phase,
-      branch: initiative.branch,
-      checkout,
-      primary: repo.root,
-      base: { remote, branch: baseBranch, sha: baseSha },
-      trustedConfig: digest,
-      specification,
-      validations: [],
-      revisions: [],
-      publications: [],
-      completions: [],
-      operations: [],
-      cleanedAt: null,
-      provisioning,
-    },
-    initiative.id,
-  );
+  const fields = {
+    ticket: initiative.ticket,
+    phase: initiative.phase,
+    branch: initiative.branch,
+    checkout,
+    primary: repo.root,
+    base: { remote, branch: baseBranch, sha: baseSha },
+    trustedConfig: digest,
+    specification,
+    validations: [],
+    revisions: [],
+    publications: [],
+    completions: [],
+    operations: [],
+    cleanedAt: null,
+    provisioning,
+    ...(ctx.host.checkoutParent ? { hostCheckoutParent: ctx.host.checkoutParent } : {}),
+  };
+  let record: InitiativeRecord;
+  try {
+    record = existing
+      ? await reopenAttempt(ctx, initiative.id, existing.version, fields)
+      : await ctx.state.create(fields, initiative.id);
+  } catch (error) {
+    // Only what this invocation created is removed.
+    ctx.host.remove(checkout);
+    throw error;
+  }
   return {
     result: {
       initiative: record.operationId,
@@ -137,8 +159,41 @@ export async function start(
       provisioned: provisioning.map((p) => p.command),
       provisioning,
       primaryCheckout: primaryReport(ctx),
+      ...(record.attempt ? { attempt: record.attempt } : {}),
     },
   };
+}
+
+/**
+ * Turns a cleaned initiative into its next attempt, by compare-and-swap on the version start
+ * read: a concurrent reopen (or any other change) makes this one fail instead of both
+ * succeeding. The finished attempt is archived verbatim; grant uses stay on the record, so a
+ * grant's attempts are never refunded by reopening.
+ */
+async function reopenAttempt(
+  ctx: CommandContext,
+  id: string,
+  expectedVersion: number,
+  fields: Omit<InitiativeRecord, "version" | "schema" | "operationId">,
+): Promise<InitiativeRecord> {
+  return ctx.state.update(id, (r) => {
+    if (r.version !== expectedVersion || !r.cleanedAt)
+      fail("conflict", `${id} changed while it was being reopened; rerun`, { initiative: id });
+    const { attempts = [], grantUses, version: _v, schema: _s, ...finished } = r;
+    const attempt = (r.attempt ?? 1) + 1;
+    const archived = {
+      attempt: r.attempt ?? 1,
+      archivedAt: nowIso(ctx.rt.now()),
+      record: finished,
+    };
+    for (const key of Object.keys(r) as (keyof InitiativeRecord)[])
+      if (key !== "version" && key !== "schema" && key !== "operationId") delete r[key];
+    Object.assign(r, fields, {
+      attempt,
+      attempts: [...attempts, archived],
+      ...(grantUses ? { grantUses } : {}),
+    });
+  });
 }
 
 /**
@@ -174,12 +229,13 @@ function createCheckout(
         `+refs/heads/${branch}:refs/remotes/${remote}/${branch}`,
       ]);
     git(rt, checkout, ["checkout", "--quiet", "-b", options.branch, options.at]);
+    ctx.host.prepareCheckout(checkout);
     return options.provision
       ? provision(rt, trusted, checkout, repo.root, credentialVariables(trusted))
       : [];
   } catch (error) {
     // Only what this invocation created is removed.
-    rmSync(checkout, { recursive: true, force: true });
+    ctx.host.remove(checkout);
     throw error;
   }
 }
@@ -489,7 +545,8 @@ export async function verify(
         known: trusted.verification.optional.map((c) => c.name),
       }),
   );
-  const commandsToRun = [...trusted.validation.commands, ...optional];
+  // A host validation policy replaces the configured commands; optional ones still add.
+  const commandsToRun = [...(ctx.host.validation ?? trusted.validation.commands), ...optional];
   const snapshot = trusted.verification.snapshot;
   ctx.checkpoint();
 
@@ -510,6 +567,11 @@ export async function verify(
       try {
         git(rt, scratch, ["clone", "--quiet", "--no-hardlinks", "--no-checkout", checkout, runDir]);
         git(rt, runDir, ["checkout", "--quiet", "--detach", head]);
+        // The same hand-over as an isolated checkout (a worker user runs validation here).
+        if (ctx.host.prepares) {
+          chmodSync(scratch, 0o711);
+          ctx.host.prepareCheckout(runDir);
+        }
         provision(rt, trusted, runDir, ctx.repo.root, credentialVariables(trusted), "snapshot");
       } catch (error) {
         throw new Unavailable(
@@ -565,7 +627,13 @@ export async function verify(
     reason = error.message;
   } finally {
     rmSync(ghHome, { recursive: true, force: true });
-    if (!options.keep) rmSync(scratch, { recursive: true, force: true });
+    if (!options.keep) {
+      // The snapshot holds files the candidate's commands wrote: the host removes exactly the
+      // directory it prepared (a worker user cannot list the private scratch parent), then the
+      // CLI removes its own scratch.
+      if (snapshot && existsSync(runDir)) ctx.host.remove(runDir);
+      rmSync(scratch, { recursive: true, force: true });
+    }
   }
   const validation: Validation = {
     commit: head,
@@ -577,6 +645,7 @@ export async function verify(
     ...(optional.length > 0 ? { optional: optional.map((c) => c.name) } : {}),
     ...(trusted.verification.summary ? { summary } : {}),
     ...(reason ? { reason } : {}),
+    ...(ctx.host.validation ? { policy: "host" as const } : {}),
   };
   await ctx.state.update(record.operationId, (r) => {
     r.validations.push(validation);
@@ -782,6 +851,13 @@ export async function cleanup(
         head: delivered as string,
         grantFile: options.grantFile,
         command: "cleanup",
+        // Proved above: merged, and the merge reached the base.
+        pullRequest: {
+          number: published?.prNumber as number,
+          headSha: delivered as string,
+          open: false,
+          merged: true,
+        },
       })
     : null;
   await ctx.state.update(id, (r) => {
@@ -863,8 +939,20 @@ function checkIsolatedClone(
 ): void {
   const { rt } = ctx;
   const checkout = record.checkout;
-  const parent = checkoutParent(trusted, ctx.repo.root);
-  if (path.dirname(path.resolve(checkout)) !== path.resolve(parent))
+  // A checkout made under a host policy is removed only under that same policy.
+  if (record.hostCheckoutParent && record.hostCheckoutParent !== ctx.host.checkoutParent)
+    fail(
+      "conflict",
+      "the checkout was created under a host checkout parent this caller does not hold",
+      {
+        checkout,
+        hostCheckoutParent: record.hostCheckoutParent,
+      },
+    );
+  const parent = record.hostCheckoutParent ?? checkoutParent(trusted, ctx.repo.root);
+  // Real paths: Git reports the top level through symlinks (a temporary directory, for example).
+  const real = (p: string) => (existsSync(p) ? realpathSync(p) : path.resolve(p));
+  if (path.dirname(real(checkout)) !== real(parent))
     fail(
       "conflict",
       "the recorded checkout is not under the checkout parent; refusing to remove it",
@@ -874,7 +962,7 @@ function checkIsolatedClone(
       },
     );
   const top = git(rt, checkout, ["rev-parse", "--show-toplevel"]);
-  if (path.resolve(top) !== path.resolve(checkout))
+  if (real(top) !== real(checkout))
     fail("conflict", "the recorded checkout is not a repository root; refusing to remove it");
   const dirty = git(rt, checkout, ["status", "--porcelain", "--untracked-files=normal"]);
   if (dirty)
@@ -930,7 +1018,7 @@ function runCleanupStep(
   const { rt, repo } = ctx;
   const { remote, baseBranch } = trusted.repository;
   if (step === "remove-checkout") {
-    rmSync(record.checkout, { recursive: true, force: true });
+    ctx.host.remove(record.checkout);
     return `removed ${record.checkout}`;
   }
   if (step === "delete-remote-branch") {

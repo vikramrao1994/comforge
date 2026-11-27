@@ -1,8 +1,10 @@
 import {
   type CompletionProtocol,
   createCompletionProtocol,
+  createReviewProtocol,
   createSpecificationProtocol,
   type Redaction,
+  type ReviewProtocol,
   type SpecificationProtocol,
 } from "@comforge/core";
 import type { ComforgeConfig } from "./config.ts";
@@ -28,6 +30,31 @@ export function specificationProtocol(config: ComforgeConfig): SpecificationProt
 }
 
 /** Credential shapes a completion record must never carry. Pattern-based: a floor, not a proof. */
+/** Bounds of a published advisory review; generous, fixed, and part of no digest. */
+export const REVIEW_LIMITS = {
+  summaryMaxChars: 4000,
+  findingsMax: 50,
+  findingTitleMaxChars: 200,
+  findingTextMaxChars: 4000,
+  notesMax: 20,
+  noteMaxChars: 1000,
+} as const;
+
+export function reviewProtocol(config: ComforgeConfig): ReviewProtocol | null {
+  const r = config.review;
+  return r
+    ? createReviewProtocol({
+        reviewScheme: r.reviewScheme,
+        repository: `${config.repository.owner}/${config.repository.name}`,
+        markerNamespace: r.markerNamespace,
+        publisherName: r.publisherName,
+        publishToolName: r.publishToolName,
+        ticketPattern: new RegExp(config.tickets.pattern),
+        limits: { ...REVIEW_LIMITS },
+      })
+    : null;
+}
+
 const SECRET_PATTERNS: readonly [string, RegExp][] = [
   ["github-token", /\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b/g],
   ["aws-access-key", /\b(?:AKIA|ASIA)[A-Z0-9]{16}\b/g],

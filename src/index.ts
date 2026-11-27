@@ -13,6 +13,15 @@ export {
   recover,
   withCompletionLink,
 } from "./commands/delivery.ts";
+export {
+  advisoryReviews,
+  artifact,
+  artifactReadable,
+  issueComments,
+  publishReview,
+  publishSpecification,
+  pullRequests,
+} from "./commands/governance.ts";
 export { init } from "./commands/init.ts";
 export {
   type CommandResult,
@@ -43,6 +52,7 @@ export {
   openContext,
 } from "./context.ts";
 export { CliError, ERROR_CODES, type ErrorCode, EXIT, type ExitStatus } from "./errors.ts";
+export { type HostPolicy, type ResolvedHost, resolveHost } from "./host.ts";
 export { stableJson } from "./json.ts";
 export {
   completionProtocol,

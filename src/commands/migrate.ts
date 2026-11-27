@@ -19,7 +19,7 @@ import type { ComforgeConfig } from "../config.ts";
 import type { CommandContext } from "../context.ts";
 import { fail } from "../errors.ts";
 import { canonical } from "../json.ts";
-import { checkoutDir, fetchBase, parseInitiative, trustedConfigAt } from "../repository.ts";
+import { checkoutDir, parseInitiative, trustedBase } from "../repository.ts";
 import { type InitiativeRecord, nowIso, stateDir } from "../state.ts";
 import type { CommandResult } from "./lifecycle.ts";
 
@@ -408,8 +408,7 @@ export async function migrate(
   options: { execute: boolean; rollback?: boolean; waitSeconds?: number },
 ): Promise<CommandResult> {
   const { rt, repo } = ctx;
-  const baseSha = fetchBase(rt, repo.root, ctx.working());
-  const { config: trusted, digest } = trustedConfigAt(rt, repo.root, baseSha);
+  const { base: baseSha, config: trusted, digest } = trustedBase(rt, repo.root, ctx.working());
   const legacy = trusted.state.legacy;
   if (!legacy)
     return fail(

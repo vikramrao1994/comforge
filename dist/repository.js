@@ -85,4 +85,18 @@ export function fetchBase(rt, root, config) {
     ]);
     return git(rt, root, ["rev-parse", "--verify", `refs/remotes/${remote}/${baseBranch}^{commit}`]);
 }
+/**
+ * The trusted base and its configuration. The working configuration only names where the base
+ * is (remote and branch); the configuration committed there must name the same place, so an edit
+ * of the working file cannot point the CLI at another branch's policy (review authors, readable
+ * artifacts, capabilities). Every command that reads trusted policy goes through here.
+ */
+export function trustedBase(rt, root, working) {
+    const base = fetchBase(rt, root, working);
+    const { config, digest } = trustedConfigAt(rt, root, base);
+    if (config.repository.remote !== working.repository.remote ||
+        config.repository.baseBranch !== working.repository.baseBranch)
+        fail("untrusted-config-change", "the working configuration names another remote or base branch than the base revision's", { base: { remote: config.repository.remote, branch: config.repository.baseBranch } });
+    return { base, config, digest };
+}
 export const repositorySlug = (config) => `${config.repository.owner}/${config.repository.name}`;

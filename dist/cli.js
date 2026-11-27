@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { COMMANDS, capabilities, context, doctor, PACKAGE_VERSION } from "./commands/agent.js";
@@ -11,7 +11,7 @@ import { migrate } from "./commands/migrate.js";
 import { configJsonSchema } from "./config.js";
 import { openContext } from "./context.js";
 import { CliError, EXIT, errorJson, exitOf, fail } from "./errors.js";
-import { stableJson } from "./json.js";
+import { compactJson, stableJson, summarize } from "./json.js";
 import { locateRepository } from "./repository.js";
 import { defaultRuntime } from "./runtime.js";
 import { createLifecycleServices } from "./services.js";
@@ -30,6 +30,11 @@ const VALUE_FLAGS = new Set([
     "--with",
     "--closes",
     "--wait",
+    "--command",
+    "--body-file",
+    "--review-file",
+    "--key",
+    "--state",
 ]);
 export function parseArgs(argv) {
     const positional = [];
@@ -60,19 +65,24 @@ const KNOWN_FLAGS = {
     capabilities: [],
     context: ["--task"],
     schema: [],
-    start: ["--issue", "--expect-digest", "--no-provision"],
+    start: ["--issue", "--expect-digest", "--no-provision", "--reopen"],
     revise: ["--reviewed-head", "--no-provision"],
     status: [],
     verify: ["--commit", "--with", "--keep"],
     publish: ["--title", "--draft", "--closes", "--execute", "--grant"],
-    grant: ["--grant", "--key", "--hours"],
+    grant: ["--grant", "--key", "--hours", "--command"],
     complete: ["--result", "--execute", "--grant"],
     deliver: ["--title", "--result", "--no-pr", "--draft", "--closes", "--execute", "--grant"],
     recover: ["--abandon", "--execute", "--grant"],
     cleanup: ["--allow-missing-completion", "--execute", "--grant"],
     migrate: ["--execute", "--rollback", "--wait"],
+    spec: ["--title", "--body-file", "--issue", "--key", "--grant", "--execute"],
+    review: ["--review-file", "--grant", "--execute"],
+    comments: [],
+    prs: ["--state"],
+    artifact: [],
 };
-const GLOBAL_FLAGS = ["--json", "--help", "--version", "--cwd"];
+const GLOBAL_FLAGS = ["--json", "--help", "--version", "--cwd", "--compact", "--summary"];
 function help(command) {
     const entry = COMMANDS.find((c) => c.name === command);
     if (entry)
@@ -155,6 +165,7 @@ export async function runCommand(p, rt) {
                 issue: p.flags.has("--issue") ? intArg(str(p, "--issue"), "--issue") : undefined,
                 expectDigest: str(p, "--expect-digest"),
                 provision: !p.flags.has("--no-provision"),
+                ...(p.flags.has("--reopen") ? { reopen: true } : {}),
             }));
         case "revise":
             return unwrap(services.revise({
@@ -203,6 +214,47 @@ export async function runCommand(p, rt) {
             }));
         case "grant":
             return grant(openContext(rt), p);
+        case "spec": {
+            if (p.positional[0] !== "publish" || p.positional.length !== 2)
+                fail("usage", "spec publish <TICKET> --title T --body-file FILE");
+            return unwrap(services.publishSpecification({
+                ticket: p.positional[1],
+                title: required(p, "--title"),
+                body: readText(path.resolve(rt.cwd, required(p, "--body-file"))),
+                ...(p.flags.has("--issue") ? { issue: intArg(str(p, "--issue"), "--issue") } : {}),
+                ...(p.flags.has("--key") ? { idempotencyKey: str(p, "--key") } : {}),
+                execute,
+                grantFile: grantFile(p, rt),
+            }));
+        }
+        case "review": {
+            if (p.positional[0] === "list" && p.positional.length === 2)
+                return unwrap(services.advisoryReviews({ pr: intArg(p.positional[1], "the pull request") }));
+            if (p.positional[0] !== "publish" || p.positional.length !== 1)
+                fail("usage", "review publish --review-file FILE | review list <PR>");
+            let review;
+            try {
+                review = JSON.parse(readText(path.resolve(rt.cwd, required(p, "--review-file"))));
+            }
+            catch (error) {
+                if (error instanceof CliError)
+                    throw error;
+                fail("usage", "--review-file must be a JSON file");
+            }
+            return unwrap(services.publishReview({ review, execute, grantFile: grantFile(p, rt) }));
+        }
+        case "comments":
+            return unwrap(services.issueComments({ issue: intArg(needOne(p, "issue number"), "the issue") }));
+        case "prs": {
+            const state = str(p, "--state") ?? "open";
+            if (!["open", "closed", "all"].includes(state))
+                fail("usage", "--state is open, closed or all");
+            return unwrap(services.pullRequests({ state: state }));
+        }
+        case "artifact":
+            if (p.positional.length !== 2)
+                fail("usage", "artifact <COMMIT> <PATH>");
+            return unwrap(services.artifact({ commit: p.positional[0], path: p.positional[1] }));
         case "recover":
             return unwrap(services.recover({
                 id: needOne(p, "initiative id"),
@@ -234,6 +286,7 @@ function grant(ctx, p) {
         return grantCommand.template(ctx, {
             id,
             hours: p.flags.has("--hours") ? intArg(str(p, "--hours"), "--hours") : 24,
+            command: str(p, "--command"),
         });
     if (sub === "sign" && p.positional.length === 2 && id)
         return grantCommand.sign(ctx, {
@@ -241,7 +294,20 @@ function grant(ctx, p) {
             grantFile: path.resolve(ctx.rt.cwd, required(p, "--grant")),
             keyFile: path.resolve(ctx.rt.cwd, required(p, "--key")),
         });
-    return fail("usage", "grant template <ID> [--hours N] | grant sign <ID> --grant FILE --key FILE");
+    return fail("usage", "grant template <ID> [--hours N] [--command cleanup] | grant sign <ID|-> --grant FILE --key FILE");
+}
+/** A text input file (a specification body, a review), bounded. */
+function readText(file) {
+    let text;
+    try {
+        text = readFileSync(file, "utf8");
+    }
+    catch {
+        return fail("usage", `${file} is not a readable file`);
+    }
+    if (text.length > 200_000)
+        fail("usage", `${file} is larger than 200000 characters`);
+    return text;
 }
 /** Human rendering: the result's scalar fields, one per line; nested values as compact JSON. */
 export function renderHuman(command, result) {
@@ -277,7 +343,13 @@ export async function main(argv, rt = defaultRuntime(), io = { out: (t) => proce
         if (process.platform === "win32")
             fail("unsupported-platform", "comforge does not support Windows");
         const { result, exit = EXIT.ok } = await runCommand(parsed, runtime);
-        io.out(parsed.flags.has("--json") ? stableJson(result) : renderHuman(parsed.command, result));
+        // Opt-in context modes; the default JSON contract is unchanged.
+        const shown = parsed.flags.has("--summary") ? summarize(result) : result;
+        io.out(parsed.flags.has("--json")
+            ? parsed.flags.has("--compact")
+                ? compactJson(shown)
+                : stableJson(shown)
+            : renderHuman(parsed.command, shown));
         return exit;
     }
     catch (error) {

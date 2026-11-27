@@ -1,4 +1,5 @@
 import { complete, deliver, publish, recover } from "./commands/delivery.ts";
+import { advisoryReviews, artifact, issueComments, publishReview, publishSpecification, pullRequests } from "./commands/governance.ts";
 import { cleanup, revise, start, status, verify } from "./commands/lifecycle.ts";
 import { migrate } from "./commands/migrate.ts";
 import { type ContextOptions } from "./context.ts";
@@ -59,6 +60,8 @@ export interface StartResult {
         trackedChanges: number;
         untrackedFiles: number;
     };
+    /** Present from attempt 2 on (`reopen`); a first attempt omits it. */
+    attempt?: number;
 }
 export interface ReviseResult {
     initiative: string;
@@ -113,6 +116,14 @@ export interface LifecycleServices {
     recover(options: Parameters<typeof recover>[1]): Promise<ServiceResult<EvidenceResult>>;
     cleanup(options: Parameters<typeof cleanup>[1]): Promise<ServiceResult<EvidenceResult>>;
     migrate(options: Parameters<typeof migrate>[1]): Promise<ServiceResult<EvidenceResult>>;
+    /** Publishes (or replays) a specification issue; owner-grant needs a publish-specification grant. */
+    publishSpecification(options: Parameters<typeof publishSpecification>[1]): Promise<ServiceResult<EvidenceResult>>;
+    /** Publishes an advisory review comment bound to the reviewed head; never a native review. */
+    publishReview(options: Parameters<typeof publishReview>[1]): Promise<ServiceResult<EvidenceResult>>;
+    issueComments(options: Parameters<typeof issueComments>[1]): Promise<ServiceResult<EvidenceResult>>;
+    pullRequests(options: Parameters<typeof pullRequests>[1]): Promise<ServiceResult<EvidenceResult>>;
+    advisoryReviews(options: Parameters<typeof advisoryReviews>[1]): Promise<ServiceResult<EvidenceResult>>;
+    artifact(options: Parameters<typeof artifact>[1]): Promise<ServiceResult<EvidenceResult>>;
 }
 export type { DeliveryAttempt };
 /** A thrown command error as a value; anything that is not a CliError is `internal`. */
