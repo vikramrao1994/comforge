@@ -27,20 +27,10 @@ recorded; one that did not is retried from its own candidate.
 
 Exactly one publisher may be active. Until the owner switches, releases are still published by
 the previous source repository's release workflow, and this repository's `release.yml` runs only
-its credential-free `candidate` job: `authorize` and `release` require the repository variable
-`COMFORGE_PUBLISHER` to be `comforge`. The switch-over, in order, all owner actions:
-
-1. Merge the migration, then run `release.yml` as a dry run from `main` (credential-free rehearsal).
-2. Create environment `comforge-release` (restricted to `main`) with a GitHub App
-   (`COMFORGE_APP_ID` + `COMFORGE_APP_PRIVATE_KEY`) or a fine-grained token
-   (`COMFORGE_RELEASE_TOKEN`) allowed to push `releases/*` and tags here — a push made with the
-   workflow's own `GITHUB_TOKEN` would not start the npm workflow.
-3. Review `release-trust.json` (keep or rotate the owner key) and re-sign for this workflow: an
-   authorization binds the workflow path and digest.
-4. Require pull requests and status checks on `main` (ruleset), with CODEOWNERS on `.github/`,
-   `tooling/release/` and `release-trust.json`.
-5. Disable the previous publisher and remove its credentials, then set `COMFORGE_PUBLISHER=comforge`.
-6. One attended release from here; read it back.
+its credential-free `candidate` job. The ordered, fail-closed switch-over, what verifies each
+step and how to recover from each failure: [Release publisher transition](release-transition.md)
+(the only authoritative procedure). CI exercises the pipeline on every pull request without a
+credential (`bun run release:rehearse`); a rehearsal is never a publication.
 
 npm Trusted Publishing needs no change as long as each `npm-publish-<id>.yml` keeps its file name
 and `npm-<id>` environment on its release branch.

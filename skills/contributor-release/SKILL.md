@@ -35,7 +35,7 @@ bun run release:record --package <id>
 ## Security boundaries
 
 - Only the owner signs release authorizations and approves npm stages; an agent never holds those keys or tokens.
-- Only one publisher is active (`COMFORGE_PUBLISHER`).
+- Only one publisher is active (`COMFORGE_PUBLISHER`, and `COMFORGE_PREVIOUS_PUBLISHER_RETIRED` in `comforge-release`); the switch-over is owner-only and follows `docs/release-transition.md` in order.
 
 ## Validation
 

@@ -25,6 +25,7 @@ Status labels used throughout: **published** (in a released npm version), **impl
 | [Examples](examples.md) | Independent consumer examples |
 | [Contributing](contributing.md) | Developing Comforge itself |
 | [Release governance](release-governance.md) | How a package version is planned, authorized and published |
+| [Release publisher transition](release-transition.md) | The fail-closed switch-over to this repository's publisher |
 | [Known limitations](known-limitations.md) | What Comforge does not do |
 | [Decisions](decisions/) | Architectural decision records |
 

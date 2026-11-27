@@ -198,7 +198,8 @@
         "contributor-release"
       ],
       "docs": [
-        "docs/release-governance.md"
+        "docs/release-governance.md",
+        "docs/release-transition.md"
       ],
       "validation": [
         "bun test --isolate tests/release",

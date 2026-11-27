@@ -12,4 +12,4 @@
   results from real agent clients and live benchmarks are reported separately and are not part
   of CI (experimental).
 - **Self-hosted publication** from this repository is implemented but not yet the active
-  publisher (planned switch-over; [release governance](release-governance.md)).
+  publisher (planned switch-over; [release publisher transition](release-transition.md)).

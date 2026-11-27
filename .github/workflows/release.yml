@@ -10,7 +10,10 @@ name: Release a Comforge package
 #
 # Single publisher. Until the owner moves publication here, releases are still published by
 # the previous publisher, and this workflow only rehearses: jobs `authorize` and `release`
-# run only when the repository variable COMFORGE_PUBLISHER is exactly "comforge".
+# run only when the repository variable COMFORGE_PUBLISHER is exactly "comforge", and job
+# `release` refuses before any credential exists unless the comforge-release environment
+# records the date the previous publisher was retired (COMFORGE_PREVIOUS_PUBLISHER_RETIRED).
+# The ordered, fail-closed switch-over and its recovery: docs/release-transition.md.
 #
 # Manual only. Job `candidate` holds no credential: it builds twice, checks reproducibility,
 # the disclosure scan and the Node import, runs the release planner, proves CI for the commit,
@@ -220,6 +223,21 @@ jobs:
       # before any step that receives a secret (tests/release/workflowPolicy.test.ts).
       - name: Verify exact branch ref (case-sensitive)
         run: test "$GITHUB_REF" = "refs/heads/main"
+      # Fail closed on the publisher transition (docs/release-transition.md): the owner records,
+      # as a variable of the comforge-release environment, the date the previous external
+      # publisher was disabled and its credential revoked. Without it no credential is minted.
+      - name: Verify the previous publisher is retired
+        env:
+          RETIRED: ${{ vars.COMFORGE_PREVIOUS_PUBLISHER_RETIRED }}
+        run: |
+          if ! [[ "$RETIRED" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+            echo "::error::COMFORGE_PREVIOUS_PUBLISHER_RETIRED is not set to a date in environment comforge-release. Retire the previous publisher first (docs/release-transition.md); nothing was published."
+            exit 1
+          fi
+          if [[ "$RETIRED" > "$(date -u +%F)" ]]; then
+            echo "::error::COMFORGE_PREVIOUS_PUBLISHER_RETIRED ($RETIRED) is in the future; nothing was published."
+            exit 1
+          fi
       - name: Checkout the candidate's source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
