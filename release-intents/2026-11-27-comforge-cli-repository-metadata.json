@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "patch",
+  "summary": "package.json names the package's directory in the Comforge repository (repository.directory), its README (homepage) and the issue tracker (bugs).",
+  "breaking": null,
+  "covers": []
+}

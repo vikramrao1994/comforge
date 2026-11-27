@@ -6,7 +6,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vikramrao1994/comforge.git"
+    "url": "git+https://github.com/vikramrao1994/comforge.git",
+    "directory": "packages/github"
+  },
+  "homepage": "https://github.com/vikramrao1994/comforge/tree/main/packages/github#readme",
+  "bugs": {
+    "url": "https://github.com/vikramrao1994/comforge/issues"
   },
   "type": "module",
   "sideEffects": false,
