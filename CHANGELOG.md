@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+- New subpaths: @comforge/cli/protocols (specification, review and completion protocols under an explicit versioned profile that cannot weaken the credential floor or reserved prefixes) and @comforge/cli/authority (execution grants and validation receipts, separate from lifecycle grants).
+
 ## 0.4.0
 
 - Exports reviewProtocol and REVIEW_LIMITS (the advisory-review protocol a trusted configuration defines) and moves to @comforge/github 0.6.0.

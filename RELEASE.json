@@ -1,27 +1,29 @@
 {
   "schema": "comforge-release/v1",
   "package": "@comforge/cli",
-  "version": "0.4.0",
-  "tag": "cli/v0.4.0",
+  "version": "0.5.0",
+  "tag": "cli/v0.5.0",
   "source": {
-    "commit": "7d65752faf6f5854a97da7ed55a903bb3494b228",
-    "packageTree": "23a8b0d588b734ebb5b26795c4a24855789dbd52",
-    "exampleTree": "cb81f78d06466489d670e55570c278faacf1d994"
+    "commit": "a6209d7c80bffc2fd78305d06ed8798bc4272ad7",
+    "packageTree": "7150983e9a00a861247fdd50a47af556d21e591b",
+    "exampleTree": "d0df61ade125f929d4904e0ee3da44cfd0e26ad7"
   },
   "toolchain": {
     "typescript": "7.0.2"
   },
   "tarball": {
-    "file": "comforge-cli-0.4.0.tgz",
-    "sha256": "055692cb52bf1025d3d8387f9ecbd7a23e592adc255ae9cf34992dbecf09bf9c",
-    "integrity": "sha512-cxZs58ZCoOAJhtNlB3235BIL13f4tIZv6A+9WbaA2HeODGgJh1Werxvvg1mdpfa7xvqgKEL8xPa4oBcIIw1fiQ=="
+    "file": "comforge-cli-0.5.0.tgz",
+    "sha256": "fda56b96e854d3645c0c0d3c41eeab772b91a6e321a7b545b6fb9e0a74785a5a",
+    "integrity": "sha512-eUt/3TC49EHQE5JvtTOpGtMsoa5mz0Ly1f8+CzciBK3DYaPGkPDLFHuypTp7C8ROAYGLLTYpCDTV34QUIyq9Kw=="
   },
   "files": {
     ".github/comforge/npm-release.mjs": "c28caae77426ec2c1233cd55bb11036d5b29c2e414bb6c41e0ff46fc72cfe55a",
     ".github/workflows/npm-publish-cli.yml": "7940c0bab88a783381e7ee6d2a25d337baf10539d6b162b0c2b9ced296e18fb1",
-    "CHANGELOG.md": "73675b3a5c9a64ed6eb62982db4b5fb08229cbf1405974bf3cb769e4b2638882",
+    "CHANGELOG.md": "7dc0e10e6e41215952f2beea9037d3ec1c8dc43d05cb7b91876c47447c3eab4b",
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-    "README.md": "d18ff754145e3d68288e18410a4876c41d53f4014d752b650a4c5397e086c536",
+    "README.md": "3405e0b89c18be5bc2633295305fb7b912e5dfd490fbf507b8897ac844b6a78b",
+    "dist/authority.d.ts": "78c04d384a13c14e1d689b157ed7e6fb8201362a547c07e56ba9cafca444f5db",
+    "dist/authority.js": "ebeeb7df019839aee46cb69d05694dc56cfb3ae9e57bbe8ba7f86754beae5211",
     "dist/authorization.d.ts": "54b528a09839086262c91c1b8afdeb768a076b6575037ae191afbc030cb237dd",
     "dist/authorization.js": "d78c9644e7f269c6e645113d03d0d350f6e9afe1930221ee44d560804f10091e",
     "dist/cli.d.ts": "2d1a5fc3e226d11b25be665385aa49a2f4e8edee0503483e32552920cbc905ed",
@@ -54,6 +56,8 @@
     "dist/index.js": "710b4fdf59c85700de6060c9eba95cf5b03f2498a11feed3296385f42dc340b5",
     "dist/json.d.ts": "dd58ddd4e84babe0970f96eccd5a87786c172418963ea37a9addc4cdd725a800",
     "dist/json.js": "e2f7d50024e983e85cb97a32301b297545890256a96f9a914bb51bc02b7eef2f",
+    "dist/protocolProfile.d.ts": "ac4322e09c9d256d4228fbdd7c6ec3cdb11ffe05c73ddd1d3ddd5afa9bbd5441",
+    "dist/protocolProfile.js": "fd433acb549f52c32dd07cf17f54a28297724367c9c0b61fb5b6d68398d82ea8",
     "dist/protocols.d.ts": "ee52012953ccb60e37efaf3cda672f6745788d0a513c688c613edac4c277d407",
     "dist/protocols.js": "8224656d4ac66b7eac691fbfbc1edeb2e1a28764e6a9712979488349e63009b8",
     "dist/provision.d.ts": "01e8dee5193e204f6a33c32fb133e1e169efceac3ce0fc3a143faee1e0c84583",
@@ -70,9 +74,10 @@
     "dist/state.js": "71857c6213265b39c2aef62f7d815acf2bc63e37d0f1609687f70f8fbb224575",
     "examples/factory-cli-consumer/README.md": "1d76ff8e720479dcb1bb1bcb31a03f4ee669e1b7a7f12f43ab80d9fc75b4df76",
     "examples/factory-cli-consumer/demo.mjs": "5d1eef853f51a5db1835acd2495661c251587d19fd033f18f662dffed64b8a27",
-    "examples/factory-cli-consumer/package.json": "707d9352a62ba9c56e2e278ae9865f2fc6be777df062fe928f4f61761d2b0087",
-    "llms.txt": "92410541b39e40c813424cf44507ac2faae3c0fc5b27863ef8acf7d1841df574",
-    "package.json": "5da7b6b523c1047ec51e392e76b427340a391220568ea8773b6949d41dca8081",
+    "examples/factory-cli-consumer/package.json": "1fee312a0e8ec09d708f999e022c207c62658566f6a6786884c70e102e1e703b",
+    "llms.txt": "26fa77059e2ae36eecbd3802114c0c8f173091472615410bee6942a733664b6f",
+    "package.json": "9fbba0dda9d56223b365a6856734bfeba953d5ede87674c59f32d294804d4257",
+    "src/authority.ts": "5f69dd27aba796a6268cf780f13374dc464f617b9435bf0301ff9344a6c41940",
     "src/authorization.ts": "9d9b3a19a8d4b94af4618e51f77141ffb89e946c962b3c26e3e7e5cc0120ddba",
     "src/cli.ts": "4d8a3c6ecdec8756917dee8eb8fd9c6f35d687b75b4228341c5056697f541f76",
     "src/commands/agent.ts": "099a994e206232ffe50ca1adf4019f4e1d78d9dbeceb9d0a6cdfe7ec096692cf",
@@ -89,6 +94,7 @@
     "src/host.ts": "df8994d0048ead27be19aac76f31b454b69a7f99dceb7519d9af6f7f1fd14e03",
     "src/index.ts": "27c73f2bc2544b39a943433bf633a9859fe57191b470b92172e253de4de21bb4",
     "src/json.ts": "6961c7bf58c5057ac5371ae09e54ef31ef962a926429ce8c3913e41a90f5fcf3",
+    "src/protocolProfile.ts": "4c9cf0b1148ee8f08a57d6790ee676727e2485b85b53311a679f6861ad433771",
     "src/protocols.ts": "2e6aa530f39e751726bea20bec4f7a77963df6949ccf338fc382accf8bd47079",
     "src/provision.ts": "d0c027c5928474de1aa78e0c94c7711d5c3641c435ff47202cf1a079ebac131e",
     "src/repository.ts": "9e86fee202c4516c7b4f5859b75f0893612493bc1c217785d87c2e8cac4c923c",

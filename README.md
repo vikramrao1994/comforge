@@ -62,9 +62,9 @@ npx comforge cleanup 17 --execute           # after the merge
 `--execute` (or `--write`). Every command takes `--json` and prints deterministic JSON. `--compact` prints the same JSON on
 one line; `--summary` prints a bounded projection (see "Output modes").
 
-**Candidate (unreleased) capabilities.** The sections marked "candidate" below (`start --reopen`,
-command-scoped grants, the governance commands, the host policy and the output modes) are in the
-source and not yet released. `package.json` still says 0.2.0; the version PR moves it.
+**Version.** This README describes @comforge/cli 0.4.0. `start --reopen`, command-scoped grants,
+the governance commands, the host policy and the output modes shipped in 0.3.0; 0.4.0 added the
+exported `reviewProtocol` and `REVIEW_LIMITS`.
 
 ## Commands
 
@@ -75,7 +75,7 @@ source and not yet released. `package.json` still says 0.2.0; the version PR mov
 | `capabilities` | Commands, exit codes, error codes, what it never does | nothing |
 | `context [--task TEXT]` / `context check` | The one routing category a task matches | nothing |
 | `schema config` | The configuration's JSON Schema | nothing |
-| `start <ID> [--issue N] [--expect-digest HEX] [--no-provision] [--reopen]` | Verifies the specification; clones an isolated checkout from the fetched base and provisions it. `--reopen` (candidate) starts a new attempt of a cleaned-up initiative | local checkout, state |
+| `start <ID> [--issue N] [--expect-digest HEX] [--no-provision] [--reopen]` | Verifies the specification; clones an isolated checkout from the fetched base and provisions it. `--reopen` starts a new attempt of a cleaned-up initiative | local checkout, state |
 | `revise <PR> [--reviewed-head SHA] [--no-provision]` | Resumes an initiative for a revision of its open PR: re-creates a missing checkout, fast-forwards, reports divergence | state |
 | `status [ID]` | Local state of one or all initiatives | nothing |
 | `verify <ID> [--commit SHA] [--with NAME[,NAME]] [--keep]` | Runs the trusted validation commands on the clean, committed head (optionally in a fresh snapshot) | state |
@@ -83,19 +83,19 @@ source and not yet released. `package.json` still says 0.2.0; the version PR mov
 | `complete --result FILE [--execute]` | Publishes a completion record as one issue comment, linked from the PR | comment, PR body |
 | `deliver <ID> --title T --result FILE [--no-pr] [--draft] [--closes N] [--execute]` | `publish`, then `complete`, then reads both back; every attempt is recorded | as both |
 | `recover <ID> [--abandon] [--grant FILE] [--execute]` | Reconciles unresolved writes of this initiative | write ledger |
-| `grant template <ID> [--hours N] [--command cleanup]` / `grant sign <ID or -> --grant FILE --key FILE` | Owner grants (see Authorization); `--command` and `sign -` are candidate | nothing |
-| `cleanup <PR or ID> [--allow-missing-completion] [--grant FILE] [--execute]` | After a merge reached the base: removes the checkout and runs the configured cleanup steps, resumably. With owner grants it needs a command grant scoping cleanup of the merged PR (candidate) | local checkout, state (and the branch, if configured) |
+| `grant template <ID> [--hours N] [--command cleanup]` / `grant sign <ID or -> --grant FILE --key FILE` | Owner grants (see Authorization); `--command` and `sign -` are 0.3.0+ | nothing |
+| `cleanup <PR or ID> [--allow-missing-completion] [--grant FILE] [--execute]` | After a merge reached the base: removes the checkout and runs the configured cleanup steps, resumably. With owner grants it needs a command grant scoping cleanup of the merged PR | local checkout, state (and the branch, if configured) |
 | `migrate [--rollback] [--execute]` | Imports an earlier lifecycle's local state (`state.legacy`) | local state |
-| `spec publish <TICKET> --title T --body-file FILE [--issue N] [--key K] [--grant FILE] [--execute]` (candidate) | Publishes a specification issue (digest marker, idempotent, read back); `--issue` replaces one | one issue |
-| `review publish --review-file FILE [--grant FILE] [--execute]` / `review list <PR>` (candidate) | Publishes an advisory review comment bound to the reviewed head (never a native review or approval, never of one's own PR); lists a PR's advisory reviews with integrity and provenance | one PR comment (publish) |
-| `comments <ISSUE or PR>` (candidate) | Every comment, as bounded untrusted text | nothing |
-| `prs [--state open\|closed\|all]` (candidate) | The repository's pull requests | nothing |
-| `artifact <COMMIT> <PATH>` (candidate) | A file at an exact commit, only under the trusted `artifacts.readable` paths; never raw bytes | nothing |
+| `spec publish <TICKET> --title T --body-file FILE [--issue N] [--key K] [--grant FILE] [--execute]` | Publishes a specification issue (digest marker, idempotent, read back); `--issue` replaces one | one issue |
+| `review publish --review-file FILE [--grant FILE] [--execute]` / `review list <PR>` | Publishes an advisory review comment bound to the reviewed head (never a native review or approval, never of one's own PR); lists a PR's advisory reviews with integrity and provenance | one PR comment (publish) |
+| `comments <ISSUE or PR>` | Every comment, as bounded untrusted text | nothing |
+| `prs [--state open\|closed\|all]` | The repository's pull requests | nothing |
+| `artifact <COMMIT> <PATH>` | A file at an exact commit, only under the trusted `artifacts.readable` paths; never raw bytes | nothing |
 
 `<ID>` is a ticket (`ACME-101`) or a phase of one (`ACME-101.b`), which gets its own branch
 (`agent/acme-101.b`) and checkout and must keep its ticket's specification.
 
-## Output modes (candidate)
+## Output modes
 
 | Flag | Output |
 |---|---|
@@ -153,7 +153,7 @@ keys and unknown versions are refused.
 }
 ```
 
-Sections added in 0.2.0, and the candidate sections `review` and `artifacts`, change nothing until you set them; while each equals its default it is
+Sections added in 0.2.0, and the `review` and `artifacts` sections (0.3.0), change nothing until you set them; while each equals its default it is
 left out of the trusted digest, so initiatives started under 0.1.0 keep working:
 
 | Section | What it configures |
@@ -163,8 +163,8 @@ left out of the trusted digest, so initiatives started under 0.1.0 keep working:
 | `verification` | `snapshot` (fresh clone of the exact commit), `unavailableExitStatuses`, `summary` (a recorded JSON artifact), `optional` (commands run with `--with`) |
 | `publication` | `checks` (before any push), `bodyCommand`, `marker`, `draftFirst` (needs `pulls:ready`), `linkMarkerNamespace`, `reportPullRequestReason` |
 | `cleanup` | `deleteRemoteBranch` (needs `branches:delete`), `deleteLocalBranch`, `fastForwardPrimary`, `after` (commands) |
-| `review` (candidate) | The advisory-review protocol: `reviewScheme`, `markerNamespace`, `publisherName`, `publishToolName`, `trustedAuthors`. Absent: no review services |
-| `artifacts` (candidate) | `readable`: repository path prefixes `artifact` may read at a commit; empty means the evidence report directory only |
+| `review` | The advisory-review protocol: `reviewScheme`, `markerNamespace`, `publisherName`, `publishToolName`, `trustedAuthors`. Absent: no review services |
+| `artifacts` | `readable`: repository path prefixes `artifact` may read at a commit; empty means the evidence report directory only |
 
 Commands are argument vectors, never shell strings. `specification` and `completion` name the
 [`@comforge/core`](https://www.npmjs.com/package/@comforge/core) protocols; a repository that
@@ -191,10 +191,10 @@ configuration decides who may cause a GitHub write:
 | `{"mode": "owner-grant", "grantScheme": "acme-grant/v1", "trustedKeys": [...], "revokedGrants": [...]}` | Each write needs `--grant FILE`: an owner-signed grant (Ed25519, the `@comforge/core` grant protocol) bound to this repository, the ticket and its issue, the unedited specification digest, the base commit, the exact commit and branch, with an expiry (at most 7 days) and a number of attempts. Reuse past its attempts is refused as a replay. |
 | `{"mode": "operator"}` | Whoever runs the CLI with the credential decides. An explicit owner choice with no independent authorization: policy, not enforcement. |
 
-`revokedGrants` (candidate) lists grant ids the owner revoked; it is trusted configuration, so a
+`revokedGrants` lists grant ids the owner revoked; it is trusted configuration, so a
 candidate cannot un-revoke one, and a listed grant is refused even while valid.
 
-**Command scopes (candidate).** Writes are authorized by `authorizeCommand` of
+**Command scopes.** Writes are authorized by `authorizeCommand` of
 [`@comforge/core`](https://www.npmjs.com/package/@comforge/core) (see its README for the grant format). A grant
 without a command scope keeps its meaning for `publish`, `complete`, `deliver` and `recover`, and
 is never valid for `cleanup`. `cleanup` with owner grants needs a command grant scoping cleanup of
@@ -224,7 +224,7 @@ the owner's machine: an agent that can read a trusted private key can authorize 
 no CLI can prevent. Keep keys, credentials and the agent in separate places (external
 enforcement), and use branch rulesets so GitHub, not the CLI, decides what can merge.
 
-Governance writes (candidate) need the capabilities `issues:create` / `issues:update` (`spec
+Governance writes need the capabilities `issues:create` / `issues:update` (`spec
 publish`) and `issues:comment` (`review publish`) in `security.capabilities`.
 
 Three writes happen outside the SDK, each through one bounded host adapter and only with its own
@@ -299,7 +299,7 @@ returns the lifecycle commands as functions that resolve to `{ ok: true, value, 
 injected (no `process` access, no cwd discovery, no shared credential); `state` and `writeLedger`
 take any `@comforge/ledger` (for example SQLite); `signal` cancels between stages (`cancelled`).
 Authorization is still the trusted configuration's. The `comforge` executable calls these same
-services. The services also cover the governance and read commands above (candidate).
+services. The services also cover the governance and read commands above.
 
 Two kinds of input meet there, and they are trusted differently:
 
@@ -315,7 +315,58 @@ Two kinds of input meet there, and they are trusted differently:
 A cancelled call stops at the next stage boundary, never inside a write; a delivery cancelled after
 a remote write records an incomplete attempt and finishes when called again.
 
-### Host policy (candidate)
+### Protocol services
+
+`@comforge/cli/protocols` gives the specification, advisory-review and completion protocols as
+typed services under an explicit, versioned profile. Use it when records were published before
+the repository had a `comforge.config.json`, or under identities the configuration does not
+name, and must keep verifying byte for byte.
+
+```ts
+import { createProtocolServices, PROTOCOL_PROFILE_SCHEMA } from "@comforge/cli/protocols";
+
+const { specification, review, completion } = createProtocolServices({
+  schema: PROTOCOL_PROFILE_SCHEMA, // "comforge-protocol-profile/v1"; any other value is refused
+  repository: "acme/widgets",
+  ticketPattern: /^[A-Z]+-\d+$/,
+  specification: { digestScheme, markerNamespace, publisherName, publishToolName },
+  completion: { scheme, markerNamespace, runner, publishCommand, links, detectSecrets },
+});
+```
+
+A profile chooses identity only: schemes, marker namespaces, publisher names, limits and links.
+It cannot weaken what may be published. The completion's and the specification's marker prefixes
+are always reserved (`alsoReserved` adds, never removes), and the built-in credential detector
+always runs (`detectSecrets` adds a detector). `profileFromConfig(config)` is the profile a
+trusted configuration describes. The configuration-bound `specificationProtocol(config)`,
+`reviewProtocol(config)` and `completionProtocol(config)` of the package root are unchanged.
+
+### Runtime authority
+
+`@comforge/cli/authority` signs and verifies execution grants and validation receipts for a host
+that runs work itself. It is a separate authority from `comforge grant` and command scopes.
+
+```ts
+import { createRuntimeAuthority, ed25519Signer, RUNTIME_AUTHORITY_SCHEMA } from "@comforge/cli/authority";
+
+const authority = createRuntimeAuthority({
+  schema: RUNTIME_AUTHORITY_SCHEMA,
+  repository: "acme/widgets", ticketPattern, branchForTicket,
+  grantScheme: "acme-runtime-grant/v1",
+  receiptScheme: "acme-runtime-receipt/v1",
+  separateFrom: [lifecycleGrantScheme], // the authority refuses to exist under one of these
+});
+authority.grants.authorize(envelope, trustedKeys, actionContext, new Date());
+authority.receipts.verify(signedReceipt, controllerPublicKeyPem, expectation);
+```
+
+Verification takes public keys only, passed per call. Signing goes through a `Signer`
+(`ed25519Signer(pem)` or your own), so a verifying process never needs the private key. The
+authority refuses every command grant and every grant without a specification issue, so a
+lifecycle authorization can never start an execution, and it reads no key from configuration,
+files or the environment. Refusals are `AuthorityError` (`unauthorized`, `validation_failed`).
+
+### Host policy
 
 `createLifecycleServices({ …, host })` takes a `HostPolicy` (`src/host.ts`): trusted code of the
 embedding supervisor, never a flag, configuration or tool input. The `comforge` executable sets
@@ -328,7 +379,7 @@ none of it.
 | `remove(dir)` | Removes a directory the lifecycle created (a checkout, a verification snapshot), for example as the user that owns the candidate's files |
 | `validation` | Commands for `verify`, replacing the trusted configuration's; each validation is recorded with `policy: "host"` |
 
-### Reopening (candidate)
+### Reopening
 
 `start <ID> --reopen` turns a cleaned-up initiative into its next attempt. The finished attempt is
 archived verbatim in `attempts`, and `grantUses` are kept, so a grant's attempts are never
