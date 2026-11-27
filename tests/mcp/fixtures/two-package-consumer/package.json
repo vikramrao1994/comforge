@@ -1,0 +1,9 @@
+{
+  "name": "two-package-consumer",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@comforge/cli": "CANDIDATE",
+    "@comforge/mcp": "CANDIDATE"
+  }
+}

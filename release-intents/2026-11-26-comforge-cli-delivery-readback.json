@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "deliver records every attempt (running, complete, incomplete or uncertain) before its first side effect and completes only after reading back the completion record and the pull request link from GitHub.",
+  "breaking": null,
+  "covers": []
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Trusted host policy for embedders (checkout parent, prepare and remove hooks, validation), start --reopen as a new attempt keeping earlier ones, writes authorized by @comforge/core command scopes (cleanup needs its own scoped grant), revokedGrants, grant template --command cleanup.",
+  "breaking": null,
+  "covers": []
+}

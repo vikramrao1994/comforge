@@ -1,0 +1,8 @@
+node_modules/
+generated/
+dist/
+*.tgz
+.comforge-candidates.json
+.DS_Store
+coverage/
+.comforge/

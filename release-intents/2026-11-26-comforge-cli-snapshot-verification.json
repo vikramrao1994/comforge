@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "verify can validate a fresh, provisioned clone of the exact commit (verification.snapshot), records UNAVAILABLE apart from FAIL, a size-bounded summary artifact, optional commands (--with) and --keep.",
+  "breaking": null,
+  "covers": []
+}

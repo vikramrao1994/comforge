@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "patch",
+  "summary": "serverInfo reports the package version (it said 0.1.0 in 0.2.0); createHttpHandler forwards remoteRepositories and remote, so checkout-free repositories can be served over HTTP with the same read-only, profile and session rules.",
+  "breaking": null,
+  "covers": []
+}

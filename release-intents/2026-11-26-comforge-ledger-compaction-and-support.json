@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/ledger",
+  "bump": "patch",
+  "summary": "File history compaction leaves unreadable superseded versions as found; README and llms.txt state the tested runtimes (Node 22, 24, 26, Bun 1.4), file-adapter prerequisites and refusals, untested SQLite drivers and durability levels.",
+  "breaking": null,
+  "covers": ["a8b5f8634888777d3d5cfe3db3d974641a3a2df8"]
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "none",
+  "summary": "Internal simplification before the first release: one pager and one transport-failure path; the public API is the six consumer-facing exports.",
+  "breaking": null,
+  "covers": []
+}

@@ -1,0 +1,76 @@
+export {
+  GITHUB_ERROR_CODES,
+  GitHubAdapterError,
+  type GitHubErrorCode,
+  type GitHubErrorDetail,
+} from "./errors.ts";
+export {
+  type ChangedFile,
+  type CheckEvidence,
+  type CommitComparison,
+  createGitHubEvidence,
+  DEFAULT_FILE_LIMITS,
+  type EvidenceLimits,
+  type FileAtCommitEvidence,
+  type FileBytesEvidence,
+  type FileLimits,
+  type GitHubEvidence,
+  type IssueCommentEvidence,
+  type IssueEventEvidence,
+  type IssueEvidence,
+  type PageRequest,
+  type PageWindow,
+  type PatchLimits,
+  type PatchStatus,
+  type PullRequestEvidence,
+  type PullRequestFilesEvidence,
+  type PullRequestSummary,
+  type RepositoryRef,
+  type ReviewCommentEvidence,
+  type ReviewEvidence,
+  type UntrustedText,
+  type WorkflowRunEvidence,
+} from "./evidence.ts";
+export {
+  bodyDigest,
+  type DescriptorTarget,
+  type OperationDescriptor,
+  type ReviewEvent,
+  WRITE_CAPABILITIES,
+  type WriteCapability,
+  type WriteKind,
+  type WriteOperation,
+} from "./operations.ts";
+export {
+  type AdvisoryReview,
+  type AdvisoryReviewOptions,
+  latestAdvisoryReview,
+  listAdvisoryReviews,
+} from "./reviews.ts";
+export {
+  type Reconciliation,
+  readSpecificationIssue,
+  reconcileSpecification,
+  type SpecificationIssueEvidence,
+} from "./specification.ts";
+export {
+  createFetchTransport,
+  type FetchTransportOptions,
+  type GitHubTransport,
+} from "./transport.ts";
+export {
+  type AuthorizationDecision,
+  createGitHubWriter,
+  DEFAULT_WRITER_LIMITS,
+  type GitHubWriter,
+  type GitHubWriterOptions,
+  type OperationLedger,
+  type OperationRecord,
+  type OperationState,
+  type ReconciliationReport,
+  type StoredOutcome,
+  type VerifiedResponse,
+  type WriteOutcome,
+  type WriterLimits,
+  type WrittenResource,
+} from "./writer.ts";

@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "StartResult declares the attempt number a reopened start returns (type only; the value was already returned).",
+  "breaking": null,
+  "covers": []
+}

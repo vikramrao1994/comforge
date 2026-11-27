@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "New subpaths: @comforge/cli/protocols (specification, review and completion protocols under an explicit versioned profile that cannot weaken the credential floor or reserved prefixes) and @comforge/cli/authority (execution grants and validation receipts, separate from lifecycle grants).",
+  "breaking": null,
+  "covers": []
+}

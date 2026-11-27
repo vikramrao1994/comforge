@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "Additive read-only evidence: listIssueComments, listPullRequests, getFileAtCommit (40-hex commit, strict path, bounded text) and listAdvisoryReviews/latestAdvisoryReview that verify advisory review markers through the core protocol.",
+  "breaking": null,
+  "covers": []
+}

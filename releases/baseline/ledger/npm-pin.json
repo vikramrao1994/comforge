@@ -1,0 +1,43 @@
+{
+  "schema": "comforge-npm-pin/v1",
+  "package": "@comforge/ledger",
+  "version": "0.1.0",
+  "registry": "https://registry.npmjs.org",
+  "integrity": "sha512-8yegKRtFx8fq5+SbDuRkfaghkrY7zzHvAVm4I4rjTbH29HqgwDh2P0TuMp9b6HzSq5UU6/bkuuVxGY9sXeasBw==",
+  "provenance": "not required",
+  "gitRelease": {
+    "repository": "vikramrao1994/comforge",
+    "commit": "18cbe1575d6a54896420eac1a25bd3f578d83ff5",
+    "tag": "ledger/v0.1.0",
+    "releaseRecordSha256": "4888d2b4f83cc9fc87716b3a254df186055c8e7061a7430c956086c07fd28ce6",
+    "source": {
+      "commit": "8ba0bfa60d82e515a7ad6807b3d2a3d860f86ebe",
+      "packageTree": "9baffe963abed3868b1ea56d981203d440aced7a",
+      "exampleTree": "fe9566cb514ea0c41d2a0472b8e98c32db6461a8"
+    }
+  },
+  "manifest": {
+    "transforms": [
+      "remove private"
+    ],
+    "sha256": "73014ddb65c432f0e91e043709725afb7404840f6ad0ef758455378502d81ec3"
+  },
+  "files": {
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "README.md": "e64ae277a0c5f83a7431a6309ca425b9f7ec203898d2ea2631d0920311d99d2d",
+    "dist/conformance.d.ts": "11a91cbc40e49d1be135df1a9d9188320999bc8c503c86cc43526eb76cbd6275",
+    "dist/conformance.js": "6afd63522e9a69dc17dcce7891fde89a30c66e80ada4bf2b7f48947f9f18f64d",
+    "dist/contract.d.ts": "0392341d659b1ea69c5fa2f59e57d4d852f1ae54523884b4208c604932edf178",
+    "dist/contract.js": "5a7599a88e259129e57d31b6f305c83d81bb05999686447c637ed0c74ccacb42",
+    "dist/file.d.ts": "e585e1c430e4a94d19eb6b19575b7c8559253968d1005d834e68c688dc9e8c95",
+    "dist/file.js": "e31ace9ff67582de889d7463fe274bffde30b4356f752aff534a913a8f56ab86",
+    "dist/index.d.ts": "e793ac47c406d818190afc2691afad9dc11b41999c74873d58b0c0b2ce9f0402",
+    "dist/index.js": "e594c6575f22307e3daa2c3cb3ab4570361e839f320e4a1b6f64f75000034c1d",
+    "dist/memory.d.ts": "3d611d8670229ce4c466dbb38bb3731ce2f535d1e40de26a19c00a05b9388231",
+    "dist/memory.js": "f72b6210face73baf697389b7536c3e2b88e7366df5a9a145241971070f8ebd9",
+    "dist/sqlite.d.ts": "a3faf7ecfa46296d68472449302665d6163f8a86950c3adb6c6f522330fcfe64",
+    "dist/sqlite.js": "dfff460de3898661440395223cdb316c0a06db2cc7893cb339e09414951af11c",
+    "llms.txt": "b35656693be39c98dd5bc2a8fa367ae899a545a7a6520543ada71c91aaf5f75f",
+    "package.json": "73014ddb65c432f0e91e043709725afb7404840f6ad0ef758455378502d81ec3"
+  }
+}

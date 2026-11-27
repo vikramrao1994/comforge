@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "migrate fences the earlier lifecycle: after its sentinel it waits for registered writers to end (--wait), fails closed on live or foreign ones, takes its inventory only then, and checkpoints every stage; a grant spent on cleanup is never shared with a publication.",
+  "breaking": null,
+  "covers": []
+}

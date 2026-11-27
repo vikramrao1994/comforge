@@ -1,0 +1,20 @@
+{
+  "name": "acme-factory-consumer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Independent example consumer of factory-core: specifications, grants, receipts, lifecycle decisions, reviews and completion records, with synthetic data.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "start:bun": "bun src/main.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@comforge/core": "0.2.0",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "typescript": "*"
+  }
+}

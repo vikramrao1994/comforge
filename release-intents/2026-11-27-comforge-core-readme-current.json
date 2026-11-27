@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/core",
+  "bump": "none",
+  "summary": "README states the published 0.2.0 and its install commands.",
+  "breaking": null,
+  "covers": []
+}

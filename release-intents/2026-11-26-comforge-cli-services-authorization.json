@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "patch",
+  "summary": "Lifecycle services never accept a caller-supplied authorization: it is always established from the trusted configuration inside the call.",
+  "breaking": null,
+  "covers": []
+}

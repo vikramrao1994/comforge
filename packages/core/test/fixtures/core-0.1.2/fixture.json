@@ -1,0 +1,34 @@
+{
+  "schema": "comforge-verifier-fixture/v1",
+  "package": "@comforge/core",
+  "version": "0.1.2",
+  "integrity": "sha512-Ub/nuhD94nxp3P5dvy+YEadnrUtyV/0V6bemwvruv44Tb61MRVmrJiHEBLXWCPjaHswv0xXo4r0LkFJIYvHzRw==",
+  "gitRelease": {
+    "tag": "core/v0.1.2",
+    "commit": "fb0c30eeb8661b5f9a3d98065895da4a94e15269"
+  },
+  "files": {
+    "dist/authorization.d.ts": "74c536a3de851c4b093207c914c4178799477214c4bf5bfc8e7018cf9626b007",
+    "dist/authorization.js": "fcb29ecafa48f1eb23092e815827cb6a88f441bded0a699bf695d7b043d22773",
+    "dist/canonical.d.ts": "dcea2394aa23006e19179c6b025ffda5063fcdefd11a4508e83528afd17f417f",
+    "dist/canonical.js": "f6cbd764b5dd8bd3ba1481b2dc1d8d5c7cd33bb23e38c16fa146c6bc2fb569d0",
+    "dist/completion.d.ts": "f7f8103a3c90998b1131489b82618d0de05bc92e31f5992ae355d565f795b3e3",
+    "dist/completion.js": "d635c2362d9f34e2fa43d20656249e8d28ba2a3ab06bee74963723a95fc14a38",
+    "dist/errors.d.ts": "ecbc600778ab88deca4fa9b576e86994cdda7cff8fba2a34aa1ef5e40db18301",
+    "dist/errors.js": "b59ba72ef775274a4c661886594bb39ef10ae0c3a4702d15ba5e5a75ab21be48",
+    "dist/grant.d.ts": "c28744d133ceed6269304c5ee0191ca582994c73544eadace27958163cdddbec",
+    "dist/grant.js": "0363839319ec5ad28dd3cd33607f8f7c43d9f6100c2908d7a72d97864524679f",
+    "dist/identity.d.ts": "409e28fc821d8ac471a96b132c9ac1ec97e9086f3abe116a29967de5f0504fbb",
+    "dist/identity.js": "e50cb49cc8a56c9c70aae2f044cbc91d9c0ce0ad4c61517576e75eee180abeec",
+    "dist/index.d.ts": "f9a6391f01bab38987caedb94086204029ca74f5d254c2be324224be616fd901",
+    "dist/index.js": "292b50886089c56748caed676a14c2b04f54cb30594a893c172f963a9a5f9d81",
+    "dist/lifecycle.d.ts": "4a7e41611beca8bec9ab4315f3cd7695ec2fa94d903eb06e5583f0250216ed1d",
+    "dist/lifecycle.js": "fd538a7eed3f141f8879a58cecd4e8c6bc1ca3097a1a98eca8836736f7532d25",
+    "dist/receipt.d.ts": "7191337b57116dc8ba967d7542abaf4de70505ae80baecac6284fd310b0c801f",
+    "dist/receipt.js": "08bdd6b293ad25d590a9f58a4ca296c6811b432bbf98afe04688a36136f80652",
+    "dist/review.d.ts": "f705a0569e60eff97f69a1a1bea243b83a0952e538c0edd3aeb2d189368e6875",
+    "dist/review.js": "e5e3de1028a2b521ae1f7ab6b43d57a83b8746bd422245aafb4be7602400329a",
+    "dist/specification.d.ts": "f009536752846681e6d7f03f96aab31b587b9a590b422f73da0034cfc99518ca",
+    "dist/specification.js": "cbc6ec0517f42afec52a9f075ec3db360de098c9b4fc979a9f5fb955e01f07b1"
+  }
+}

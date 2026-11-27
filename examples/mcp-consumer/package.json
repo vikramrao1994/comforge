@@ -1,0 +1,15 @@
+{
+  "name": "acme-mcp-consumer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Independent example consumer of @comforge/mcp: serves two throwaway repositories (a Makefile project and a TypeScript one) through the installed comforge-mcp executable over stdio and through the HTTP handler, and drives them with an MCP client. No GitHub access and no credential.",
+  "type": "module",
+  "scripts": {
+    "start": "node demo.mjs",
+    "start:bun": "bun demo.mjs"
+  },
+  "dependencies": {
+    "@comforge/mcp": "0.3.0",
+    "@modelcontextprotocol/sdk": "1.32.2"
+  }
+}

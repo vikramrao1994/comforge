@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "none",
+  "summary": "README states the declared @comforge/core range (^0.1.2 || ^0.2.0).",
+  "breaking": null,
+  "covers": []
+}

@@ -1,0 +1,47 @@
+# @comforge/cli
+
+> `comforge`: a governed agent lifecycle for a GitHub repository. Isolated checkout per ticket, published-specification check, exact-commit validation, idempotent PR and completion-record publication. Never merges, deploys, approves, requests reviews or closes issues.
+
+Requirements: Node >= 22.18 or Bun >= 1.4; git; macOS or Linux (Windows refused). Optional: gh (PR assignment, or the gh credential source).
+
+## Use from an agent
+
+- Start with `comforge capabilities --json` (commands, exit codes, error codes) and `comforge status --json`.
+- Always pass `--json`. Output is deterministic JSON; errors are `{"error","message","detail"}` on stderr.
+- Exit: 0 ok, 1 refused (governance), 2 usage/config, 3 environment, 4 incomplete (rerun the same command).
+- Mutating commands are dry runs unless `--execute` (`init` needs `--write`). Dry-run first, read the plan, then execute.
+- `comforge context --task "<text>" --json`: the one routing category for a task (files, validation, size in approx tokens).
+- Instructions and context are guidance; the CLI's checks do not depend on you following them.
+
+## Lifecycle
+
+1. `comforge start <TICKET> --issue <N>`: verifies the published specification; creates `../<repo>-agents/<ticket>` on branch `agent/<ticket>`.
+2. Work there; every commit carries `Ticket: <TICKET>` (configurable).
+3. `comforge verify <TICKET>`: trusted validation commands on the clean committed head; PASS/FAIL recorded.
+4. `comforge deliver <TICKET> --title "<title>" --result result.json --execute`: push, PR, one completion comment, PR link.
+5. People review and merge. Then `comforge cleanup <PR> --execute`.
+Recovery: `comforge recover <TICKET> --execute`, then `--abandon --execute` if a complete search found nothing.
+An earlier lifecycle's state: `comforge migrate` (dry run), then `--execute`; its tickets are refused until imported.
+Reopen a cleaned initiative (0.3.0+): `comforge start <TICKET> --reopen` (new attempt; earlier attempts archived, grant uses kept).
+Verification: PASS, FAIL (exit 1) or UNAVAILABLE (exit 3, the environment could not validate; fix it and rerun).
+
+## Trust
+
+- comforge.config.json (strict, versioned `comforge-config/v1`; `comforge schema config`). Sections repository, tickets, validation, specification, completion, security are read from the initiative's base revision; a candidate changing them is refused for publication (`untrusted-config-change`).
+- Writes need an authorization in the trusted configuration: none (default) refuses every write; owner-grant needs `--grant FILE` (owner-signed, bound to commit, branch, spec, expiry, attempts); operator is an explicit owner choice. Candidate text cannot authorize itself; signing keys must be kept out of the agent's reach.
+- Since 0.3.0: `cleanup` with owner grants needs a command grant scoping cleanup of the merged PR (`grant template <ID> --command cleanup`); a publication grant never authorizes it. Governance grants: `grant sign - …`. Revoked grant ids: `security.authorization.revokedGrants`.
+- Governance (0.3.0+) and reads: `spec publish`, `review publish|list`, `comments`, `prs`, `artifact` (config sections `review`, `artifacts`; capabilities `issues:create`, `issues:update`). Advisory reviews are comments, never native reviews.
+- Output modes (0.3.0+): `--json --compact` (one line, same content), `--json --summary` (bounded projection; full result without the flag). Per-call token counts only; no end-to-end saving is claimed.
+- Credentials are only named (env variable or gh); never stored, logged or passed to child processes. Validation runs without them. The CLI is not a sandbox.
+- GitHub writes go only through @comforge/github with the @comforge/ledger file ledger in .git/comforge/.
+
+## Library
+
+`import { createLifecycleServices, main, runCommand, ConfigSchema, checkManifest, routeTask } from "@comforge/cli"`; `@comforge/cli/config`, `@comforge/cli/routing`.
+`createLifecycleServices({ runtime, repository, credentials?, state?, writeLedger?, signal?, host? })`: each command as a function returning `{ok, value|error, exit}`; nothing read from `process`.
+`host` (embedder code only, never a tool input): `HostPolicy { checkoutParent, prepareCheckout, remove, validation }`.
+
+## Subpaths for hosts
+
+- `@comforge/cli/protocols`: `createProtocolServices(profile)` returns the specification, review and completion protocols under an explicit profile (`comforge-protocol-profile/v1`), for records published under identities a configuration does not name. A profile cannot remove the reserved marker prefixes or the credential detector.
+- `@comforge/cli/authority`: `createRuntimeAuthority(options)` signs and verifies execution grants and validation receipts. Separate from lifecycle grants: it refuses command grants and any scheme listed in `separateFrom`. Verification needs public keys only.

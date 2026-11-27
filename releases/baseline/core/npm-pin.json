@@ -1,0 +1,53 @@
+{
+  "schema": "comforge-npm-pin/v1",
+  "package": "@comforge/core",
+  "version": "0.2.0",
+  "registry": "https://registry.npmjs.org",
+  "integrity": "sha512-F/L87vBqtQlnVX9VK2Pb/3iLH+sTTGnVnpLcuNhsQWSFLuVEUs4KlQwkua5nMsL2u+qFOUAtaEVeh+dxBaIitQ==",
+  "provenance": "verified",
+  "gitRelease": {
+    "repository": "vikramrao1994/comforge",
+    "commit": "a2c2baa3b2d5421a66d63ab0dc4fb18febdb588a",
+    "tag": "core/v0.2.0",
+    "releaseRecordSha256": "fabe19b9f9d4413915bb4488c33bb3b1c4123838d89c769cafb5f8799f13cf61",
+    "source": {
+      "commit": "02fa8559f43288373d20cfbe81349a7e687db64d",
+      "packageTree": "2f090e80db8f67c38237fceaf8e509cf32176979",
+      "exampleTree": "8468a18cb0b1c9101a868157412002a5177e5420"
+    }
+  },
+  "manifest": {
+    "transforms": [
+      "remove private"
+    ],
+    "sha256": "0f33c914448418a1a8c9f9c0e3bd230fc613b9b0504bcf59960856ce3981f5d2"
+  },
+  "files": {
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "README.md": "9ba0aa4dc07d3889c503e255309df2d210182ab3453e3bb415b28e7e9cbd0618",
+    "dist/authorization.d.ts": "33e472d15b7ca358fcaf6875f8f4118a01ab9f445b33e848de42b9b15bcc6157",
+    "dist/authorization.js": "7a8687b82f197a786b2d342804c95aab6e84ce765b1c4121b8b756e7fb01b72f",
+    "dist/canonical.d.ts": "dcea2394aa23006e19179c6b025ffda5063fcdefd11a4508e83528afd17f417f",
+    "dist/canonical.js": "f6cbd764b5dd8bd3ba1481b2dc1d8d5c7cd33bb23e38c16fa146c6bc2fb569d0",
+    "dist/completion.d.ts": "f7f8103a3c90998b1131489b82618d0de05bc92e31f5992ae355d565f795b3e3",
+    "dist/completion.js": "d635c2362d9f34e2fa43d20656249e8d28ba2a3ab06bee74963723a95fc14a38",
+    "dist/errors.d.ts": "ecbc600778ab88deca4fa9b576e86994cdda7cff8fba2a34aa1ef5e40db18301",
+    "dist/errors.js": "b59ba72ef775274a4c661886594bb39ef10ae0c3a4702d15ba5e5a75ab21be48",
+    "dist/grant.d.ts": "c0cb2923d17e7ca3cd297eb7271d6f84f0b933d5dbba73abcdb90627cae77b7f",
+    "dist/grant.js": "12dfc21eb297a1e0858beb101b11bd3af1ceb025a52352b7be292093122fe01a",
+    "dist/identity.d.ts": "409e28fc821d8ac471a96b132c9ac1ec97e9086f3abe116a29967de5f0504fbb",
+    "dist/identity.js": "e50cb49cc8a56c9c70aae2f044cbc91d9c0ce0ad4c61517576e75eee180abeec",
+    "dist/index.d.ts": "965addabc8c8f85d6a5b588edb7c563177e7e31c5189989394885e8decf97d0c",
+    "dist/index.js": "6ca63a1431254473f96d13da15abd696a7f25751f63718d07e76a78bf6ecbf73",
+    "dist/lifecycle.d.ts": "4a7e41611beca8bec9ab4315f3cd7695ec2fa94d903eb06e5583f0250216ed1d",
+    "dist/lifecycle.js": "fd538a7eed3f141f8879a58cecd4e8c6bc1ca3097a1a98eca8836736f7532d25",
+    "dist/receipt.d.ts": "7191337b57116dc8ba967d7542abaf4de70505ae80baecac6284fd310b0c801f",
+    "dist/receipt.js": "08bdd6b293ad25d590a9f58a4ca296c6811b432bbf98afe04688a36136f80652",
+    "dist/review.d.ts": "f705a0569e60eff97f69a1a1bea243b83a0952e538c0edd3aeb2d189368e6875",
+    "dist/review.js": "e5e3de1028a2b521ae1f7ab6b43d57a83b8746bd422245aafb4be7602400329a",
+    "dist/specification.d.ts": "f009536752846681e6d7f03f96aab31b587b9a590b422f73da0034cfc99518ca",
+    "dist/specification.js": "cbc6ec0517f42afec52a9f075ec3db360de098c9b4fc979a9f5fb955e01f07b1",
+    "llms.txt": "771e9245660f1c6ef0e6cc81cd747c3da5d05255b4d8d11065ae28420972d3d2",
+    "package.json": "0f33c914448418a1a8c9f9c0e3bd230fc613b9b0504bcf59960856ce3981f5d2"
+  }
+}

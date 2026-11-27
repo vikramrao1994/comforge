@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "Additive reads: page-window listings (issues, PRs, comments, events, reviews, inline review comments), attribution fields, single comment by id, exact file bytes at a commit, PR commit membership, and review URL/updatedAt/markerPrNumber.",
+  "breaking": null,
+  "covers": []
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "Accepts @comforge/core ^0.1.2 || ^0.2.0, so a consumer of core 0.2.0 command scopes shares one core copy with github.",
+  "breaking": null,
+  "covers": ["028eb911d6335717c7db9b7b633a7df33ee2820d"]
+}

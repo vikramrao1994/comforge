@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Exports reviewProtocol and REVIEW_LIMITS (the advisory-review protocol a trusted configuration defines) and moves to @comforge/github 0.6.0.",
+  "breaking": null,
+  "covers": []
+}

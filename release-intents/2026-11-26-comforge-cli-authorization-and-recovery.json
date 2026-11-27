@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "patch",
+  "summary": "Writes need an authorization in the trusted configuration (none refuses, owner-signed grants, or explicit operator mode); undone pull request updates take a new identity; explicit routing ambiguity; current-result selection.",
+  "breaking": null,
+  "covers": ["f834aac270df56e12c0c4f8d1893ab83fd82958d", "4f6079ed131493a75a9d78eacb1cc9079af1cc99"]
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "Checkout-free repositories (remoteRepositories + remote host): GitHub evidence reads under a host-supplied trusted configuration verified against GitHub's bytes, pin, age and identity; reviews carry authorAssociation, commentUrl, updatedAt.",
+  "breaking": null,
+  "covers": []
+}

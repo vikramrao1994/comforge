@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Governance services and commands: spec publish (idempotent, read back), review publish/list (advisory comment bound to the reviewed head, never native, not one's own PR), comments, prs, artifact (trusted artifacts.readable). Owner-grant needs a scoped command grant; dry runs print its template.",
+  "breaking": null,
+  "covers": []
+}

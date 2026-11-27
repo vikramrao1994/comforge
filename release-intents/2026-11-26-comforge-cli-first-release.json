@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "First release: the comforge executable for a governed agent lifecycle in any GitHub repository (init, doctor, start, revise, status, verify, publish, complete, deliver, recover, cleanup, context, capabilities, schema) on exact published core, github and ledger.",
+  "breaking": null,
+  "covers": []
+}

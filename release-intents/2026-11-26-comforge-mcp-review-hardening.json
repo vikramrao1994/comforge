@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "Before the first release: sessions bound to the principal's fingerprint (role change ends a session, revocation and authenticator errors are 401), isolation providers validated and failing closed, comforge_issue lists issues, compactDiscovery option.",
+  "breaking": null,
+  "covers": ["cb298357740ad525fbaf4f077304f81b6480ba24"]
+}

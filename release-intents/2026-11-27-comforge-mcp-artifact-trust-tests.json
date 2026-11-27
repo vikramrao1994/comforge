@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "comforge_artifact inherits the CLI's trusted-base artifact policy: non-canonical paths and an uncommitted wider configuration are refused before any contents request (regression tests over stdio and Streamable HTTP).",
+  "breaking": null,
+  "covers": []
+}

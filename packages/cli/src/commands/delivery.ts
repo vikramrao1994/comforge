@@ -1,0 +1,1508 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import {
+  COMPLETION_LIMITS,
+  type CompletionGate,
+  type CompletionInput,
+  type CompletionPayload,
+  evaluateLifecycleAction,
+  type LifecycleReason,
+} from "@comforge/core";
+import { bodyDigest } from "@comforge/github";
+import { z } from "zod";
+import { type Authorized, authorizeWrites } from "../authorization.ts";
+import type { ComforgeConfig } from "../config.ts";
+import { type CommandContext, loadInitiative, requireCheckout } from "../context.ts";
+import { CliError, EXIT, fail } from "../errors.ts";
+import { assignWithGh, type GitHubAccess, githubError } from "../github.ts";
+import { completionProtocol, detectSecrets, specificationProtocol } from "../protocols.ts";
+import { initiativeFromBranch, requireTrustedUnchanged } from "../repository.ts";
+import { childEnv, git, gitOk, gitRun } from "../runtime.ts";
+import {
+  type DeliveryAttempt,
+  type HostOperation,
+  type InitiativeRecord,
+  nowIso,
+} from "../state.ts";
+import { type CommandResult, credentialVariables } from "./lifecycle.ts";
+
+/**
+ * C2: the governed GitHub writes. Every write goes through the @comforge/github writer with
+ * the @comforge/ledger file ledger (idempotent per operation id), under the trusted
+ * configuration of the initiative's base, after the @comforge/core lifecycle decision for
+ * that step allowed it. Nothing here merges, deploys, approves, requests a review or closes.
+ */
+
+const refuse = (reasons: readonly LifecycleReason[], fallback: string): never => {
+  const [first] = reasons;
+  const code =
+    first?.code === "validation_missing" ||
+    first?.code === "ledger_missing" ||
+    first?.code === "publication_not_recorded"
+      ? "validation-missing"
+      : first?.code === "validation_not_passing"
+        ? "validation-failed"
+        : first?.code === "head_moved" || first?.code === "pull_request_not_open"
+          ? "stale"
+          : first?.code === "multiple_open_pull_requests" ||
+              first?.code === "closed_pull_request_exists" ||
+              first?.code === "wrong_branch"
+            ? "conflict"
+            : "policy-denied";
+  throw new CliError(code, first?.message ?? fallback, {
+    reasons: reasons.map((r) => ({
+      code: r.code,
+      message: r.message,
+      ...(r.detail ? { detail: r.detail } : {}),
+    })),
+  });
+};
+
+const operationId = (prefix: string, ...parts: string[]) =>
+  `${prefix}-${createHash("sha256").update(parts.join("\0")).digest("hex").slice(0, 40)}`;
+
+/** Removes the SDK writer's correlation marker, which caller text may not carry. */
+export const withoutWriterMarker = (body: string) =>
+  body.replace(/\n*<!-- comforge-op [^\n]*-->\s*$/, "");
+
+const PullSchema = z.object({
+  number: z.number(),
+  state: z.string(),
+  draft: z.boolean().optional(),
+  merged_at: z.string().nullable().optional(),
+  body: z.string().nullable().optional(),
+  html_url: z.string(),
+  head: z.object({
+    ref: z.string(),
+    sha: z.string(),
+    repo: z.object({ full_name: z.string() }).nullable(),
+  }),
+  base: z.object({ ref: z.string() }),
+  assignees: z.array(z.object({ login: z.string() })).default([]),
+});
+type Pull = z.infer<typeof PullSchema>;
+
+async function readPull(gh: GitHubAccess, config: ComforgeConfig, number: number): Promise<Pull> {
+  const raw = await gh.transport
+    .get(`/repos/${config.repository.owner}/${config.repository.name}/pulls/${number}`)
+    .catch(githubError);
+  const parsed = PullSchema.safeParse(raw);
+  if (!parsed.success) fail("github-failed", `unexpected shape for pull request #${number}`);
+  return (parsed as { data: Pull }).data;
+}
+
+const prState = (p: Pull) =>
+  (p.merged_at ? "MERGED" : p.state === "open" ? "OPEN" : "CLOSED") as "OPEN" | "CLOSED" | "MERGED";
+
+/**
+ * The identity for a write: `base`, or after an abandoned attempt under it, the next one
+ * (`base-1`, `base-2`, …). An abandoned identity is never reused, and an unresolved one is
+ * answered by the writer from the ledger (`recover` reconciles it first).
+ */
+async function freshIdentity(gh: GitHubAccess, base: string): Promise<string> {
+  for (let n = 0; n <= 8; n++) {
+    const id = n === 0 ? base : `${base}-${n}`;
+    const record = await gh.ledger.get(id).catch(githubError);
+    if (record?.state !== "abandoned") return id;
+  }
+  return fail(
+    "conflict",
+    "eight attempts of this write were abandoned; inspect GitHub before trying again",
+    { operationId: base },
+  );
+}
+
+/** Records that can never be sent again: succeeded, abandoned, or failed without retry. */
+const finished = (record: { state: string; failure?: { retryable?: boolean } | null }) =>
+  record.state === "succeeded" ||
+  record.state === "abandoned" ||
+  (record.state === "failed" && record.failure?.retryable !== true);
+/** Same bound as the portfolio's lifecycle writer for repeats of one transition. */
+export const MAX_TRANSITION_REPEATS = 8;
+
+/**
+ * The identity for an update the command has just found not applied (it read the current
+ * body and it is not the target). A finished record under the derived identity therefore
+ * describes a transition that was undone since, so the update takes the next identity
+ * (`base-1`, …) instead of being answered from the ledger. Any other recorded state is the
+ * writer's to answer or reconcile under that same identity. After `MAX_TRANSITION_REPEATS`
+ * undone repeats it refuses as ambiguous and sends nothing.
+ */
+async function transitionIdentity(gh: GitHubAccess, base: string): Promise<string> {
+  for (let n = 0; n <= MAX_TRANSITION_REPEATS; n++) {
+    const id = n === 0 ? base : `${base}-${n}`;
+    const record = await gh.ledger.get(id).catch(githubError);
+    if (!record || !finished(record)) return id;
+  }
+  return fail(
+    "ambiguous",
+    `this update was undone more than ${MAX_TRANSITION_REPEATS} times; inspect the pull request`,
+    {
+      operationId: base,
+    },
+  );
+}
+
+const UNRESOLVED_STATES = new Set(["reserved", "sending", "indeterminate"]);
+
+/**
+ * No new write while an earlier one of this initiative is unresolved: its identity may be
+ * derived differently (an imported write), so only `recover` may settle it, never a resend.
+ */
+export async function requireResolved(
+  gh: GitHubAccess,
+  record: InitiativeRecord | null,
+  now: number,
+): Promise<void> {
+  if (!record) return;
+  const leased: string[] = [];
+  const open: string[] = [];
+  for (const id of record.operations) {
+    const op = await gh.ledger.get(id).catch(githubError);
+    if (!op || !UNRESOLVED_STATES.has(op.state)) continue;
+    // Same answer as the writer gives for one operation: another process holds a live lease.
+    if (op.state !== "indeterminate" && op.leaseUntil !== null && op.leaseUntil > now)
+      leased.push(id);
+    else open.push(id);
+  }
+  if (leased.length > 0)
+    fail("conflict", "another process is writing for this initiative; wait for it, then rerun", {
+      operations: leased,
+    });
+  if (open.length > 0)
+    fail(
+      "ambiguous",
+      "earlier writes of this initiative are unresolved; run comforge recover first",
+      { operations: open },
+    );
+}
+
+/** Notes an operation id in the initiative before its write, so `recover` can find it after a crash. */
+async function remember(ctx: CommandContext, initiative: string | null, id: string): Promise<void> {
+  if (!initiative) return;
+  await ctx.state.update(initiative, (r) => {
+    if (!r.operations.includes(id)) r.operations.push(id);
+  });
+}
+
+// --- publish ----------------------------------------------------------------------------
+
+function composeBody(
+  record: InitiativeRecord,
+  config: ComforgeConfig,
+  checkout: string,
+  ctx: CommandContext,
+  head: string,
+): string {
+  const validation = record.validations.filter((v) => v.commit === head).at(-1);
+  const reports = git(ctx.rt, checkout, [
+    "diff",
+    "--name-only",
+    `${record.base.sha}..${head}`,
+    "--",
+    config.evidence.reportDir,
+  ])
+    .split("\n")
+    .filter(Boolean);
+  const spec = record.specification;
+  return [
+    `## ${record.operationId}`,
+    "",
+    spec
+      ? `- Specification: #${spec.issueNumber} (digest \`${spec.digest}\`)`
+      : "- Specification: none",
+    `- Base: \`${record.base.branch}\` at \`${record.base.sha}\``,
+    `- Validated head: \`${head}\` — ${validation?.status ?? "not validated"} (${validation?.commands.map((c) => c.name).join(", ") ?? ""})`,
+    ...(reports.length > 0
+      ? ["", "### Reports and evidence", "", ...reports.map((f) => `- \`${f}\``)]
+      : []),
+    "",
+    "Published by comforge. Not an approval: merging, deploying and closing are separate owner decisions.",
+  ].join("\n");
+}
+
+/** The trusted pre-publication checks, in the checkout, without the credential. */
+function runPublicationChecks(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  record: InitiativeRecord,
+  checkout: string,
+  head: string,
+): { name: string; status: "PASS" }[] {
+  const out: { name: string; status: "PASS" }[] = [];
+  for (const check of trusted.publication.checks) {
+    const r = ctx.rt.run(check.run[0] as string, check.run.slice(1), {
+      cwd: checkout,
+      env: hostEnv(ctx, trusted, record, head),
+      timeoutMs: trusted.validation.timeoutSeconds * 1000,
+    });
+    if (r.status !== 0)
+      fail("policy-denied", `the publication check ${check.name} refused this head`, {
+        check: check.name,
+        status: r.status,
+        output: `${r.stdout}${r.stderr}`.slice(-2000),
+      });
+    out.push({ name: check.name, status: "PASS" });
+  }
+  return out;
+}
+
+/** What a trusted host command sees: no credential, no gh login, the initiative's identity. */
+function hostEnv(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  record: InitiativeRecord,
+  head: string,
+) {
+  return {
+    ...childEnv(ctx.rt.env, { dropCredentials: credentialVariables(trusted) }),
+    GH_CONFIG_DIR: "/nonexistent-comforge-gh",
+    COMFORGE_INITIATIVE: record.operationId,
+    COMFORGE_TICKET: record.ticket,
+    COMFORGE_HEAD: head,
+    COMFORGE_BASE: record.base.sha,
+  };
+}
+
+const MAX_BODY = 60_000;
+
+/**
+ * The pull request body: the configured command's Markdown, or the built-in summary, then
+ * `Closes #N` and the publication marker. Command output is repository-controlled text, so it
+ * may not hide content (HTML comments), carry a reserved marker or a secret-like value.
+ */
+function publicationBody(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  record: InitiativeRecord,
+  checkout: string,
+  head: string,
+  closes?: number,
+): string {
+  const policy = trusted.publication;
+  let main: string;
+  if (policy.bodyCommand) {
+    const r = ctx.rt.run(policy.bodyCommand[0] as string, policy.bodyCommand.slice(1), {
+      cwd: checkout,
+      env: hostEnv(ctx, trusted, record, head),
+      timeoutMs: 120_000,
+    });
+    if (r.status !== 0)
+      fail("policy-denied", "publication.bodyCommand failed", {
+        status: r.status,
+        stderr: r.stderr.slice(-2000),
+      });
+    main = r.stdout.trim();
+    const reserved = [
+      trusted.completion?.markerNamespace,
+      trusted.specification?.markerNamespace,
+      trusted.security.markerNamespace,
+      policy.linkMarkerNamespace,
+      "comforge-op",
+    ].filter((x): x is string => typeof x === "string");
+    const problems = [
+      ...(main.length === 0 || main.length > MAX_BODY ? [`length ${main.length}`] : []),
+      ...(main.includes("<!--") || main.includes("-->") ? ["an HTML comment"] : []),
+      ...reserved
+        .filter((ns) => main.includes(`${ns}:`) || main.includes(`${ns} `))
+        .map((ns) => `the reserved ${ns} marker`),
+      ...(detectSecrets(main).count > 0 ? ["secret-like text"] : []),
+    ];
+    if (problems.length > 0)
+      fail("policy-denied", "publication.bodyCommand produced a body that cannot be published", {
+        problems,
+      });
+  } else main = composeBody(record, trusted, checkout, ctx, head);
+  const parts = [main];
+  if (closes !== undefined) parts.push(`Closes #${closes}`);
+  if (policy.marker && trusted.completion)
+    parts.push(
+      `<!-- ${trusted.completion.markerNamespace}:publication ticket=${record.operationId} head=${head} -->`,
+    );
+  return parts.join("\n\n");
+}
+
+/**
+ * R14: one host-adapter write, durable and reconciled. A `sending` entry left by a process that
+ * died is settled from GitHub first. The command runs only when GitHub shows the change is not
+ * applied; its outcome is what GitHub shows afterwards, whatever the adapter's exit status said.
+ * Both adapters' operations are idempotent, so a retry after "not applied" cannot double them.
+ */
+async function hostWrite(
+  ctx: CommandContext,
+  initiative: string,
+  op: {
+    kind: HostOperation["kind"];
+    prNumber: number;
+    head: string;
+    login?: string;
+    applied: (pull: Pull) => boolean;
+    read: () => Promise<Pull>;
+    run: () => string;
+  },
+): Promise<{ pull: Pull; ran: boolean; applied: boolean; detail: string }> {
+  const at = () => nowIso(ctx.rt.now());
+  const same = (h: HostOperation) =>
+    h.kind === op.kind && h.prNumber === op.prNumber && (h.login ?? null) === (op.login ?? null);
+  let pull = await op.read();
+  const before = (await ctx.state.get(initiative))?.hostOperations ?? [];
+  const pending = before.filter((h) => same(h) && h.state === "sending");
+  if (pending.length > 0)
+    await ctx.state.update(initiative, (r) => {
+      for (const h of r.hostOperations ?? [])
+        if (same(h) && h.state === "sending")
+          Object.assign(h, {
+            state: op.applied(pull) ? "succeeded" : "not-applied",
+            detail: "settled from GitHub after an interrupted run",
+            at: at(),
+          });
+    });
+  if (op.applied(pull)) return { pull, ran: false, applied: true, detail: "already applied" };
+  await ctx.state.update(initiative, (r) => {
+    r.hostOperations ??= [];
+    r.hostOperations.push({
+      kind: op.kind,
+      prNumber: op.prNumber,
+      head: op.head,
+      ...(op.login ? { login: op.login } : {}),
+      state: "sending",
+      at: at(),
+      detail: "",
+    });
+  });
+  const said = op.run();
+  pull = await op.read();
+  const applied = op.applied(pull);
+  await ctx.state.update(initiative, (r) => {
+    const h = [...(r.hostOperations ?? [])].reverse().find((x) => same(x) && x.state === "sending");
+    if (h)
+      Object.assign(h, { state: applied ? "succeeded" : "not-applied", detail: said, at: at() });
+  });
+  return { pull, ran: true, applied, detail: said };
+}
+
+/** The audited host adapter for leaving draft (pulls:ready), through `gh pr ready`. */
+function markReadyWithGh(
+  rt: CommandContext["rt"],
+  config: ComforgeConfig,
+  prNumber: number,
+): { ready: boolean; detail: string } {
+  if (!config.security.capabilities.includes("pulls:ready"))
+    return { ready: false, detail: "skipped: pulls:ready is not a configured capability" };
+  const slug = `${config.repository.owner}/${config.repository.name}`;
+  const r = rt.run("gh", ["pr", "ready", String(prNumber), "--repo", slug], {
+    cwd: rt.cwd,
+    env: childEnv(rt.env),
+  });
+  return r.status === 0
+    ? { ready: true, detail: "marked ready with gh" }
+    : { ready: false, detail: `gh pr ready failed: ${r.stderr.trim().slice(0, 200)}` };
+}
+
+export async function publish(
+  ctx: CommandContext,
+  options: {
+    id: string;
+    title: string;
+    draft?: boolean;
+    /** Adds `Closes #N` to the body (GitHub closes it when a person merges). */
+    closes?: number;
+    execute: boolean;
+    grantFile?: string;
+    /** Set by deliver, which authorized the whole delivery once. */
+    authorized?: Authorized;
+  },
+): Promise<CommandResult & { pullRequest?: Pull }> {
+  const { rt } = ctx;
+  if (!options.title.trim() || options.title.length > 256)
+    fail("usage", "--title needs 1–256 characters");
+  const { record, trusted } = await loadInitiative(ctx, options.id);
+  const checkout = requireCheckout(record);
+  requireTrustedUnchanged(trusted, checkout);
+  if (git(rt, checkout, ["status", "--porcelain", "--untracked-files=normal"]))
+    fail("dirty-checkout", "commit or remove local changes first");
+  const head = git(rt, checkout, ["rev-parse", "HEAD"]);
+  const publishDecision = evaluateLifecycleAction({
+    action: "publish",
+    evidence: {
+      head,
+      validations: record.validations.map((v) => ({ commit: v.commit, status: v.status })),
+    },
+  });
+  if (publishDecision.decision !== "allow") refuse(publishDecision.reasons, "publication refused");
+  const policy = trusted.publication;
+  if (policy.draftFirst && !trusted.security.capabilities.includes("pulls:ready"))
+    fail("config-invalid", "publication.draftFirst needs the pulls:ready capability");
+  if (policy.marker && !trusted.completion)
+    fail("config-invalid", "publication.marker needs a completion section (its namespace)");
+  // Trusted checks, before anything is pushed: a dry run reports the same refusal.
+  const checks = runPublicationChecks(ctx, trusted, record, checkout, head);
+  ctx.checkpoint();
+
+  const gh = ctx.github(trusted);
+  const { owner, name, remote, baseBranch } = trusted.repository;
+  const remoteLine = git(rt, checkout, ["ls-remote", remote, `refs/heads/${record.branch}`]);
+  const remoteSha = remoteLine ? (remoteLine.split(/\s/)[0] as string) : null;
+  if (remoteSha)
+    git(rt, checkout, [
+      "fetch",
+      "--quiet",
+      remote,
+      `+refs/heads/${record.branch}:refs/remotes/${remote}/${record.branch}`,
+    ]);
+  const remoteIsAncestor = remoteSha
+    ? gitOk(rt, checkout, ["merge-base", "--is-ancestor", remoteSha, head])
+    : undefined;
+  const listed = (await gh.transport
+    .get(`/repos/${owner}/${name}/pulls`, {
+      head: `${owner}:${record.branch}`,
+      state: "all",
+      per_page: "100",
+    })
+    .catch(githubError)) as unknown;
+  const pulls = z.array(PullSchema).safeParse(listed);
+  if (!pulls.success) fail("github-failed", "unexpected shape for the pull request list");
+  const candidates = (pulls as { data: Pull[] }).data.filter((p) => p.head.ref === record.branch);
+  const target = evaluateLifecycleAction({
+    action: "publication-target",
+    evidence: {
+      head,
+      remoteSha,
+      ...(remoteIsAncestor === undefined ? {} : { remoteIsAncestor }),
+      pullRequests: candidates.map((p) => ({
+        number: p.number,
+        state: prState(p),
+        crossRepository: p.head.repo?.full_name !== `${owner}/${name}`,
+        baseRef: p.base.ref,
+      })),
+      baseBranch,
+    },
+  });
+  if (target.decision !== "allow") return refuse(target.reasons, "publication target refused");
+  const facts = target.facts;
+  const existing =
+    facts.openPullRequestIndex === null ? null : (candidates[facts.openPullRequestIndex] as Pull);
+  const body = publicationBody(ctx, trusted, record, checkout, head, options.closes);
+  // draftFirst: created as a draft and marked ready only after the handoff checks.
+  const createDraft = options.draft === true || policy.draftFirst;
+  const plan = {
+    initiative: record.operationId,
+    head,
+    push: facts.push,
+    checks,
+    pullRequest: existing
+      ? { action: "update", number: existing.number }
+      : { action: "create", draft: createDraft, base: baseBranch },
+    readyForReview:
+      options.draft === true ? "stays draft" : policy.draftFirst ? "mark ready" : "created ready",
+    assignee: trusted.security.delivery.assignee,
+    authorization: trusted.security.authorization?.mode ?? "none: writes are refused",
+  };
+  if (!options.execute) return { result: { executed: false, plan, body } };
+  await requireResolved(gh, record, rt.now());
+  const authorized =
+    options.authorized ??
+    (await authorizeWrites(ctx, trusted, record, {
+      head,
+      grantFile: options.grantFile,
+      command: "publish",
+    }));
+
+  if (facts.push !== "up-to-date") {
+    ctx.checkpoint();
+    // Never forced: a branch that moved meanwhile rejects the push.
+    const pushed = gitRun(rt, checkout, [
+      "push",
+      "--quiet",
+      remote,
+      `${head}:refs/heads/${record.branch}`,
+    ]);
+    // Settled by reading the remote, not by the exit status: a lost answer is not a failure.
+    const now =
+      git(rt, checkout, ["ls-remote", remote, `refs/heads/${record.branch}`]).split(/\s/)[0] ?? "";
+    if (now !== head)
+      throw new CliError(
+        pushed.status === 0 ? "ambiguous" : "git-failed",
+        `the branch is not at the published head after the push: ${pushed.stderr.trim().slice(0, 300)}`,
+        { remote: now || null, head },
+      );
+  }
+  let pull: Pull;
+  const ops: string[] = [];
+  if (existing) {
+    const current = await readPull(gh, trusted, existing.number);
+    // A completion link already in the body is kept: publishing again must not remove it.
+    const linkNs = trusted.publication.linkMarkerNamespace;
+    assertCompletionLinkUnambiguous(current.body ?? "", linkNs);
+    const link = completionLinkBlock(current.body ?? "", linkNs);
+    const next = link ? `${body}\n\n${link}\n` : body;
+    if (withoutWriterMarker(current.body ?? "") !== next) {
+      const digest = await bodyDigest(current.body ?? "");
+      const id = await transitionIdentity(
+        gh,
+        operationId("pr-body", record.operationId, String(existing.number), head, digest, next),
+      );
+      ops.push(id);
+      await remember(ctx, record.operationId, id);
+      const outcome = await gh.write({
+        kind: "pull.update",
+        operationId: id,
+        pullNumber: existing.number,
+        expected: { bodyDigest: digest, headSha: head },
+        body: next,
+      });
+      if (outcome.status !== "verified")
+        throw new CliError(
+          "ambiguous",
+          "the pull request body update is unresolved; run comforge recover, then this command",
+          {
+            operationId: id,
+            status: outcome.status,
+          },
+        );
+    }
+    pull = await readPull(gh, trusted, existing.number);
+  } else {
+    const id = await freshIdentity(gh, operationId("pr-create", record.operationId, head));
+    ops.push(id);
+    await remember(ctx, record.operationId, id);
+    const outcome = await gh.write({
+      kind: "pull.create",
+      operationId: id,
+      title: options.title,
+      body,
+      head: record.branch,
+      base: baseBranch,
+      expectedHeadSha: head,
+      draft: createDraft,
+    });
+    if (outcome.status !== "verified" || outcome.resource?.type !== "pull")
+      throw new CliError(
+        "ambiguous",
+        "the pull request could not be verified; rerun comforge recover",
+        { operationId: id, status: outcome.status },
+      );
+    pull = await readPull(gh, trusted, outcome.resource.number);
+  }
+  let assignment: { assigned: boolean; detail: string } | null = null;
+  // Assignment is a host-adapter write: only with its own capability, journalled, settled by reading.
+  const assignee = trusted.security.capabilities.includes("pulls:assign")
+    ? trusted.security.delivery.assignee
+    : null;
+  if (assignee) {
+    ctx.checkpoint();
+    const outcome = await hostWrite(ctx, record.operationId, {
+      kind: "pulls:assign",
+      prNumber: pull.number,
+      head,
+      login: assignee,
+      applied: (p) => p.assignees.some((a) => a.login === assignee),
+      read: () => readPull(gh, trusted, pull.number),
+      run: () => assignWithGh(rt, trusted, pull.number, assignee).detail,
+    });
+    pull = outcome.pull;
+    assignment = outcome.ran ? { assigned: outcome.applied, detail: outcome.detail } : null;
+  }
+  // Ready for review: GitHub's REST API cannot leave draft, so a bounded host adapter does it,
+  // only for this pull request, only at the published head, only with pulls:ready.
+  let ready: { ready: boolean; detail: string } | null = null;
+  if (options.draft !== true && policy.draftFirst) {
+    ctx.checkpoint();
+    if (pull.head.sha !== head)
+      fail("stale", "the pull request moved before it was marked ready; nothing was changed", {
+        pullRequest: pull.head.sha,
+        published: head,
+      });
+    const outcome = await hostWrite(ctx, record.operationId, {
+      kind: "pulls:ready",
+      prNumber: pull.number,
+      head,
+      applied: (p) => p.draft !== true,
+      read: () => readPull(gh, trusted, pull.number),
+      run: () => markReadyWithGh(rt, trusted, pull.number).detail,
+    });
+    pull = outcome.pull;
+    ready = outcome.ran ? { ready: outcome.applied, detail: outcome.detail } : null;
+  }
+  await ctx.state.update(record.operationId, (r) => {
+    r.publications.push({
+      commit: head,
+      prNumber: pull.number,
+      url: pull.html_url,
+      at: nowIso(rt.now()),
+    });
+    for (const id of ops) if (!r.operations.includes(id)) r.operations.push(id);
+  });
+  const handoff = evaluateLifecycleAction({
+    action: "pull-request-handoff",
+    evidence: {
+      head,
+      pullRequest: {
+        state: prState(pull),
+        headSha: pull.head.sha,
+        isDraft: pull.draft === true,
+        assignees: pull.assignees.map((a) => a.login),
+      },
+      requireReady: options.draft !== true,
+      assignee,
+    },
+  });
+  const problems = handoff.decision === "allow" ? [] : handoff.reasons.map((r) => r.message);
+  return {
+    result: {
+      executed: true,
+      plan,
+      pullRequest: {
+        number: pull.number,
+        url: pull.html_url,
+        headSha: pull.head.sha,
+        draft: pull.draft === true,
+      },
+      assignment,
+      readyForReview: ready,
+      authorization: authorized,
+      handoff: problems.length === 0 ? "ok" : problems,
+    },
+    exit: problems.length === 0 ? EXIT.ok : EXIT.incomplete,
+    pullRequest: pull,
+  };
+}
+
+// --- complete ---------------------------------------------------------------------------
+
+const IssueSchema = z.object({
+  number: z.number(),
+  title: z.string(),
+  body: z.string().nullable().optional(),
+  state: z.string(),
+  pull_request: z.unknown().optional(),
+});
+const CommentSchema = z.object({
+  id: z.number(),
+  body: z.string().nullable().optional(),
+  user: z.object({ login: z.string() }).nullable(),
+  created_at: z.string(),
+});
+
+const linkMarkers = (namespace: string) => ({
+  begin: `<!-- ${namespace}:completion-link-begin -->`,
+  end: `<!-- ${namespace}:completion-link-end -->`,
+});
+const DEFAULT_LINK_NAMESPACE = "comforge";
+
+const count = (text: string, needle: string) => text.split(needle).length - 1;
+
+/**
+ * Refuses a body whose completion-link block is ambiguous: a marker twice, an end before its
+ * begin, a lone marker, or blocks in two namespaces (an earlier namespace still in the body).
+ * Rewriting such a body could drop or duplicate a link, so a person fixes it first.
+ */
+export function assertCompletionLinkUnambiguous(
+  body: string,
+  namespace = DEFAULT_LINK_NAMESPACE,
+): void {
+  const namespaces = [...new Set([namespace, DEFAULT_LINK_NAMESPACE])];
+  const present = namespaces.filter((ns) => {
+    const { begin, end } = linkMarkers(ns);
+    const b = count(body, begin);
+    const e = count(body, end);
+    if (b > 1 || e > 1 || b !== e || (b === 1 && body.indexOf(end) < body.indexOf(begin)))
+      fail(
+        "conflict",
+        "the pull request body has a malformed completion-link block; fix it by hand",
+        {
+          namespace: ns,
+          begins: b,
+          ends: e,
+        },
+      );
+    return b === 1;
+  });
+  if (present.length > 1)
+    fail(
+      "conflict",
+      "the pull request body has completion-link blocks in two namespaces; keep one",
+      {
+        namespaces: present,
+      },
+    );
+}
+
+/** The completion-link block of a body, or null. */
+export function completionLinkBlock(
+  body: string,
+  namespace = DEFAULT_LINK_NAMESPACE,
+): string | null {
+  const { begin: LINK_BEGIN, end: LINK_END } = linkMarkers(namespace);
+  const begin = body.indexOf(LINK_BEGIN);
+  const end = body.indexOf(LINK_END);
+  return begin >= 0 && end > begin ? body.slice(begin, end + LINK_END.length) : null;
+}
+
+/** The body with its completion-link block replaced (or appended); every other byte is kept. */
+export function withCompletionLink(
+  body: string,
+  link: { issueNumber: number; url: string; headSha: string },
+  namespace = DEFAULT_LINK_NAMESPACE,
+): string {
+  assertCompletionLinkUnambiguous(body, namespace);
+  const { begin: LINK_BEGIN, end: LINK_END } = linkMarkers(namespace);
+  const block = [
+    LINK_BEGIN,
+    "## Issue completion",
+    "",
+    `- Completion result on #${link.issueNumber} for head \`${link.headSha}\`: ${link.url}`,
+    "- A completion result is not an approval; merge authorization is a separate owner decision.",
+    LINK_END,
+  ].join("\n");
+  const begin = body.indexOf(LINK_BEGIN);
+  const end = body.indexOf(LINK_END);
+  if (begin >= 0 && end > begin)
+    return body.slice(0, begin) + block + body.slice(end + LINK_END.length);
+  return `${body.replace(/\s+$/, "")}\n\n${block}\n`;
+}
+
+async function scanComments(gh: GitHubAccess, config: ComforgeConfig, issue: number) {
+  const out: z.infer<typeof CommentSchema>[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const raw = await gh.transport
+      .get(`/repos/${config.repository.owner}/${config.repository.name}/issues/${issue}/comments`, {
+        per_page: "100",
+        page: String(page),
+      })
+      .catch(githubError);
+    const batch = z.array(CommentSchema).safeParse(raw);
+    if (!batch.success) fail("github-failed", "unexpected shape for issue comments");
+    out.push(...(batch as { data: z.infer<typeof CommentSchema>[] }).data);
+    if ((batch as { data: unknown[] }).data.length < 100)
+      return { comments: out, truncated: false };
+  }
+  return { comments: out, truncated: true };
+}
+
+export function parseResult(config: ComforgeConfig, raw: unknown): CompletionInput {
+  const protocol = completionProtocol(config);
+  const parsed = protocol.inputSchema.safeParse(raw);
+  if (!parsed.success)
+    fail("usage", "the completion result does not match the contract", {
+      issues: parsed.error.issues
+        .slice(0, 20)
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`),
+    });
+  const input = (parsed as { data: CompletionInput }).data;
+  const problems = [...protocol.contentProblems(input), ...protocol.consistencyProblems(input)];
+  if (problems.length > 0)
+    fail("policy-denied", "the completion result is inconsistent or unsafe", { problems });
+  return input;
+}
+
+export const readResultFile = (file: string): unknown => {
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return fail("usage", `${file} is not a readable JSON file`, { file });
+  }
+};
+
+export async function complete(
+  ctx: CommandContext,
+  options: { raw: unknown; execute: boolean; grantFile?: string; authorized?: Authorized },
+): Promise<CommandResult> {
+  const { rt, repo } = ctx;
+  const working = ctx.working();
+  // The ticket's own record (if any) decides which base, and so which trusted configuration, applies.
+  const pre = completionProtocol(working).inputSchema.safeParse(options.raw);
+  const ticketHint = pre.success ? (pre.data as CompletionInput).ticketId : null;
+  const ghWorking = ctx.github(working);
+  let initiativeId = ticketHint ?? "";
+  const prHint = pre.success ? (pre.data as CompletionInput).pullRequest : undefined;
+  if (prHint) {
+    const p = await readPull(ghWorking, working, prHint.number);
+    const fromBranch = initiativeFromBranch(p.head.ref, working);
+    if (fromBranch && fromBranch.ticket === ticketHint) initiativeId = fromBranch.id;
+  }
+  const local = initiativeId ? await ctx.state.get(initiativeId) : null;
+  const { record, trusted } = local
+    ? await loadInitiative(ctx, initiativeId)
+    : { record: null, trusted: working };
+  if (!local) {
+    // Without an initiative, the trusted configuration is the base branch's committed one.
+    const { remote, baseBranch } = working.repository;
+    git(rt, repo.root, [
+      "fetch",
+      "--quiet",
+      remote,
+      `+refs/heads/${baseBranch}:refs/remotes/${remote}/${baseBranch}`,
+    ]);
+  }
+  const input = parseResult(trusted, options.raw);
+  const protocol = completionProtocol(trusted);
+  const spec = specificationProtocol(trusted);
+  const gh = ctx.github(trusted);
+  const { owner, name, remote } = trusted.repository;
+
+  // The specification on the issue, unedited, is the one the result names.
+  const issueRaw = await gh.transport
+    .get(`/repos/${owner}/${name}/issues/${input.issueNumber}`)
+    .catch(githubError);
+  const issue = IssueSchema.safeParse(issueRaw);
+  if (!issue.success) fail("github-failed", "unexpected issue shape");
+  const iss = (issue as { data: z.infer<typeof IssueSchema> }).data;
+  if (iss.pull_request !== undefined)
+    fail("policy-denied", `#${input.issueNumber} is a pull request`);
+  if (iss.state !== "open") fail("stale", `#${input.issueNumber} is ${iss.state}`);
+  if (!spec)
+    fail("config-invalid", "completion needs a specification section in the configuration");
+  const v = (spec as NonNullable<typeof spec>).verifyPublishedSpecification({
+    title: iss.title,
+    body: iss.body,
+  });
+  if (!v) fail("specification-invalid", `#${input.issueNumber} is not a published specification`);
+  const verification = v as NonNullable<typeof v>;
+  if (verification.ticketId !== input.ticketId)
+    fail("conflict", `#${input.issueNumber} specifies ${verification.ticketId}`);
+  if (verification.digest !== input.specificationDigest)
+    fail("conflict", "the result names another specification digest than the issue");
+  if (!verification.digestMatches) fail("stale", "the specification was edited after publication");
+  if (
+    record?.specification &&
+    (record.specification.issueNumber !== input.issueNumber ||
+      record.specification.digest !== input.specificationDigest)
+  )
+    fail("conflict", `${record.operationId} started from another specification`);
+
+  // Every revision the result names is committed and reachable from the remote.
+  git(rt, repo.root, ["fetch", "--quiet", remote]);
+  const onRemote = (sha: string) =>
+    gitOk(rt, repo.root, ["cat-file", "-e", `${sha}^{commit}`]) &&
+    git(rt, repo.root, ["branch", "-r", "--contains", sha])
+      .split("\n")
+      .some((b) => b.trim().startsWith(`${remote}/`));
+  if (!onRemote(input.sourceRevision))
+    fail("evidence-missing", "sourceRevision is not a commit on the remote", {
+      sha: input.sourceRevision,
+    });
+  const missing = input.evidence.filter(
+    (e) =>
+      !onRemote(e.commit) || !gitOk(rt, repo.root, ["cat-file", "-e", `${e.commit}:${e.path}`]),
+  );
+  if (missing.length > 0)
+    fail("evidence-missing", "evidence must be committed at a commit on the remote", {
+      missing: missing.map((e) => `${e.path}@${e.commit}`),
+    });
+
+  // The lifecycle gate: a PR of this initiative needs a passing validation and a publication of its head.
+  let pull: Pull | null = null;
+  let gates: CompletionGate[] = [];
+  let applies = false;
+  if (input.pullRequest) {
+    pull = await readPull(gh, trusted, input.pullRequest.number);
+    if (pull.head.sha !== input.pullRequest.headSha)
+      fail("stale", "the pull request head is no longer the one the result names", {
+        expected: input.pullRequest.headSha,
+        current: pull.head.sha,
+      });
+    if (pull.state !== "open" && !pull.merged_at)
+      fail("stale", `#${pull.number} is closed without merging`);
+    const branch =
+      record?.branch ?? `${trusted.tickets.branchPrefix}${input.ticketId.toLowerCase()}`;
+    const decision = evaluateLifecycleAction({
+      action: "complete",
+      evidence: {
+        issueType: input.issueType,
+        outcome: input.outcome,
+        head: input.pullRequest.headSha,
+        ticketBranch: branch,
+        repository: `${owner}/${name}`,
+        pullRequest: {
+          number: pull.number,
+          headRef: pull.head.ref,
+          headRepository: pull.head.repo?.full_name ?? null,
+        },
+        ledger: record
+          ? {
+              validations: record.validations.map((x) => ({ commit: x.commit, status: x.status })),
+              publications: record.publications.map((p) => ({
+                commit: p.commit,
+                prNumber: p.prNumber,
+              })),
+            }
+          : null,
+      },
+    });
+    if (decision.decision !== "allow") refuse(decision.reasons, "completion refused");
+    if (decision.decision === "allow" && decision.facts.applies && record) {
+      applies = true;
+      const validated = record.validations[decision.facts.validationIndex as number];
+      gates = [
+        {
+          gate: "Exact-snapshot validation (comforge verify)",
+          command: trusted.validation.commands.map((c) => c.run.join(" ")).join(" && "),
+          status: validated?.status ?? "FAIL",
+          reason: validated?.status === "PASS" ? null : "see comforge status",
+          source: "lifecycle-ledger",
+        } as CompletionGate,
+      ];
+    }
+  }
+
+  const viewer = await gh.login();
+  const scan = await scanComments(gh, trusted, input.issueNumber);
+  if (scan.truncated)
+    fail("policy-denied", "too many comments to rule out an earlier result; publish nothing");
+  const results = scan.comments.flatMap((comment) => {
+    const marker = protocol.parseCompletionMarker(comment.body);
+    if (!marker || marker.issueNumber !== input.issueNumber || marker.ticketId !== input.ticketId)
+      return [];
+    return [{ comment, marker, ...protocol.decodeCompletion(marker) }];
+  });
+  const own = results.filter((e) => e.comment.user?.login === viewer && e.integrity === "verified");
+  const latestOwn = own.at(-1) ?? null;
+  const payload: CompletionPayload = protocol.buildCompletionPayload(input, {
+    digestVerified: true,
+    ledgerGates: gates,
+    supersedes: latestOwn ? [latestOwn.comment.id] : [],
+  });
+  const replay =
+    latestOwn?.payload && protocol.sameResult(latestOwn.payload, payload) ? latestOwn : null;
+  const body = protocol.composeCompletionComment(payload);
+  if (body.length > COMPLETION_LIMITS.commentMaxChars)
+    fail("policy-denied", "the completion comment is too large; link a committed report instead");
+  const digest = protocol.completionDigest(protocol.serializeCompletionPayload(payload));
+  const plan = {
+    repository: `${owner}/${name}`,
+    issueNumber: input.issueNumber,
+    ticketId: input.ticketId,
+    initiative: record?.operationId ?? null,
+    outcome: input.outcome,
+    disposition: payload.disposition,
+    comment: replay ? { action: "replay", commentId: replay.comment.id } : { action: "create" },
+    supersedes: replay ? [] : payload.supersedes,
+    pullRequestLink: pull && applies ? { prNumber: pull.number, action: "ensure" } : null,
+    ignoredForeignResults: results
+      .filter((e) => e.comment.user?.login !== viewer)
+      .map((e) => ({ commentId: e.comment.id, author: e.comment.user?.login ?? null })),
+    completionDigest: digest,
+    closesIssue: false,
+    authorization: trusted.security.authorization?.mode ?? "none: writes are refused",
+  };
+  // An ambiguous link block is refused before the comment, so nothing is left half done.
+  if (pull && applies)
+    assertCompletionLinkUnambiguous(pull.body ?? "", trusted.publication.linkMarkerNamespace);
+  if (!options.execute) return { result: { executed: false, plan, body } };
+  await requireResolved(gh, record, rt.now());
+  const authorized =
+    options.authorized ??
+    (await authorizeWrites(ctx, trusted, record, {
+      head: input.pullRequest?.headSha ?? input.sourceRevision,
+      grantFile: options.grantFile,
+      command: "complete",
+    }));
+
+  let commentId: number;
+  let action: "created" | "replayed";
+  const ops: string[] = [];
+  if (replay) {
+    commentId = replay.comment.id;
+    action = "replayed";
+  } else {
+    const id = await freshIdentity(
+      gh,
+      operationId("completion", String(input.issueNumber), digest),
+    );
+    ops.push(id);
+    await remember(ctx, record?.operationId ?? null, id);
+    const outcome = await gh.write({
+      kind: "issue.comment",
+      operationId: id,
+      issueNumber: input.issueNumber,
+      body,
+    });
+    if (outcome.status !== "verified" || outcome.resource?.type !== "comment")
+      throw new CliError(
+        "ambiguous",
+        "the completion comment could not be verified; rerun comforge recover, then this command",
+        { operationId: id, status: outcome.status },
+      );
+    commentId = outcome.resource.id;
+    action = outcome.replayed ? "replayed" : "created";
+  }
+  const commentUrl = `${trusted.repository.webOrigin}/${owner}/${name}/issues/${input.issueNumber}#issuecomment-${commentId}`;
+  const linkHead = input.pullRequest?.headSha ?? input.sourceRevision;
+  if (record)
+    await ctx.state.update(record.operationId, (r) => {
+      if (!r.completions.some((c) => c.commentId === commentId))
+        r.completions.push({
+          commit: linkHead,
+          issueNumber: input.issueNumber,
+          commentId,
+          completionDigest: digest,
+          outcome: input.outcome,
+          prNumber: input.pullRequest?.number ?? null,
+          at: nowIso(rt.now()),
+        });
+      for (const id of ops) if (!r.operations.includes(id)) r.operations.push(id);
+    });
+  let pullRequestLink: { prNumber: number; action: string; detail?: string } | null = null;
+  if (pull && applies) {
+    const fresh = await readPull(gh, trusted, pull.number);
+    if (fresh.head.sha !== linkHead)
+      pullRequestLink = {
+        prNumber: pull.number,
+        action: "skipped",
+        detail: `head moved to ${fresh.head.sha}`,
+      };
+    else {
+      const current = fresh.body ?? "";
+      const next = withCompletionLink(
+        withoutWriterMarker(current),
+        { issueNumber: input.issueNumber, url: commentUrl, headSha: linkHead },
+        trusted.publication.linkMarkerNamespace,
+      );
+      if (next === withoutWriterMarker(current))
+        pullRequestLink = { prNumber: pull.number, action: "up-to-date" };
+      else {
+        const digest = await bodyDigest(current);
+        const id = await transitionIdentity(
+          gh,
+          operationId("pr-link", String(pull.number), digest, next),
+        );
+        await remember(ctx, record?.operationId ?? null, id);
+        try {
+          const outcome = await gh.write({
+            kind: "pull.update",
+            operationId: id,
+            pullNumber: pull.number,
+            expected: { bodyDigest: digest, headSha: linkHead },
+            body: next,
+          });
+          pullRequestLink =
+            outcome.status === "verified"
+              ? { prNumber: pull.number, action: "updated" }
+              : {
+                  prNumber: pull.number,
+                  action: "unresolved",
+                  detail: "run comforge recover, then rerun",
+                };
+        } catch (error) {
+          pullRequestLink = {
+            prNumber: pull.number,
+            action: "failed",
+            detail: `${error instanceof Error ? error.message : String(error)}; rerun to finish`,
+          };
+        }
+        if (record)
+          await ctx.state.update(record.operationId, (r) => {
+            if (!r.operations.includes(id)) r.operations.push(id);
+          });
+      }
+    }
+  }
+  const partial =
+    pullRequestLink !== null &&
+    pullRequestLink.action !== "updated" &&
+    pullRequestLink.action !== "up-to-date";
+  return {
+    result: {
+      executed: true,
+      status: partial ? "partial" : "published",
+      plan,
+      comment: { id: commentId, url: commentUrl, action },
+      pullRequestLink,
+      authorization: authorized,
+      closesIssue: false,
+    },
+    exit: partial ? EXIT.incomplete : EXIT.ok,
+  };
+}
+
+// --- deliver ----------------------------------------------------------------------------
+
+/**
+ * The result deliver completes with: the initiative's issue, ticket and specification digest
+ * fill fields the result leaves out, and a result that names others is refused.
+ */
+function deliveryResult(
+  record: InitiativeRecord,
+  trusted: ComforgeConfig,
+  raw: unknown,
+): Record<string, unknown> {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw))
+    return fail("usage", "the completion result is not a JSON object");
+  const result = { ...(raw as Record<string, unknown>) };
+  const known: Record<string, unknown> = {
+    ticketId: record.ticket,
+    ...(record.specification
+      ? {
+          issueNumber: record.specification.issueNumber,
+          specificationDigest: record.specification.digest,
+        }
+      : {}),
+  };
+  for (const [key, value] of Object.entries(known)) {
+    if (result[key] === undefined) result[key] = value;
+    else if (result[key] !== value)
+      fail("conflict", `the result's ${key} is not this initiative's`, {
+        field: key,
+        result: result[key] as never,
+        initiative: value as never,
+      });
+  }
+  if (!trusted.completion)
+    fail("config-invalid", "deliver needs a completion section in the configuration");
+  return result;
+}
+
+/**
+ * The pull request a result links. A non-implementation result (a report delivered as its own
+ * pull request) must say why it links one: its own `pullRequest.reason`, else the configured
+ * `publication.reportPullRequestReason`. Without either it is refused before any write.
+ */
+function withReason(
+  pr: { number: number; headSha: string },
+  result: Record<string, unknown>,
+  trusted: ComforgeConfig,
+): { number: number; headSha: string; reason?: string } {
+  const given = (result.pullRequest as { reason?: unknown } | undefined)?.reason;
+  if (typeof given === "string" && given.trim()) return { ...pr, reason: given };
+  if (result.issueType === "implementation") return pr;
+  const configured = trusted.publication.reportPullRequestReason;
+  if (!configured)
+    return fail(
+      "policy-denied",
+      "a report delivered with a pull request needs pullRequest.reason in the result or publication.reportPullRequestReason",
+      { issueType: result.issueType as never },
+    );
+  return { ...pr, reason: configured };
+}
+
+export async function deliver(
+  ctx: CommandContext,
+  options: {
+    id: string;
+    title: string;
+    raw: unknown;
+    withoutPullRequest?: boolean;
+    draft?: boolean;
+    closes?: number;
+    execute: boolean;
+    grantFile?: string;
+  },
+): Promise<CommandResult> {
+  const { record, trusted } = await loadInitiative(ctx, options.id);
+  const checkout = requireCheckout(record);
+  const head = git(ctx.rt, checkout, ["rev-parse", "HEAD"]);
+  const result = deliveryResult(record, trusted, options.raw);
+  const path = evaluateLifecycleAction({
+    action: "deliver",
+    evidence: {
+      issueType: String(result.issueType ?? ""),
+      outcome: String(result.outcome ?? ""),
+      head,
+      baseSha: record.base.sha,
+      ...(typeof result.sourceRevision === "string" && /^[0-9a-f]{40}$/.test(result.sourceRevision)
+        ? { sourceRevision: result.sourceRevision }
+        : {}),
+      withoutPullRequest: options.withoutPullRequest === true,
+    },
+  });
+  if (path.decision !== "allow") return refuse(path.reasons, "delivery refused");
+  result.sourceRevision = path.facts.sourceRevision;
+  const needsPr = path.facts.pullRequest === "required";
+  // A report PR without a reason is refused here, before anything is pushed or created.
+  if (needsPr) withReason({ number: 1, headSha: head }, result, trusted);
+  const stages: Record<string, unknown> = {};
+  if (!options.execute) {
+    if (needsPr) {
+      const dry = await publish(ctx, {
+        id: options.id,
+        title: options.title,
+        draft: options.draft,
+        closes: options.closes,
+        execute: false,
+      });
+      stages.publish = dry.result.plan;
+      result.pullRequest = withReason(
+        {
+          number: (dry.result.plan as { pullRequest: { number?: number } }).pullRequest.number ?? 1,
+          headSha: head,
+        },
+        result,
+        trusted,
+      );
+    }
+    parseResult(trusted, result);
+    stages.completion = {
+      action: "validated locally; published after the pull request is verified",
+    };
+    return { result: { initiative: options.id, executed: false, delivery: "planned", stages } };
+  }
+  // One authorization for the whole delivery (one attempt of an owner grant).
+  const authorized = await authorizeWrites(ctx, trusted, record, {
+    head,
+    grantFile: options.grantFile,
+    command: "deliver",
+  });
+  stages.authorization = authorized;
+  // The attempt is on record before the first remote side effect; a dead run's is uncertain.
+  const attempt = await beginAttempt(ctx, record.operationId, head);
+  const progress = (stage: string) =>
+    ctx.state.update(record.operationId, (r) => {
+      const a = r.deliveries?.find((d) => d.attempt === attempt);
+      if (a && !a.stages.includes(stage)) a.stages.push(stage);
+    });
+  const finish = (outcome: DeliveryAttempt["outcome"], failedStage: string | null) =>
+    ctx.state.update(record.operationId, (r) => {
+      const a = r.deliveries?.find((d) => d.attempt === attempt);
+      if (a) Object.assign(a, { outcome, failedStage, finishedAt: nowIso(ctx.rt.now()) });
+    });
+  const stop = async (stage: string, error: unknown): Promise<CommandResult> => {
+    // A write whose answer was lost may have happened: say so, never call it a clean stop.
+    const uncertain = !(error instanceof CliError) || error.code === "ambiguous";
+    await finish(uncertain ? "uncertain" : "incomplete", stage);
+    return {
+      result: {
+        initiative: options.id,
+        executed: true,
+        delivery: "incomplete",
+        attempt,
+        failedStage: stage,
+        stages,
+        error:
+          error instanceof CliError
+            ? { code: error.code, message: error.message, detail: error.detail }
+            : { message: String(error) },
+      },
+      exit: EXIT.incomplete,
+    };
+  };
+  let prNumber: number | null = null;
+  if (needsPr) {
+    try {
+      ctx.checkpoint();
+      const published = await publish(ctx, {
+        id: options.id,
+        title: options.title,
+        draft: options.draft,
+        closes: options.closes,
+        execute: true,
+        authorized,
+      });
+      stages.publish = published.result;
+      if (published.exit === EXIT.incomplete)
+        return stop(
+          "publish",
+          new CliError("incomplete", "the pull request handoff is incomplete", {
+            handoff: published.result.handoff,
+          }),
+        );
+      prNumber = (published.result.pullRequest as { number: number }).number;
+      result.pullRequest = withReason({ number: prNumber, headSha: head }, result, trusted);
+      await progress("publish");
+    } catch (error) {
+      return stop("publish", error);
+    }
+  }
+  let commentId: number;
+  try {
+    ctx.checkpoint();
+    const completed = await complete(ctx, { raw: result, execute: true, authorized });
+    stages.completion = completed.result;
+    if (completed.exit === EXIT.incomplete)
+      return stop("completion", new CliError("incomplete", "the completion link is incomplete"));
+    commentId = (completed.result.comment as { id: number }).id;
+    await progress("completion");
+  } catch (error) {
+    return stop("completion", error);
+  }
+  try {
+    stages.read_back = await readBack(ctx, trusted, {
+      input: parseResult(trusted, result),
+      commentId,
+      head,
+      prNumber,
+      requireReady: options.draft !== true,
+    });
+    await progress("read_back");
+  } catch (error) {
+    return stop("read_back", error);
+  }
+  await finish("complete", null);
+  return {
+    result: {
+      initiative: options.id,
+      executed: true,
+      delivery: "complete",
+      attempt,
+      pullRequest: prNumber,
+      stages,
+    },
+  };
+}
+
+/** Records a new delivery attempt; an earlier one still `running` died part-way: uncertain. */
+async function beginAttempt(ctx: CommandContext, id: string, head: string): Promise<number> {
+  let attempt = 0;
+  await ctx.state.update(id, (r) => {
+    r.deliveries ??= [];
+    const list = r.deliveries;
+    for (const a of list)
+      if (a.outcome === "running")
+        Object.assign(a, { outcome: "uncertain", finishedAt: nowIso(ctx.rt.now()) });
+    attempt = (list.at(-1)?.attempt ?? 0) + 1;
+    list.push({
+      attempt,
+      head,
+      startedAt: nowIso(ctx.rt.now()),
+      finishedAt: null,
+      outcome: "running",
+      stages: [],
+      failedStage: null,
+    });
+  });
+  return attempt;
+}
+
+/**
+ * R7: what GitHub shows after the delivery, read again: the completion record is the comment
+ * this run named, decodes with integrity, is the latest of its author for the ticket, and
+ * names this head (and pull request); the pull request is at this head, ready when required,
+ * and its body links that comment.
+ */
+async function readBack(
+  ctx: CommandContext,
+  trusted: ComforgeConfig,
+  facts: {
+    input: CompletionInput;
+    commentId: number;
+    head: string;
+    prNumber: number | null;
+    requireReady: boolean;
+  },
+): Promise<Record<string, unknown>> {
+  const gh = ctx.github(trusted);
+  const protocol = completionProtocol(trusted);
+  const viewer = await gh.login();
+  const scan = await scanComments(gh, trusted, facts.input.issueNumber);
+  const own = scan.comments.flatMap((comment) => {
+    if (comment.user?.login !== viewer) return [];
+    const marker = protocol.parseCompletionMarker(comment.body);
+    if (!marker || marker.ticketId !== facts.input.ticketId) return [];
+    return [{ comment, ...protocol.decodeCompletion(marker) }];
+  });
+  const mine = own.find((e) => e.comment.id === facts.commentId);
+  const problems: string[] = [];
+  if (!mine) problems.push(`comment ${facts.commentId} is not on #${facts.input.issueNumber}`);
+  else {
+    if (mine.integrity !== "verified") problems.push("the completion record does not verify");
+    const payload = mine.payload as
+      | { sourceRevision?: string; pullRequest?: { number?: number } | null }
+      | null
+      | undefined;
+    const expected = facts.input.pullRequest?.headSha ?? facts.input.sourceRevision;
+    if (payload?.sourceRevision !== facts.input.sourceRevision)
+      problems.push("the record names another source revision");
+    if (facts.prNumber !== null && payload?.pullRequest?.number !== facts.prNumber)
+      problems.push("the record names another pull request");
+    if (own.at(-1)?.comment.id !== facts.commentId)
+      problems.push("a later result of this author supersedes it");
+    if (expected !== facts.head && facts.prNumber !== null)
+      problems.push("the record is not of the delivered head");
+  }
+  let pullRequest: Record<string, unknown> | null = null;
+  if (facts.prNumber !== null) {
+    const pull = await readPull(gh, trusted, facts.prNumber);
+    const ns = trusted.publication.linkMarkerNamespace;
+    const block = completionLinkBlock(pull.body ?? "", ns) ?? "";
+    pullRequest = {
+      number: pull.number,
+      headSha: pull.head.sha,
+      draft: pull.draft === true,
+      linked: block.includes(`#issuecomment-${facts.commentId}`),
+    };
+    if (pull.head.sha !== facts.head) problems.push("the pull request moved to another head");
+    if (facts.requireReady && pull.draft === true)
+      problems.push("the pull request is still a draft");
+    if (!pullRequest.linked)
+      problems.push("the pull request body does not link the completion record");
+  }
+  if (problems.length > 0)
+    fail("incomplete", "the delivery did not read back as published", { problems });
+  return {
+    commentId: facts.commentId,
+    integrity: "verified",
+    current: true,
+    sourceRevision: facts.input.sourceRevision,
+    pullRequest,
+  };
+}
+
+// --- recover ----------------------------------------------------------------------------
+
+export async function recover(
+  ctx: CommandContext,
+  options: { id: string; execute: boolean; abandon?: boolean; grantFile?: string },
+): Promise<CommandResult> {
+  const { record, trusted } = await loadInitiative(ctx, options.id);
+  const gh = ctx.github(trusted);
+  const operations = [];
+  for (const id of record.operations) {
+    const op = await gh.ledger.get(id).catch(() => null);
+    operations.push({ operationId: id, kind: op?.kind ?? null, state: op?.state ?? "missing" });
+  }
+  const unresolved = operations.filter(
+    (o) => o.state === "indeterminate" || o.state === "sending" || o.state === "reserved",
+  );
+  if (!options.execute)
+    return {
+      result: {
+        initiative: options.id,
+        executed: false,
+        operations,
+        unresolved: unresolved.map((o) => o.operationId),
+      },
+    };
+  const authorized = await authorizeWrites(ctx, trusted, record, {
+    head: record.publications.at(-1)?.commit ?? record.base.sha,
+    grantFile: options.grantFile,
+    command: "recover",
+    // Reconciliation reads GitHub and settles the write ledger; abandoning is local. Neither is
+    // a remote write, so the grant is verified (scope, expiry) but no attempt is spent.
+    consume: false,
+  });
+  const reconciled = [];
+  for (const o of unresolved) {
+    const outcome = await gh.reconcile(o.operationId);
+    let abandoned = false;
+    // Abandoned only on request, and only when a complete search found no copy.
+    if (
+      options.abandon &&
+      outcome.status === "indeterminate" &&
+      outcome.reconciliation?.complete === true &&
+      outcome.reconciliation.matches === 0
+    ) {
+      await gh.abandon(
+        o.operationId,
+        "abandoned with comforge recover --abandon: a complete search found no copy",
+      );
+      abandoned = true;
+    }
+    reconciled.push({
+      operationId: o.operationId,
+      status: abandoned ? "abandoned" : outcome.status,
+      resource: outcome.resource,
+      reason: outcome.reason ?? null,
+    });
+  }
+  const stillOpen = reconciled.filter((r) => r.status !== "verified" && r.status !== "abandoned");
+  return {
+    result: {
+      initiative: options.id,
+      executed: true,
+      operations,
+      reconciled,
+      authorization: authorized,
+    },
+    exit: stillOpen.length === 0 ? EXIT.ok : EXIT.incomplete,
+  };
+}

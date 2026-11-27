@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "New subpath @comforge/mcp/host: createEngineeringHost (evidence reads, advisory reviews, trusted configuration, governed writes; read-only without injected writes) and sqliteOperationStore; the server's reads use the same services. Depends on @comforge/cli 0.5.0 and @comforge/ledger 0.1.0.",
+  "breaking": null,
+  "covers": []
+}

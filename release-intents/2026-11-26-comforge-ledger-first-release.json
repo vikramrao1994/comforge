@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/ledger",
+  "bump": "minor",
+  "summary": "First release: a versioned compare-and-swap ledger contract (structurally @comforge/github's OperationLedger) with immutable-file, caller-connection SQLite and memory adapters, typed errors, namespace isolation, safe retention and shared conformance cases. No dependencies.",
+  "breaking": null,
+  "covers": []
+}
