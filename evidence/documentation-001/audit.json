@@ -2,7 +2,7 @@
   "schema": "comforge-documentation-audit/v1",
   "initiative": "documentation-001",
   "reviewedRevision": "ea51507e0a3381f39db830b83fb9d90861fe9755",
-  "method": "Authoritative contracts read from source by tooling/docs/contracts.ts (CLI command table and global flags, CLI and MCP error codes, MCP tool contracts, profiles and launch flags, configuration JSON Schema, runtime exports of every published subpath); coverage = the name or flag appears in README.md, docs/** or a package README.",
+  "method": "Authoritative contracts read from source by tooling/docs/contracts.ts (CLI command table, the argument parser's per-command flag allowlist (KNOWN_FLAGS) and global flags, CLI and MCP error codes, MCP tool contracts, profiles and launch flags, configuration JSON Schema, runtime exports of every published subpath); coverage = the name or flag appears in README.md, docs/** or a package README.",
   "coverageBefore": {
     "cliCommands": {
       "total": 21,
@@ -10,9 +10,10 @@
       "missing": []
     },
     "cliCommandFlags": {
-      "total": 46,
-      "documented": 46,
-      "missing": []
+      "total": 50,
+      "documented": 50,
+      "missing": [],
+      "note": "authority is the parser allowlist KNOWN_FLAGS; the usage lines alone list 46"
     },
     "cliGlobalFlags": {
       "total": 6,
@@ -169,52 +170,52 @@
       "reason": "shipped in each tarball; authoritative per-package detail; docs link to them, never copy"
     },
     {
-      "item": "docs/overview.md",
+      "item": "docs/getting-started/overview.md",
       "decision": "improve \u2192 getting-started/overview.md",
       "reason": "keep; add the not-an-agent / not-a-token-compressor positioning"
     },
     {
-      "item": "docs/quickstart-cli.md, quickstart-mcp.md",
+      "item": "docs/getting-started/quickstart-cli.md, quickstart-mcp.md",
       "decision": "retain \u2192 getting-started/",
       "reason": "accurate; now backed by executed recipes"
     },
     {
-      "item": "docs/architecture.md, host-services.md, persistence-and-reconciliation.md, protocols-and-authority.md",
+      "item": "docs/concepts/architecture.md, host-services.md, persistence-and-reconciliation.md, protocols-and-authority.md",
       "decision": "retain \u2192 concepts/",
       "reason": "concept pages"
     },
     {
-      "item": "docs/authorization-and-trust.md",
+      "item": "docs/security/authorization-and-trust.md",
       "decision": "retain \u2192 security/",
       "reason": "security section"
     },
     {
-      "item": "docs/commands-and-tools.md",
+      "item": "docs/reference/tool-selection.md",
       "decision": "consolidate \u2192 reference/tool-selection.md",
       "reason": "duplicated the CLI and MCP tables; becomes the agent tool-selection guide over generated inventories"
     },
     {
-      "item": "docs/configuration.md",
+      "item": "docs/reference/configuration.md",
       "decision": "improve \u2192 reference/configuration.md",
       "reason": "handwritten; missed repository.webOrigin; add a generated section/key inventory from the schema"
     },
     {
-      "item": "docs/runtimes-and-platforms.md",
+      "item": "docs/reference/compatibility.md",
       "decision": "consolidate \u2192 reference/compatibility.md",
       "reason": "one compatibility matrix"
     },
     {
-      "item": "docs/examples.md",
+      "item": "docs/recipes/README.md",
       "decision": "consolidate \u2192 recipes/README.md",
       "reason": "examples are listed with the recipes"
     },
     {
-      "item": "docs/migration-and-recovery.md, known-limitations.md",
+      "item": "docs/troubleshooting/migration-and-recovery.md, known-limitations.md",
       "decision": "retain \u2192 troubleshooting/",
       "reason": "plus a new troubleshooting page keyed by error code"
     },
     {
-      "item": "docs/contributing.md, release-governance.md, release-transition.md",
+      "item": "docs/contributing/contributing.md, release-governance.md, release-transition.md",
       "decision": "retain \u2192 contributing/",
       "reason": "contributor section"
     },
@@ -287,6 +288,9 @@
       "no per-client setup for Claude Code, Codex or Cursor",
       "no troubleshooting by error code",
       "no benchmark numbers or their limits"
+    ],
+    "contractGaps": [
+      "the CLI command table's usage lines omit four accepted flags: start --reopen, publish --closes, deliver --closes, grant --command (documented in the CLI README; a fix to the usage strings is a package change, left for the next CLI release)"
     ]
   },
   "agentClientsAvailableHere": {

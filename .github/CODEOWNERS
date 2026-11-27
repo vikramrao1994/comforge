@@ -1,5 +1,5 @@
 # Changes to what governs releases and CI need the owner's review (enforced once the main
-# ruleset requires code-owner review; see docs/release-governance.md).
+# ruleset requires code-owner review; see docs/contributing/release-governance.md).
 /.github/ @vikramrao1994
 /tooling/release/ @vikramrao1994
 /release-trust.json @vikramrao1994

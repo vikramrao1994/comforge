@@ -18,8 +18,8 @@ npm install --save-dev --save-exact @comforge/cli @comforge/mcp
 npx comforge init && npx comforge doctor
 ```
 
-- [Documentation](docs/README.md) · [CLI quickstart](docs/quickstart-cli.md) · [MCP quickstart](docs/quickstart-mcp.md)
-- [Architecture](docs/architecture.md) · [Authorization and trust](docs/authorization-and-trust.md) · [Known limitations](docs/known-limitations.md)
-- [Contributing](docs/contributing.md) · [Release governance](docs/release-governance.md) · [Agent instructions](CLAUDE.md)
+- [Documentation](docs/README.md) · [CLI quickstart](docs/getting-started/quickstart-cli.md) · [MCP quickstart](docs/getting-started/quickstart-mcp.md)
+- [Architecture](docs/concepts/architecture.md) · [Authorization and trust](docs/security/authorization-and-trust.md) · [Known limitations](docs/troubleshooting/known-limitations.md)
+- [Contributing](docs/contributing/contributing.md) · [Release governance](docs/contributing/release-governance.md) · [Agent instructions](CLAUDE.md)
 
 Node.js ≥ 22.18 or Bun ≥ 1.4 on macOS or Linux. Licensed under [Apache-2.0](LICENSE).

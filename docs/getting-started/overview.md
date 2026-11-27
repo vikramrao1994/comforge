@@ -19,7 +19,7 @@ Deterministic code decides every permission and every write; prompts and instruc
 ## What it is not
 
 - Not a sandbox: validation runs the candidate's code as the operator (see
-  [known limitations](known-limitations.md)).
+  [known limitations](../troubleshooting/known-limitations.md)).
 - Not an approval system: it never merges, approves or deploys. Advisory reviews are comments,
   never native GitHub approvals.
 - Not an agent: it works with any agent client through the CLI or MCP.
@@ -33,9 +33,9 @@ Deterministic code decides every permission and every write; prompts and instruc
 
 ## Interfaces
 
-Consumers install two packages: [`@comforge/cli`](../packages/cli/README.md) and
-[`@comforge/mcp`](../packages/mcp/README.md). The three library packages they are built on are
-implementation details for most users; see [architecture](architecture.md).
+Consumers install two packages: [`@comforge/cli`](../../packages/cli/README.md) and
+[`@comforge/mcp`](../../packages/mcp/README.md). The three library packages they are built on are
+implementation details for most users; see [architecture](../concepts/architecture.md).
 
 A reference consumer runs Comforge in production as an ordinary npm dependency of these two
 packages; it is not needed to understand, install or contribute to Comforge.

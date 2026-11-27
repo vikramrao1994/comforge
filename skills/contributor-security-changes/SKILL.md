@@ -14,7 +14,7 @@ Change authorization, trust boundaries, credentials handling or disclosure rules
 
 ## Prerequisites
 
-- docs/authorization-and-trust.md; the adversarial tests of the touched package.
+- docs/security/authorization-and-trust.md; the adversarial tests of the touched package.
 
 ## Examples
 
@@ -44,5 +44,5 @@ bun run test && bun run disclosure
 
 ## References
 
-- [docs/authorization-and-trust.md](../../docs/authorization-and-trust.md)
+- [docs/security/authorization-and-trust.md](../../docs/security/authorization-and-trust.md)
 - [docs/decisions/0001-deterministic-governance.md](../../docs/decisions/0001-deterministic-governance.md)

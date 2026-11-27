@@ -7,7 +7,7 @@ Report of the documentation initiative tracked in the previous repository's issu
 ## A — Audit (recorded before implementation)
 
 Method: `tooling/docs/contracts.ts` reads every public contract from source — the CLI's command
-table and global flags, CLI and MCP error codes, MCP tool contracts, profiles and launch flags,
+table, the argument parser's per-command flag allowlist and the global flags, CLI and MCP error codes, MCP tool contracts, profiles and launch flags,
 the configuration JSON Schema, and the runtime exports of every published subpath. Coverage
 counts a name or flag as documented when it appears in `README.md`, `docs/**` or a package
 README. Full inventory and decisions: [`audit.json`](../../evidence/documentation-001/audit.json).
@@ -15,7 +15,7 @@ README. Full inventory and decisions: [`audit.json`](../../evidence/documentatio
 | Contract | Total | Documented before | Gap |
 |---|---|---|---|
 | CLI commands | 21 | 21 | — |
-| CLI command flags | 46 | 46 | — |
+| CLI command flags (parser allowlist) | 50 | 50 | — |
 | CLI global flags | 6 | 4 | `--cwd`, `--help` |
 | CLI error codes | 25 | 25 | — |
 | MCP tools | 18 | 18 | — |
@@ -27,6 +27,9 @@ README. Full inventory and decisions: [`audit.json`](../../evidence/documentatio
 Findings:
 - **Broken links:** none (`bun run validate docs` already checks relative links).
 - **Stale commands:** none; every documented command and flag exists.
+- **Contract gap:** the CLI command table's usage lines omit four flags the parser accepts
+  (`start --reopen`, `publish --closes`, `deliver --closes`, `grant --command`). They are in the
+  CLI README; correcting the usage strings is a package change for the next CLI release.
 - **Unsupported claims:** none found. No benchmark numbers were published in this repository.
 - **Onboarding gaps:** no executed first workflow; no CLI vs MCP vs embedded guidance; no
   per-client setup; no troubleshooting by error code; no benchmark results or limits.

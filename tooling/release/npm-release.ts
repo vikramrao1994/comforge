@@ -16,7 +16,7 @@
  * from the cloned Git release itself, so it also verifies a version this machine never packed
  * (a Trusted-Publishing release). `--write-pin` records that verified result as the
  * consumer pin. See
- * docs/release-governance.md, "npm distribution".
+ * docs/contributing/release-governance.md, "npm distribution".
  */
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";

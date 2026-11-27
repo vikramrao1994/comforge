@@ -1,7 +1,7 @@
 # Commands, capabilities and tool profiles
 
-Status: published. Authoritative tables: [CLI commands](../packages/cli/README.md#commands) and
-[MCP tools](../packages/mcp/README.md#tools). `comforge capabilities` prints the same at runtime,
+Status: published. Authoritative tables: [CLI commands](../../packages/cli/README.md#commands) and
+[MCP tools](../../packages/mcp/README.md#tools). `comforge capabilities` prints the same at runtime,
 including what the CLI never does.
 
 | Lifecycle step | CLI | MCP tool | Profile | Writes |

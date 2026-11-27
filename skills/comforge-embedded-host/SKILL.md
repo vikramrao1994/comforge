@@ -48,6 +48,6 @@ Run tests/mcp/twoPackageConsumer.test.ts as a template: a host that depends on e
 
 ## References
 
-- [docs/host-services.md](../../docs/host-services.md)
-- [docs/protocols-and-authority.md](../../docs/protocols-and-authority.md)
+- [docs/concepts/host-services.md](../../docs/concepts/host-services.md)
+- [docs/concepts/protocols-and-authority.md](../../docs/concepts/protocols-and-authority.md)
 - [packages/mcp/README.md#host-services](../../packages/mcp/README.md#host-services)

@@ -37,7 +37,7 @@ three library packages directly is supported but couples a consumer to their ver
   (`tests/repository/validators.test.ts`, `bun run validate`).
 - Package sources import nothing from `tooling/`, `tests/`, `benchmarks/` or `harness/`.
 - The harness (`harness/`) is the published release that governs this repository; workspace
-  candidates never resolve as the harness ([decision 0002](decisions/0002-published-harness.md)).
+  candidates never resolve as the harness ([decision 0002](../decisions/0002-published-harness.md)).
 
 ## Repository layout
 

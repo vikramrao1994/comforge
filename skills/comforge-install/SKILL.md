@@ -49,6 +49,6 @@ npx comforge doctor --json   # every check PASS, or each FAIL names its fix
 
 ## References
 
-- [docs/quickstart-cli.md](../../docs/quickstart-cli.md)
-- [docs/runtimes-and-platforms.md](../../docs/runtimes-and-platforms.md)
+- [docs/getting-started/quickstart-cli.md](../../docs/getting-started/quickstart-cli.md)
+- [docs/reference/compatibility.md](../../docs/reference/compatibility.md)
 - [packages/cli/README.md#install](../../packages/cli/README.md#install)

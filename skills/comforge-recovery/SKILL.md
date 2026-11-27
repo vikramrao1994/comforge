@@ -47,5 +47,5 @@ npx comforge status ACME-101 --json   # 0 unresolved operations
 
 ## References
 
-- [docs/persistence-and-reconciliation.md](../../docs/persistence-and-reconciliation.md)
-- [docs/migration-and-recovery.md](../../docs/migration-and-recovery.md)
+- [docs/concepts/persistence-and-reconciliation.md](../../docs/concepts/persistence-and-reconciliation.md)
+- [docs/troubleshooting/migration-and-recovery.md](../../docs/troubleshooting/migration-and-recovery.md)

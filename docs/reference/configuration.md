@@ -2,7 +2,7 @@
 
 `comforge.config.json` at the repository root, committed to the base branch. Status: published.
 The full JSON Schema is printed by `comforge schema config`; the reference is
-[CLI › Configuration](../packages/cli/README.md#configuration). The sections:
+[CLI › Configuration](../../packages/cli/README.md#configuration). The sections:
 
 | Section | Decides |
 |---|---|

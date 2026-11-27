@@ -46,4 +46,4 @@ bun run validate && bun run test
 
 ## References
 
-- [docs/contributing.md](../../docs/contributing.md)
+- [docs/contributing/contributing.md](../../docs/contributing/contributing.md)

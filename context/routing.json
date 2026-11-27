@@ -24,7 +24,7 @@
         "contributor-api-compatibility"
       ],
       "docs": [
-        "docs/protocols-and-authority.md"
+        "docs/concepts/protocols-and-authority.md"
       ],
       "validation": [
         "bun test --isolate packages/core/test",
@@ -51,7 +51,7 @@
         "contributor-package-development"
       ],
       "docs": [
-        "docs/architecture.md"
+        "docs/concepts/architecture.md"
       ],
       "validation": [
         "bun test --isolate packages/github/test tests/github"
@@ -76,7 +76,7 @@
         "contributor-package-development"
       ],
       "docs": [
-        "docs/persistence-and-reconciliation.md"
+        "docs/concepts/persistence-and-reconciliation.md"
       ],
       "validation": [
         "bun test --isolate packages/ledger/test tests/ledger"
@@ -107,8 +107,8 @@
         "contributor-api-compatibility"
       ],
       "docs": [
-        "docs/commands-and-tools.md",
-        "docs/configuration.md"
+        "docs/reference/tool-selection.md",
+        "docs/reference/configuration.md"
       ],
       "validation": [
         "bun test --isolate packages/cli/test tests/cli"
@@ -134,8 +134,8 @@
         "contributor-package-development"
       ],
       "docs": [
-        "docs/host-services.md",
-        "docs/quickstart-mcp.md"
+        "docs/concepts/host-services.md",
+        "docs/getting-started/quickstart-mcp.md"
       ],
       "validation": [
         "bun test --isolate packages/mcp/test tests/mcp"
@@ -164,7 +164,7 @@
         "contributor-security-changes"
       ],
       "docs": [
-        "docs/authorization-and-trust.md"
+        "docs/security/authorization-and-trust.md"
       ],
       "validation": [
         "bun test --isolate packages/cli/test/authorization.test.ts packages/mcp/test/adversarial.test.ts tests/release/releaseAuthorization.test.ts",
@@ -198,8 +198,8 @@
         "contributor-release"
       ],
       "docs": [
-        "docs/release-governance.md",
-        "docs/release-transition.md"
+        "docs/contributing/release-governance.md",
+        "docs/contributing/release-transition.md"
       ],
       "validation": [
         "bun test --isolate tests/release",
@@ -224,7 +224,7 @@
         "contributor-dependency-migration"
       ],
       "docs": [
-        "docs/release-governance.md",
+        "docs/contributing/release-governance.md",
         "docs/decisions/0002-published-harness.md"
       ],
       "validation": [
@@ -288,7 +288,7 @@
         "contributor-testing"
       ],
       "docs": [
-        "docs/contributing.md"
+        "docs/contributing/contributing.md"
       ],
       "validation": [
         "bun run validate",
@@ -306,14 +306,14 @@
         "refactor across packages"
       ],
       "files": [
-        "docs/architecture.md",
+        "docs/concepts/architecture.md",
         "docs/decisions"
       ],
       "skills": [
         "contributor-architecture"
       ],
       "docs": [
-        "docs/architecture.md"
+        "docs/concepts/architecture.md"
       ],
       "validation": [
         "bun tooling/validate.ts boundaries"
@@ -330,8 +330,8 @@
         "configure a repository"
       ],
       "files": [
-        "docs/quickstart-cli.md",
-        "docs/quickstart-mcp.md"
+        "docs/getting-started/quickstart-cli.md",
+        "docs/getting-started/quickstart-mcp.md"
       ],
       "skills": [
         "comforge-install",
@@ -340,7 +340,7 @@
         "comforge-mcp-setup"
       ],
       "docs": [
-        "docs/overview.md"
+        "docs/getting-started/overview.md"
       ],
       "validation": [
         "npx comforge doctor --json"
@@ -357,13 +357,13 @@
         "which authorization mode"
       ],
       "files": [
-        "docs/authorization-and-trust.md"
+        "docs/security/authorization-and-trust.md"
       ],
       "skills": [
         "comforge-authorization"
       ],
       "docs": [
-        "docs/authorization-and-trust.md"
+        "docs/security/authorization-and-trust.md"
       ],
       "validation": [
         "npx comforge doctor --json"
@@ -381,14 +381,14 @@
         "unresolved operations"
       ],
       "files": [
-        "docs/migration-and-recovery.md"
+        "docs/troubleshooting/migration-and-recovery.md"
       ],
       "skills": [
         "comforge-recovery"
       ],
       "docs": [
-        "docs/persistence-and-reconciliation.md",
-        "docs/migration-and-recovery.md"
+        "docs/concepts/persistence-and-reconciliation.md",
+        "docs/troubleshooting/migration-and-recovery.md"
       ],
       "validation": [
         "npx comforge status --json"
@@ -404,13 +404,13 @@
         "what was validated"
       ],
       "files": [
-        "docs/protocols-and-authority.md"
+        "docs/concepts/protocols-and-authority.md"
       ],
       "skills": [
         "comforge-evidence-and-reviews"
       ],
       "docs": [
-        "docs/protocols-and-authority.md"
+        "docs/concepts/protocols-and-authority.md"
       ],
       "validation": [
         "npx comforge review list <PR> --json"
@@ -426,13 +426,13 @@
         "second pull request"
       ],
       "files": [
-        "docs/commands-and-tools.md"
+        "docs/reference/tool-selection.md"
       ],
       "skills": [
         "comforge-multi-agent"
       ],
       "docs": [
-        "docs/commands-and-tools.md"
+        "docs/reference/tool-selection.md"
       ],
       "validation": [
         "npx comforge status --json"
@@ -449,14 +449,14 @@
         "protocol services"
       ],
       "files": [
-        "docs/host-services.md"
+        "docs/concepts/host-services.md"
       ],
       "skills": [
         "comforge-embedded-host"
       ],
       "docs": [
-        "docs/host-services.md",
-        "docs/protocols-and-authority.md"
+        "docs/concepts/host-services.md",
+        "docs/concepts/protocols-and-authority.md"
       ],
       "validation": [
         "bun test --isolate tests/mcp/twoPackageConsumer.test.ts"

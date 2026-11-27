@@ -48,5 +48,5 @@ Call comforge_capabilities: the listed profiles and tools match what you configu
 
 ## References
 
-- [docs/quickstart-mcp.md](../../docs/quickstart-mcp.md)
+- [docs/getting-started/quickstart-mcp.md](../../docs/getting-started/quickstart-mcp.md)
 - [packages/mcp/README.md#tools](../../packages/mcp/README.md#tools)

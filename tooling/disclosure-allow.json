@@ -48,7 +48,7 @@
       "path": "tooling/release/assets/npm-publish*.yml",
       "rule": "private-repository",
       "contains": "In the portfolio:",
-      "reason": "byte-identical to the workflow on each releases/<id> branch that npm Trusted Publishing trusts; reworded only in an owner-reviewed release (docs/release-governance.md)"
+      "reason": "byte-identical to the workflow on each releases/<id> branch that npm Trusted Publishing trusts; reworded only in an owner-reviewed release (docs/contributing/release-governance.md)"
     },
     {
       "path": "tooling/release/assets/npm-release.d.mts",

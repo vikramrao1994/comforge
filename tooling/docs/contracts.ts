@@ -24,7 +24,10 @@ export type CliCommand = {
   summary: string;
   writes: string;
   dryRunByDefault: boolean;
+  /** What the argument parser accepts for this command (`KNOWN_FLAGS` in cli.ts). */
   flags: string[];
+  /** Accepted flags the command table's usage line does not show. */
+  usageOmits: string[];
 };
 
 /** `--flag` tokens of a usage line, without values. */
@@ -42,20 +45,31 @@ export async function cliContracts() {
       dryRunByDefault?: boolean;
     }[];
   };
-  const commands: CliCommand[] = agent.COMMANDS.map((c) => ({
-    name: c.name,
-    usage: c.usage,
-    summary: c.summary,
-    writes: c.writes,
-    dryRunByDefault: c.dryRunByDefault === true,
-    flags: flagsOf(c.usage),
-  }));
+  const cliSource = read("packages/cli/src/cli.ts");
+  const known = cliSource.match(/const KNOWN_FLAGS[^{]*\{([\s\S]*?)\n\};/)?.[1];
+  if (!known) throw new Error("KNOWN_FLAGS was not found in packages/cli/src/cli.ts");
+  const accepted = new Map<string, string[]>();
+  for (const m of known.matchAll(/^\s*([a-z]+):\s*\[([^\]]*)\]/gm))
+    accepted.set(m[1] as string, flagsOf(m[2] as string));
+  const commands: CliCommand[] = agent.COMMANDS.map((c) => {
+    const flags = accepted.get(c.name);
+    if (!flags) throw new Error(`KNOWN_FLAGS has no entry for ${c.name}`);
+    const shown = new Set(flagsOf(c.usage));
+    return {
+      name: c.name,
+      usage: c.usage,
+      summary: c.summary,
+      writes: c.writes,
+      dryRunByDefault: c.dryRunByDefault === true,
+      flags,
+      usageOmits: flags.filter((f) => !shown.has(f)),
+    };
+  });
   const errors = (await import(path.join(REPO, "packages/cli/src/errors.ts"))) as {
     ERROR_CODES: Record<string, number>;
     EXIT: Record<string, number>;
   };
-  const agentSource = read("packages/cli/src/commands/agent.ts");
-  const globalFlags = flagsOf(agentSource.match(/globalFlags: \[([^\]]+)\]/)?.[1] ?? "");
+  const globalFlags = flagsOf(cliSource.match(/const GLOBAL_FLAGS = \[([^\]]+)\]/)?.[1] ?? "");
   if (globalFlags.length === 0) throw new Error("the CLI's global flags were not found");
   return {
     version: packageVersion("cli"),

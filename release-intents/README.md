@@ -18,4 +18,4 @@ One JSON file per reviewed statement of how a change affects a releasable Comfor
 - An intent is immutable once committed. The planner refuses an edited one, so a correction is a new file.
 - The pre-commit hook (`.githooks/pre-commit`) offers a deterministic suggestion when a staged change touches what a package ships. It records nothing without your answer.
 
-Process and policy: [docs/release-governance.md](../docs/release-governance.md).
+Process and policy: [docs/contributing/release-governance.md](../docs/contributing/release-governance.md).

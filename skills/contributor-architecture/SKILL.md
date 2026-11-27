@@ -46,5 +46,5 @@ bun run validate && bun run test
 
 ## References
 
-- [docs/architecture.md](../../docs/architecture.md)
+- [docs/concepts/architecture.md](../../docs/concepts/architecture.md)
 - [context/routing.json](../../context/routing.json)
