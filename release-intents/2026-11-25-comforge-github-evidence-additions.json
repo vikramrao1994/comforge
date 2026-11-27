@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "Additive read-only evidence: compareCommits(base, head) for two exact commits, optional bounded patch text with an explicit patch status on pull request files, startedAt on check runs, and listWorkflowRuns(sha) for credentials without check-run access.",
+  "breaking": null,
+  "covers": []
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "comforge-release-anchor/v1",
+  "description": "The release baselines were built from commits of the repository the packages were developed in before this one. Each such source commit maps to the import commit that brought the identical package sources here, so the release planner can diff from it. Reviewed and immutable; a baseline built in this repository needs no entry.",
+  "anchors": {
+    "a6209d7c80bffc2fd78305d06ed8798bc4272ad7": "bf57fa5cee910e95e4309ca756491dbb154bd179",
+    "02fa8559f43288373d20cfbe81349a7e687db64d": "bf57fa5cee910e95e4309ca756491dbb154bd179",
+    "f41d7c4178306a657b188b9760ea64dd22e315bc": "bf57fa5cee910e95e4309ca756491dbb154bd179",
+    "8ba0bfa60d82e515a7ad6807b3d2a3d860f86ebe": "bf57fa5cee910e95e4309ca756491dbb154bd179",
+    "0e207e9fd837bdc85a4628afd8654bb83352a845": "bf57fa5cee910e95e4309ca756491dbb154bd179"
+  }
+}

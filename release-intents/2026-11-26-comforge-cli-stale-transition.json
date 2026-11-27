@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "patch",
+  "summary": "An update refused as stale in a race no longer blocks the same valid update later: a failed record without retry counts as finished when choosing the next identity.",
+  "breaking": null,
+  "covers": ["549d5bffcf2e1b7297fc129542f712d199afa40f"]
+}

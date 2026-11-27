@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "none",
+  "summary": "README and llms.txt no longer label shipped features as candidate.",
+  "breaking": null,
+  "covers": []
+}

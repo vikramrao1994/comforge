@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Host-adapter writes (pulls:ready, pulls:assign) are recorded before they run and settled by what GitHub shows, reconciling a dead run instead of retrying; a push is verified by reading the remote; ready requires the published head.",
+  "breaking": null,
+  "covers": []
+}

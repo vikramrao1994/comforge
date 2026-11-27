@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "comforge migrate imports an earlier lifecycle's state (state.legacy) with dry run, backup, journal, restart and guarded rollback; writes keep their identities in a shared ledger (state.writeLedgerDirectory); cancellable, injectable context.",
+  "breaking": null,
+  "covers": []
+}

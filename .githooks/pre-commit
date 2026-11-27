@@ -1,0 +1,5 @@
+#!/bin/sh
+# Fast local feedback; CI (.github/workflows/ci.yml) is the authoritative gate.
+set -e
+bunx biome check --staged --no-errors-on-unmatched
+bun tooling/validate.ts disclosure routing skills

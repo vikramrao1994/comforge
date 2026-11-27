@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "patch",
+  "summary": "Owner-grant attempts are spent atomically across processes before the first remote side effect; recover verifies a grant without spending one; documented error codes and authorization contract.",
+  "breaking": null,
+  "covers": ["b32e5f6025ebc7fdf2f166001c2ec3b9965df246"]
+}

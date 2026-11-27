@@ -1,0 +1,19 @@
+{
+  "name": "acme-ledger-consumer",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Independent example consumer of @comforge/ledger: the shared conformance cases against the memory, file and SQLite (node:sqlite) adapters, plus the file adapter's inspection, orphan sweep and history compaction, with synthetic records.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts",
+    "start:bun": "bun src/main.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@comforge/ledger": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "typescript": "*"
+  }
+}

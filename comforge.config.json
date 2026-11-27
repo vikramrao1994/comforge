@@ -1,0 +1,82 @@
+{
+  "schema": "comforge-config/v1",
+  "repository": {
+    "owner": "vikramrao1994",
+    "name": "comforge",
+    "baseBranch": "main",
+    "remote": "origin"
+  },
+  "tickets": {
+    "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+$",
+    "branchPrefix": "agent/"
+  },
+  "checkout": {
+    "parent": "../comforge-agents",
+    "provision": [
+      [
+        "bun",
+        "install",
+        "--frozen-lockfile"
+      ],
+      [
+        "bun",
+        "run",
+        "harness:install"
+      ]
+    ]
+  },
+  "validation": {
+    "commands": [
+      {
+        "name": "lint",
+        "run": [
+          "bun",
+          "run",
+          "lint"
+        ]
+      },
+      {
+        "name": "typecheck",
+        "run": [
+          "bun",
+          "run",
+          "typecheck"
+        ]
+      },
+      {
+        "name": "validate",
+        "run": [
+          "bun",
+          "run",
+          "validate"
+        ]
+      },
+      {
+        "name": "test",
+        "run": [
+          "bun",
+          "run",
+          "test"
+        ]
+      }
+    ],
+    "timeoutSeconds": 3600
+  },
+  "evidence": {
+    "reportDir": "docs/evidence"
+  },
+  "context": {
+    "manifest": "context/routing.json"
+  },
+  "security": {
+    "capabilities": [
+      "pulls:create",
+      "pulls:update",
+      "issues:comment"
+    ],
+    "authorization": null,
+    "credentials": {
+      "source": "gh"
+    }
+  }
+}

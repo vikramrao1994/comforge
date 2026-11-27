@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "patch",
+  "summary": "A write another process still holds is refused as conflict (as in 0.1.0), an unresolved one as ambiguous.",
+  "breaking": null,
+  "covers": ["851cbb926b862e68d0032717af6a13ed7bfb45e5"]
+}

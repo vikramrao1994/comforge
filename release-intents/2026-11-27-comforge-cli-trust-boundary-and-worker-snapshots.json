@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Trusted-policy commands refuse a working config naming another base than the base revision's; artifact paths and readable entries must be canonical and unique; moving evidence.reportDir under the default policy is a trusted change; snapshots use the host's prepare and remove hooks.",
+  "breaking": null,
+  "covers": []
+}

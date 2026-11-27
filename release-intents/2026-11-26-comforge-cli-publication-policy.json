@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "publish runs trusted publication.checks before any push, can take its body from a trusted publication.bodyCommand (checked), adds --closes and a publication marker, and can create a draft then mark it ready with the pulls:ready host adapter.",
+  "breaking": null,
+  "covers": []
+}

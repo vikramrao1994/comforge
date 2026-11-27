@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "New tools over @comforge/cli 0.3.0 services: comforge_prs, comforge_comments, comforge_reviews (advisory, never approvals), comforge_artifact, comforge_publish_review (reviewer), comforge_publish_specification (publisher); comforge_cleanup executes under a cleanup-scoped grant; host policy hook.",
+  "breaking": null,
+  "covers": []
+}

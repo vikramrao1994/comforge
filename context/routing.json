@@ -1,0 +1,484 @@
+{
+  "version": 1,
+  "description": "Task \u2192 context routing for agents working in this repository. Guidance only: no command reads it to decide a permission. Route with `bun tooling/route.ts \"<task>\"` or the published harness's `comforge context --task`.",
+  "categories": {
+    "core-contracts": {
+      "label": "@comforge/core contracts",
+      "triggers": [
+        "core",
+        "kernel",
+        "specification digest",
+        "grant",
+        "receipt",
+        "lifecycle decision",
+        "completion record",
+        "review record",
+        "canonical json"
+      ],
+      "files": [
+        "packages/core/src",
+        "packages/core/README.md"
+      ],
+      "skills": [
+        "contributor-package-development",
+        "contributor-api-compatibility"
+      ],
+      "docs": [
+        "docs/protocols-and-authority.md"
+      ],
+      "validation": [
+        "bun test --isolate packages/core/test",
+        "bun run typecheck"
+      ]
+    },
+    "github-transport": {
+      "label": "@comforge/github transport",
+      "triggers": [
+        "github transport",
+        "github client",
+        "github package",
+        "fake github",
+        "verified response",
+        "rate limit",
+        "pull request read",
+        "check runs"
+      ],
+      "files": [
+        "packages/github/src",
+        "packages/github/README.md"
+      ],
+      "skills": [
+        "contributor-package-development"
+      ],
+      "docs": [
+        "docs/architecture.md"
+      ],
+      "validation": [
+        "bun test --isolate packages/github/test tests/github"
+      ]
+    },
+    "ledger": {
+      "label": "@comforge/ledger persistence",
+      "triggers": [
+        "ledger",
+        "write ledger",
+        "file adapter",
+        "sqlite adapter",
+        "conformance",
+        "operation store",
+        "compare and set"
+      ],
+      "files": [
+        "packages/ledger/src",
+        "packages/ledger/README.md"
+      ],
+      "skills": [
+        "contributor-package-development"
+      ],
+      "docs": [
+        "docs/persistence-and-reconciliation.md"
+      ],
+      "validation": [
+        "bun test --isolate packages/ledger/test tests/ledger"
+      ]
+    },
+    "cli-lifecycle": {
+      "label": "@comforge/cli lifecycle",
+      "triggers": [
+        "cli",
+        "lifecycle",
+        "start",
+        "verify",
+        "deliver",
+        "cleanup",
+        "revise",
+        "comforge command",
+        "exit code",
+        "error code",
+        "configuration schema",
+        "migrate"
+      ],
+      "files": [
+        "packages/cli/src",
+        "packages/cli/README.md"
+      ],
+      "skills": [
+        "contributor-package-development",
+        "contributor-api-compatibility"
+      ],
+      "docs": [
+        "docs/commands-and-tools.md",
+        "docs/configuration.md"
+      ],
+      "validation": [
+        "bun test --isolate packages/cli/test tests/cli"
+      ]
+    },
+    "mcp-server": {
+      "label": "@comforge/mcp server and host services",
+      "triggers": [
+        "mcp",
+        "mcp server",
+        "tool profile",
+        "host services",
+        "http handler",
+        "stdio",
+        "engineering host",
+        "mcp tool"
+      ],
+      "files": [
+        "packages/mcp/src",
+        "packages/mcp/README.md"
+      ],
+      "skills": [
+        "contributor-package-development"
+      ],
+      "docs": [
+        "docs/host-services.md",
+        "docs/quickstart-mcp.md"
+      ],
+      "validation": [
+        "bun test --isolate packages/mcp/test tests/mcp"
+      ]
+    },
+    "security-authorization": {
+      "label": "Authorization, trust and security",
+      "triggers": [
+        "authorization",
+        "owner grant",
+        "operator mode",
+        "signed grant",
+        "trust boundary",
+        "security",
+        "credential",
+        "capabilities",
+        "prompt injection",
+        "runtime authority"
+      ],
+      "files": [
+        "packages/cli/src/authorization.ts",
+        "packages/cli/src/authority.ts",
+        "packages/core/src/grant.ts"
+      ],
+      "skills": [
+        "contributor-security-changes"
+      ],
+      "docs": [
+        "docs/authorization-and-trust.md"
+      ],
+      "validation": [
+        "bun test --isolate packages/cli/test/authorization.test.ts packages/mcp/test/adversarial.test.ts tests/release/releaseAuthorization.test.ts",
+        "bun run disclosure"
+      ]
+    },
+    "release": {
+      "label": "Release planning and publication",
+      "triggers": [
+        "release",
+        "publish a package",
+        "version pr",
+        "release intent",
+        "release plan",
+        "candidate",
+        "npm",
+        "trusted publishing",
+        "provenance",
+        "campaign",
+        "readback",
+        "changelog"
+      ],
+      "files": [
+        "tooling/release",
+        "release-intents",
+        "releases",
+        ".github/workflows/release.yml",
+        "release-trust.json"
+      ],
+      "skills": [
+        "contributor-release"
+      ],
+      "docs": [
+        "docs/release-governance.md",
+        "docs/release-transition.md"
+      ],
+      "validation": [
+        "bun test --isolate tests/release",
+        "bun run release:plan"
+      ]
+    },
+    "dependency-migration": {
+      "label": "Adopting a new Comforge release",
+      "triggers": [
+        "adopt",
+        "upgrade comforge",
+        "harness upgrade",
+        "dependency migration",
+        "consumer update",
+        "pin"
+      ],
+      "files": [
+        "harness/package.json",
+        "tooling/release/consumerUpdate.ts"
+      ],
+      "skills": [
+        "contributor-dependency-migration"
+      ],
+      "docs": [
+        "docs/release-governance.md",
+        "docs/decisions/0002-published-harness.md"
+      ],
+      "validation": [
+        "cd harness && bun install --frozen-lockfile"
+      ]
+    },
+    "docs-and-skills": {
+      "label": "Documentation, skills and agent context",
+      "triggers": [
+        "documentation",
+        "docs",
+        "readme",
+        "llms txt",
+        "skill",
+        "claude md",
+        "agents md",
+        "routing manifest",
+        "context routing"
+      ],
+      "files": [
+        "docs",
+        "skills",
+        "CLAUDE.md",
+        "AGENTS.md",
+        "llms.txt",
+        "context/routing.json"
+      ],
+      "skills": [
+        "contributor-documentation"
+      ],
+      "docs": [
+        "docs/README.md"
+      ],
+      "validation": [
+        "bun tooling/validate.ts docs skills routing"
+      ]
+    },
+    "testing-ci": {
+      "label": "Tests, CI and repository validators",
+      "triggers": [
+        "test",
+        "tests",
+        "ci",
+        "workflow",
+        "github actions",
+        "hooks",
+        "lint",
+        "typecheck",
+        "validator",
+        "boundary",
+        "disclosure scan",
+        "runtime matrix"
+      ],
+      "files": [
+        "tests",
+        "tooling/validate.ts",
+        ".github/workflows/ci.yml",
+        ".githooks"
+      ],
+      "skills": [
+        "contributor-testing"
+      ],
+      "docs": [
+        "docs/contributing.md"
+      ],
+      "validation": [
+        "bun run validate",
+        "bun run test"
+      ]
+    },
+    "architecture": {
+      "label": "Architecture and package boundaries",
+      "triggers": [
+        "architecture",
+        "package boundary",
+        "where does",
+        "which package",
+        "dependency graph",
+        "refactor across packages"
+      ],
+      "files": [
+        "docs/architecture.md",
+        "docs/decisions"
+      ],
+      "skills": [
+        "contributor-architecture"
+      ],
+      "docs": [
+        "docs/architecture.md"
+      ],
+      "validation": [
+        "bun tooling/validate.ts boundaries"
+      ]
+    },
+    "use-comforge": {
+      "label": "Using Comforge in another repository",
+      "triggers": [
+        "install comforge",
+        "set up comforge",
+        "onboarding",
+        "quickstart",
+        "use comforge in",
+        "configure a repository"
+      ],
+      "files": [
+        "docs/quickstart-cli.md",
+        "docs/quickstart-mcp.md"
+      ],
+      "skills": [
+        "comforge-install",
+        "comforge-configure",
+        "comforge-lifecycle",
+        "comforge-mcp-setup"
+      ],
+      "docs": [
+        "docs/overview.md"
+      ],
+      "validation": [
+        "npx comforge doctor --json"
+      ]
+    },
+    "consumer-authorization": {
+      "label": "Authorization in a consumer repository",
+      "triggers": [
+        "authorization required",
+        "grant required",
+        "grant expired",
+        "sign a grant",
+        "owner signed grant",
+        "which authorization mode"
+      ],
+      "files": [
+        "docs/authorization-and-trust.md"
+      ],
+      "skills": [
+        "comforge-authorization"
+      ],
+      "docs": [
+        "docs/authorization-and-trust.md"
+      ],
+      "validation": [
+        "npx comforge doctor --json"
+      ]
+    },
+    "consumer-recovery": {
+      "label": "Recovering an initiative",
+      "triggers": [
+        "recover",
+        "recovery",
+        "indeterminate",
+        "interrupted",
+        "lost checkout",
+        "partial delivery",
+        "unresolved operations"
+      ],
+      "files": [
+        "docs/migration-and-recovery.md"
+      ],
+      "skills": [
+        "comforge-recovery"
+      ],
+      "docs": [
+        "docs/persistence-and-reconciliation.md",
+        "docs/migration-and-recovery.md"
+      ],
+      "validation": [
+        "npx comforge status --json"
+      ]
+    },
+    "consumer-reviews": {
+      "label": "Evidence and advisory reviews",
+      "triggers": [
+        "advisory review",
+        "review a pull request",
+        "publish a review",
+        "initiative evidence",
+        "what was validated"
+      ],
+      "files": [
+        "docs/protocols-and-authority.md"
+      ],
+      "skills": [
+        "comforge-evidence-and-reviews"
+      ],
+      "docs": [
+        "docs/protocols-and-authority.md"
+      ],
+      "validation": [
+        "npx comforge review list <PR> --json"
+      ]
+    },
+    "consumer-multi-agent": {
+      "label": "Several agents or phases",
+      "triggers": [
+        "multiple agents",
+        "several agents",
+        "parallel agents",
+        "phase of a ticket",
+        "second pull request"
+      ],
+      "files": [
+        "docs/commands-and-tools.md"
+      ],
+      "skills": [
+        "comforge-multi-agent"
+      ],
+      "docs": [
+        "docs/commands-and-tools.md"
+      ],
+      "validation": [
+        "npx comforge status --json"
+      ]
+    },
+    "consumer-embedding": {
+      "label": "Embedding Comforge in a host",
+      "triggers": [
+        "embed",
+        "embedding",
+        "host integration",
+        "in process",
+        "own server",
+        "protocol services"
+      ],
+      "files": [
+        "docs/host-services.md"
+      ],
+      "skills": [
+        "comforge-embedded-host"
+      ],
+      "docs": [
+        "docs/host-services.md",
+        "docs/protocols-and-authority.md"
+      ],
+      "validation": [
+        "bun test --isolate tests/mcp/twoPackageConsumer.test.ts"
+      ]
+    },
+    "general": {
+      "label": "Anything else",
+      "triggers": [],
+      "files": [
+        "CLAUDE.md",
+        "docs/README.md"
+      ],
+      "skills": [
+        "contributor-architecture"
+      ],
+      "docs": [
+        "docs/README.md"
+      ],
+      "validation": [
+        "bun run validate",
+        "bun run test"
+      ]
+    }
+  }
+}

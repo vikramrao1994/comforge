@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "Source compatibility: WriteOperation, WriteKind and WRITE_CAPABILITIES gain pull.update and pulls:update, so an exhaustive TypeScript switch over them needs the new case. Verification now also requires the read-back to be the written resource's own number or id.",
+  "breaking": null,
+  "covers": []
+}

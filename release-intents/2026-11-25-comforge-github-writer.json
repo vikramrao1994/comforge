@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "Opt-in createGitHubWriter: caller-authorized issue, comment, review and pull-request creates and expected-state issue/comment updates, bound to a digested descriptor, recorded in a consumer-owned ledger, with typed verified/accepted/indeterminate outcomes. Read APIs unchanged.",
+  "breaking": null,
+  "covers": []
+}

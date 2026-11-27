@@ -1,0 +1,6 @@
+#!/bin/sh
+# Fast local feedback; CI (.github/workflows/ci.yml) is the authoritative gate.
+set -e
+bun run lint
+bun run typecheck
+bun run validate

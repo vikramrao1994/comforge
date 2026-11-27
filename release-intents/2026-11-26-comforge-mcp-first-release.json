@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "First release: comforge-mcp, the @comforge/cli lifecycle as an MCP server: twelve intent-oriented tools, four profiles, a repository allowlist, strict versioned schemas, stdio and Streamable HTTP; no remote execution without host isolation; cleanup plans only.",
+  "breaking": null,
+  "covers": []
+}

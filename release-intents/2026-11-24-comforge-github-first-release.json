@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "First release: a GET-only fetch transport with typed refusals; exact-SHA evidence for issues, pull requests, changed files, reviews and check runs; published-specification reading and idempotent reconciliation through @comforge/core.",
+  "breaking": null,
+  "covers": []
+}

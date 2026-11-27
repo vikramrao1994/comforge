@@ -1,0 +1,229 @@
+{
+  "allow": [
+    {
+      "path": "tooling/disclosure.ts",
+      "rule": "owner-identity",
+      "reason": "the scanner's own rule patterns"
+    },
+    {
+      "path": "tooling/disclosure.ts",
+      "rule": "private-repository",
+      "reason": "the scanner's own rule patterns"
+    },
+    {
+      "path": "tooling/disclosure.ts",
+      "rule": "private-path",
+      "reason": "the scanner's own rule patterns"
+    },
+    {
+      "path": "tooling/disclosure.ts",
+      "rule": "app-term",
+      "reason": "the scanner's own rule patterns"
+    },
+    {
+      "path": "tooling/release/mirror.ts",
+      "rule": "owner-identity",
+      "contains": "pattern: /vikram|",
+      "reason": "the release disclosure scan's own rule pattern"
+    },
+    {
+      "path": "tooling/release/mirror.ts",
+      "rule": "private-repository",
+      "contains": "portfolio-",
+      "reason": "the release disclosure scan's own rule patterns and rule id (kept: published release records name these rule ids)"
+    },
+    {
+      "path": "tooling/release/mirror.ts",
+      "rule": "app-term",
+      "contains": "PHOTOGRAPHY",
+      "reason": "the release disclosure scan's ticket rule pattern"
+    },
+    {
+      "path": "tooling/release/releaseApprove.ts",
+      "rule": "private-key-block",
+      "contains": "BEGIN ENCRYPTED PRIVATE KEY",
+      "reason": "checks that the owner's key file is encrypted; no key material"
+    },
+    {
+      "path": "tooling/release/assets/npm-publish*.yml",
+      "rule": "private-repository",
+      "contains": "In the portfolio:",
+      "reason": "byte-identical to the workflow on each releases/<id> branch that npm Trusted Publishing trusts; reworded only in an owner-reviewed release (docs/release-governance.md)"
+    },
+    {
+      "path": "tooling/release/assets/npm-release.d.mts",
+      "rule": "private-repository",
+      "reason": "byte-identical to the released asset; reworded with the next owner-reviewed workflow change"
+    },
+    {
+      "path": "packages/cli/src/commands/delivery.ts",
+      "rule": "private-repository",
+      "reason": "published @comforge/cli 0.5.0 source, kept byte-identical to the release; reworded with the next cli release"
+    },
+    {
+      "path": "packages/core/README.md",
+      "rule": "private-repository",
+      "contains": "golden vectors",
+      "reason": "published @comforge/core 0.2.0 document; superseded wording ships with the next core release"
+    },
+    {
+      "path": "packages/ledger/README.md",
+      "rule": "private-repository",
+      "reason": "published @comforge/ledger 0.1.0 document; reworded with the next ledger release"
+    },
+    {
+      "path": "release-trust.json",
+      "rule": "owner-identity",
+      "reason": "the release owner's public GitHub login, which a signed authorization must name"
+    },
+    {
+      "path": "packages/*/test/**",
+      "rule": "github-token",
+      "contains": "FAKE",
+      "reason": "obviously fake token fixtures for redaction tests"
+    },
+    {
+      "path": "packages/*/test/**",
+      "rule": "github-token",
+      "contains": "SECRET",
+      "reason": "obviously fake token fixtures for redaction tests"
+    },
+    {
+      "path": "packages/*/test/**",
+      "rule": "github-token",
+      "contains": "abcdefghijklmnopqrstuvwxyz",
+      "reason": "obviously fake token fixtures for redaction tests"
+    },
+    {
+      "path": "packages/cli/test/interfaces.test.ts",
+      "rule": "email-address",
+      "contains": "git@github.com",
+      "reason": "an SSH remote URL, not an address"
+    },
+    {
+      "path": "packages/cli/test/protocolProfile.test.ts",
+      "rule": "local-path",
+      "contains": "/Users/someone",
+      "reason": "a fixture the redaction rule must catch"
+    },
+    {
+      "path": "packages/mcp/test/boundary.test.ts",
+      "rule": "private-repository",
+      "reason": "a boundary test asserting the package names no private identity"
+    },
+    {
+      "path": "packages/mcp/test/boundary.test.ts",
+      "rule": "owner-identity",
+      "reason": "a boundary test asserting the package names no private identity"
+    },
+    {
+      "path": "tests/*/consumerInstall.test.ts",
+      "rule": "private-repository",
+      "reason": "tests asserting that nothing private ships in a tarball"
+    },
+    {
+      "path": "tests/*/consumerInstall.test.ts",
+      "rule": "owner-identity",
+      "reason": "tests asserting that nothing private ships in a tarball"
+    },
+    {
+      "path": "tests/release/example.test.ts",
+      "rule": "private-repository",
+      "reason": "asserts the example names no private repository"
+    },
+    {
+      "path": "tests/release/release.test.ts",
+      "rule": "private-key-block",
+      "reason": "negative fixtures for the release disclosure scan"
+    },
+    {
+      "path": "tests/release/release.test.ts",
+      "rule": "email-address",
+      "reason": "negative fixtures for the scan, and remote URLs (not addresses)"
+    },
+    {
+      "path": "tests/release/release.test.ts",
+      "rule": "local-path",
+      "reason": "negative fixture for the release disclosure scan"
+    },
+    {
+      "path": "tests/release/release.test.ts",
+      "rule": "private-repository",
+      "reason": "negative fixtures for the release disclosure scan"
+    },
+    {
+      "path": "tests/release/release.test.ts",
+      "rule": "internal-ticket",
+      "reason": "negative fixture for the release disclosure scan"
+    },
+    {
+      "path": "tests/release/release.test.ts",
+      "rule": "private-path",
+      "reason": "negative fixtures for the release link and disclosure checks"
+    },
+    {
+      "path": "tests/release/releaseAuthorization.test.ts",
+      "rule": "private-repository",
+      "contains": "someone/portfolio",
+      "reason": "a foreign repository the authorization must refuse"
+    },
+    {
+      "path": "tests/release/releaseCampaign.test.ts",
+      "rule": "private-key-block",
+      "reason": "asserts a key block is refused from campaign state"
+    },
+    {
+      "path": "tests/release/releaseIntent.test.ts",
+      "rule": "private-path",
+      "contains": "src/app/page.tsx",
+      "reason": "a path outside every package, which must not need an intent"
+    },
+    {
+      "path": "tests/repository/disclosure.test.ts",
+      "rule": "private-repository",
+      "reason": "negative fixtures for the repository scan"
+    },
+    {
+      "path": "tests/repository/disclosure.test.ts",
+      "rule": "internal-ticket",
+      "reason": "negative fixtures for the repository scan"
+    },
+    {
+      "path": "tests/repository/disclosure.test.ts",
+      "rule": "machine-path",
+      "reason": "negative fixtures for the repository scan"
+    },
+    {
+      "path": "tests/repository/disclosure.test.ts",
+      "rule": "local-path",
+      "reason": "negative fixtures for the repository scan"
+    },
+    {
+      "path": "tests/repository/disclosure.test.ts",
+      "rule": "github-token",
+      "reason": "negative fixtures for the repository scan"
+    },
+    {
+      "path": "tests/repository/disclosure.test.ts",
+      "rule": "private-key-block",
+      "reason": "negative fixtures for the repository scan"
+    },
+    {
+      "path": ".github/CODEOWNERS",
+      "rule": "owner-identity",
+      "reason": "the repository owner's public login, as code owner"
+    },
+    {
+      "path": "comforge.config.json",
+      "rule": "owner-identity",
+      "contains": "\"owner\": \"vikramrao1994\"",
+      "reason": "this repository's own owner, as the configuration must name it"
+    },
+    {
+      "path": "benchmarks/redact.ts",
+      "rule": "local-path",
+      "contains": "C:\\\\Users\\\\",
+      "reason": "the redactor's own home-directory pattern"
+    }
+  ]
+}

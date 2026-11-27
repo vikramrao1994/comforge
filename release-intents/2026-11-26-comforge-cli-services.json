@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "createLifecycleServices: the lifecycle as injected, transport-neutral services (repository, credential provider, state and write ledger, cancellation) returning typed values or structured errors; the CLI runs through them.",
+  "breaking": null,
+  "covers": []
+}

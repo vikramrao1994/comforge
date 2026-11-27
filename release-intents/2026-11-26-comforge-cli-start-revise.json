@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Provisioning commands may report a checked comforge-provision-result/v1; start gains a remote preflight, a primary-checkout report and phase prerequisites; revise re-creates a missing checkout, fast-forwards only and reports divergence.",
+  "breaking": null,
+  "covers": []
+}

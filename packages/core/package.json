@@ -1,0 +1,35 @@
+{
+  "name": "@comforge/core",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Deterministic governance contracts for an engineering lifecycle: specification digests, grant and receipt verification, review and completion-record integrity, lifecycle decisions. Pure: no I/O, no environment, no clock, no private keys.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikramrao1994/comforge.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/vikramrao1994/comforge/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/vikramrao1994/comforge/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./specification": "./src/specification.ts",
+    "./grant": "./src/grant.ts",
+    "./receipt": "./src/receipt.ts",
+    "./review": "./src/review.ts",
+    "./completion": "./src/completion.ts",
+    "./lifecycle": "./src/lifecycle.ts",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.6"
+  },
+  "engines": {
+    "node": ">=22.18",
+    "bun": ">=1.4"
+  }
+}

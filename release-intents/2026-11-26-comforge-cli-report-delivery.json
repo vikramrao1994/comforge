@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "deliver fills issue, ticket and specification digest from the initiative and keeps pullRequest.reason (or publication.reportPullRequestReason) for report PRs; the completion-link block follows publication.linkMarkerNamespace and refuses ambiguous bodies.",
+  "breaking": null,
+  "covers": []
+}

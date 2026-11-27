@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/core",
+  "bump": "minor",
+  "summary": "Signed command scopes: authorizeCommand for publish, complete, deliver, recover, cleanup, publish-specification and publish-review. Scope-less grants keep their 0.1 meaning, never authorize the scoped-only commands; Grant.issue becomes optional and GRANT_MODES gains command.",
+  "breaking": null,
+  "covers": []
+}

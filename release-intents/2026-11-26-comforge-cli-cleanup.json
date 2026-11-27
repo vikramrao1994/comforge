@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "cleanup proves the merge reached the base (stricter than 0.1.0), removes only an isolated, fully published clone, refuses unresolved writes, and runs journalled, resumable steps: leased remote branch deletion (branches:delete), local branch, primary fast-forward, after hooks.",
+  "breaking": null,
+  "covers": []
+}

@@ -1,0 +1,22 @@
+# Comforge
+
+> A governed engineering workflow for coding agents: verified specifications, isolated checkouts, validation of an exact commit, governed pull requests, advisory reviews, evidence and recovery. Five npm packages; consumers use @comforge/cli and @comforge/mcp.
+
+## Use Comforge
+- [Overview](docs/overview.md): what it is and is not
+- [CLI quickstart](docs/quickstart-cli.md): install, configure, one initiative end to end
+- [MCP quickstart](docs/quickstart-mcp.md): tool profiles for agent clients
+- [Configuration](docs/configuration.md): comforge.config.json
+- [Authorization](docs/authorization-and-trust.md): operator vs owner-grant, trust boundaries
+- [@comforge/cli reference](packages/cli/README.md) · [llms.txt](packages/cli/llms.txt)
+- [@comforge/mcp reference](packages/mcp/README.md) · [llms.txt](packages/mcp/llms.txt)
+
+## Libraries
+- [@comforge/core](packages/core/README.md): pure contracts
+- [@comforge/github](packages/github/README.md): GitHub transport
+- [@comforge/ledger](packages/ledger/README.md): operation ledger
+
+## Contribute
+- [Agent instructions](CLAUDE.md) and [context routing](context/routing.json)
+- [Skills](skills/README.md)
+- [Contributing](docs/contributing.md) · [Release governance](docs/release-governance.md)

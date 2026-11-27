@@ -1,0 +1,38 @@
+{
+  "name": "@comforge/mcp",
+  "version": "0.3.0",
+  "private": true,
+  "description": "comforge-mcp: the governed agent lifecycle of @comforge/cli as a Model Context Protocol server. Intent-oriented tools over the published lifecycle services, capability profiles, a repository allowlist, server-owned credentials, stdio and Streamable HTTP. Remote execution is off unless the host supplies isolation. Never merges, deploys, approves or closes.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vikramrao1994/comforge.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/vikramrao1994/comforge/tree/main/packages/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/vikramrao1994/comforge/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "bin": {
+    "comforge-mcp": "./src/bin.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./host": "./src/hostServices.ts",
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@comforge/cli": "0.5.0",
+    "@comforge/core": "0.2.0",
+    "@comforge/github": "0.6.0",
+    "@comforge/ledger": "0.1.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "^4.6.6"
+  },
+  "engines": {
+    "node": ">=22.18",
+    "bun": ">=1.4"
+  }
+}

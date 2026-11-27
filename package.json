@@ -1,0 +1,55 @@
+{
+  "name": "comforge-workspace",
+  "private": true,
+  "type": "module",
+  "description": "Source workspace for the five @comforge packages. Workspace packages are release candidates. The published harness that governs this repository's own engineering workflow is installed separately in harness/ (its own lockfile, outside the workspace), so a candidate can never resolve as the harness.",
+  "license": "Apache-2.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "bun": ">=1.4.1",
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "bun tooling/typecheck.ts",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "test": "bun test --isolate packages tests",
+    "test:packages": "bun test --isolate packages",
+    "test:repo": "bun test --isolate tests",
+    "validate": "bun tooling/validate.ts",
+    "disclosure": "bun tooling/disclosure.ts",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "release:plan": "bun tooling/release/releasePlan.ts plan",
+    "release:version-pr": "bun tooling/release/releasePlan.ts version-pr",
+    "release:candidates": "bun tooling/release/candidates.ts",
+    "release:pack": "bun tooling/release/pack.ts",
+    "release:build": "bun tooling/release/release.ts",
+    "release:rehearse": "bun tooling/release/rehearse.ts",
+    "release:campaign": "bun tooling/release/releaseCampaign.ts",
+    "release:record": "bun tooling/release/releaseRecord.ts",
+    "release:approve": "bun tooling/release/releaseApprove.ts approve",
+    "release:keygen": "bun tooling/release/releaseApprove.ts keygen",
+    "release:npm-plan": "bun tooling/release/npm-release.ts plan",
+    "release:npm-readback": "bun tooling/release/npm-release.ts readback",
+    "release:adopt": "bun tooling/release/consumerUpdate.ts",
+    "release:adopt-migrate": "bun tooling/release/consumerMigration.ts",
+    "harness:install": "cd harness && bun install --frozen-lockfile",
+    "harness": "bun harness/node_modules/@comforge/cli/dist/cli.js"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.11",
+    "@comforge/cli": "workspace:*",
+    "@comforge/core": "workspace:*",
+    "@comforge/github": "workspace:*",
+    "@comforge/ledger": "workspace:*",
+    "@comforge/mcp": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@types/bun": "1.3.14",
+    "@types/node": "20.19.28",
+    "typescript": "7.0.2",
+    "undici-types": "6.21.0",
+    "zod": "4.6.6"
+  }
+}

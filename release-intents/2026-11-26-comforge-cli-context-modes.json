@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Opt-in --compact (one-line deterministic JSON) and --summary (bounded projection) output; default JSON unchanged. grant sign - signs governance command grants. Cleanup compares real paths, so checkouts under symlinked directories are recognised.",
+  "breaking": null,
+  "covers": []
+}

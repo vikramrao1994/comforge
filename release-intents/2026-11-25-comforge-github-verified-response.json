@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/github",
+  "bump": "minor",
+  "summary": "Write outcomes carry the matched verification read as response (never on replay, accepted or indeterminate; never stored), so no second GET is needed. New pull.update (pulls:update) replaces a pull request body under an expected body digest and optional head SHA.",
+  "breaking": null,
+  "covers": []
+}

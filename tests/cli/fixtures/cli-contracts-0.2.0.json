@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "package": {
+    "name": "@comforge/cli",
+    "version": "0.2.0",
+    "source": "packages/cli"
+  },
+  "generatedFrom": "packages/cli/src (COMMANDS, ERROR_CODES, EXIT, capabilities, configuration sections)",
+  "commands": [
+    {
+      "name": "init",
+      "usage": "init [--write] [--force]",
+      "writes": "repository file, only with --write",
+      "dryRunByDefault": true
+    },
+    {
+      "name": "doctor",
+      "usage": "doctor",
+      "writes": "none",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "capabilities",
+      "usage": "capabilities",
+      "writes": "none",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "context",
+      "usage": "context [--task TEXT] | context check",
+      "writes": "none",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "schema",
+      "usage": "schema <config|capabilities>",
+      "writes": "none",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "start",
+      "usage": "start <TICKET[.phase]> [--issue N] [--expect-digest HEX] [--no-provision]",
+      "writes": "local checkout and state",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "revise",
+      "usage": "revise <PR> [--reviewed-head SHA] [--no-provision]",
+      "writes": "local state",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "status",
+      "usage": "status [TICKET[.phase]]",
+      "writes": "none",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "verify",
+      "usage": "verify <TICKET[.phase]> [--commit SHA] [--with NAME[,NAME]] [--keep]",
+      "writes": "local state",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "publish",
+      "usage": "publish <TICKET[.phase]> --title TEXT [--draft] [--grant FILE] [--execute]",
+      "writes": "git push, GitHub pull request",
+      "dryRunByDefault": true
+    },
+    {
+      "name": "complete",
+      "usage": "complete --result FILE [--grant FILE] [--execute]",
+      "writes": "GitHub issue comment, PR body",
+      "dryRunByDefault": true
+    },
+    {
+      "name": "deliver",
+      "usage": "deliver <TICKET[.phase]> --title TEXT --result FILE [--no-pr] [--draft] [--grant FILE] [--execute]",
+      "writes": "as publish and complete",
+      "dryRunByDefault": true
+    },
+    {
+      "name": "grant",
+      "usage": "grant template <ID> [--hours N] | grant sign <ID> --grant FILE --key FILE",
+      "writes": "none",
+      "dryRunByDefault": false
+    },
+    {
+      "name": "recover",
+      "usage": "recover <TICKET[.phase]> [--abandon] [--grant FILE] [--execute]",
+      "writes": "write ledger",
+      "dryRunByDefault": true
+    },
+    {
+      "name": "cleanup",
+      "usage": "cleanup <PR|TICKET[.phase]> [--allow-missing-completion] [--grant FILE] [--execute]",
+      "writes": "local checkout and state",
+      "dryRunByDefault": true
+    },
+    {
+      "name": "migrate",
+      "usage": "migrate [--rollback] [--wait SECONDS] [--execute]",
+      "writes": "local state (and a sentinel in the legacy directory)",
+      "dryRunByDefault": true
+    }
+  ],
+  "exitCodes": {
+    "ok": 0,
+    "refused": 1,
+    "usage": 2,
+    "failed": 3,
+    "incomplete": 4
+  },
+  "errorCodes": [
+    "usage",
+    "config-missing",
+    "config-invalid",
+    "unsupported-platform",
+    "untrusted-config-change",
+    "not-found",
+    "conflict",
+    "stale",
+    "policy-denied",
+    "validation-missing",
+    "validation-failed",
+    "specification-invalid",
+    "evidence-missing",
+    "dirty-checkout",
+    "credential-missing",
+    "authorization-required",
+    "unauthorized",
+    "would-overwrite",
+    "git-failed",
+    "github-failed",
+    "ambiguous",
+    "ledger",
+    "io",
+    "incomplete",
+    "cancelled"
+  ],
+  "errorExit": {
+    "usage": 2,
+    "config-missing": 2,
+    "config-invalid": 2,
+    "unsupported-platform": 2,
+    "untrusted-config-change": 1,
+    "not-found": 1,
+    "conflict": 1,
+    "stale": 1,
+    "policy-denied": 1,
+    "validation-missing": 1,
+    "validation-failed": 1,
+    "specification-invalid": 1,
+    "evidence-missing": 1,
+    "dirty-checkout": 1,
+    "credential-missing": 1,
+    "authorization-required": 1,
+    "unauthorized": 1,
+    "would-overwrite": 1,
+    "git-failed": 3,
+    "github-failed": 3,
+    "ambiguous": 3,
+    "ledger": 3,
+    "io": 3,
+    "incomplete": 4,
+    "cancelled": 4
+  },
+  "capabilities": {
+    "sdk": [
+      "pulls:create",
+      "pulls:update",
+      "issues:comment"
+    ],
+    "host": [
+      "pulls:assign",
+      "pulls:ready",
+      "branches:delete"
+    ]
+  },
+  "configuration": {
+    "trustedSections": [
+      "schema",
+      "repository",
+      "tickets",
+      "validation",
+      "specification",
+      "completion",
+      "security",
+      "state",
+      "lifecycle",
+      "verification",
+      "publication",
+      "cleanup"
+    ],
+    "addedSectionsAndDefaults": {
+      "state": {
+        "writeLedgerDirectory": "comforge",
+        "legacy": null
+      },
+      "lifecycle": {
+        "remotePreflight": false,
+        "phaseRequiresCleanParent": false
+      },
+      "verification": {
+        "snapshot": false,
+        "unavailableExitStatuses": [],
+        "summary": null,
+        "optional": []
+      },
+      "publication": {
+        "checks": [],
+        "bodyCommand": null,
+        "marker": false,
+        "draftFirst": false,
+        "linkMarkerNamespace": "comforge",
+        "reportPullRequestReason": null
+      },
+      "cleanup": {
+        "deleteRemoteBranch": false,
+        "deleteLocalBranch": false,
+        "fastForwardPrimary": false,
+        "after": []
+      }
+    },
+    "digestRule": "a section added after 0.1.0 is left out of the trusted digest while it equals its default"
+  },
+  "compatibility": {
+    "unchangedByDefault": "every new behaviour is behind a new configuration section or flag",
+    "changed": [
+      "cleanup proves the merge reached the base and refuses while a write is unresolved",
+      "new error code cancelled (exit 4)",
+      "publish and complete refuse while an earlier write of the initiative is unresolved (conflict while leased, ambiguous otherwise)",
+      "a grant spent on cleanup is never shared with publish, complete or deliver (and vice versa)"
+    ]
+  },
+  "services": "createLifecycleServices({ runtime, repository, credentials?, state?, writeLedger?, signal? }): start, revise, status, verify, publish, complete, deliver, recover, cleanup, migrate -> { ok, value | error, exit }",
+  "authorization": {
+    "owner": {
+      "absent": "every write refused (authorization-required)",
+      "owner-grant": "owner-signed @comforge/core grant per run: repository, ticket, issue, live unedited specification, base, commit, branch, expiry \u2264 7 days, maxAttempts; attempts spent atomically before the first remote side effect, never returned; recover verifies without spending",
+      "operator": "explicit owner choice, policy not enforcement"
+    },
+    "perOperation": "the @comforge/github writer authorizes only the descriptor the command prepared, for 60 seconds, within the configured SDK capabilities",
+    "hostAdapter": "pulls:assign capability, configured login, the PR just published",
+    "remoteSideEffects": {
+      "publish": [
+        "git push",
+        "pull.create or pull.update",
+        "gh assignment"
+      ],
+      "complete": [
+        "issue.comment",
+        "pull.update (link)"
+      ],
+      "deliver": [
+        "as publish and complete"
+      ],
+      "recover": [
+        "none remote (reconcile reads; abandon local)"
+      ],
+      "others": [
+        "none (start and revise read; cleanup is local)"
+      ]
+    },
+    "order": "authorization is checked after the run's reads and before its first remote side effect"
+  },
+  "hostWrites": "pulls:ready and pulls:assign are journalled in the initiative (hostOperations) and settled by reading GitHub; branch deletion is leased and journalled as a cleanup step; push is settled by reading the remote",
+  "description": "Frozen @comforge/cli 0.2.0 command, error-code and capability contract. Later versions may add, never remove or renumber, an entry (tests/cli/contracts.test.ts)."
+}
