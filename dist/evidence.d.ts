@@ -40,6 +40,13 @@ export interface IssueEvidence {
     url: string;
     createdAt: string;
     updatedAt: string;
+    /** GitHub's `author_association`; empty when GitHub sent none. */
+    authorAssociation: string;
+    /** The GitHub App the issue was created through, when GitHub said. Attribution, not authority. */
+    performedViaGitHubApp: string | null;
+    closedAt: string | null;
+    /** GitHub's comment count, when it said. */
+    commentCount: number | null;
 }
 export interface PullRequestEvidence {
     repository: string;
@@ -59,6 +66,13 @@ export interface PullRequestEvidence {
         sha: string;
         repository: string | null;
     };
+    body: UntrustedText;
+    /** The fields below are null when GitHub did not send them. */
+    createdAt: string | null;
+    updatedAt: string | null;
+    mergedAt: string | null;
+    commits: number | null;
+    changedFiles: number | null;
 }
 export type PatchStatus = "included" | "truncated" | "omitted-budget" | "omitted-by-request" | "unavailable";
 export interface ChangedFile {
@@ -152,6 +166,9 @@ export interface IssueCommentEvidence {
     createdAt: string;
     updatedAt: string;
     body: UntrustedText;
+    /** The comment's web URL, when GitHub sent it. */
+    url: string | null;
+    performedViaGitHubApp: string | null;
 }
 export interface PullRequestSummary {
     number: number;
@@ -164,6 +181,8 @@ export interface PullRequestSummary {
     headRef: string;
     headSha: string;
     baseRef: string;
+    /** The base branch's SHA as GitHub listed it, when it did. */
+    baseSha: string | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -183,6 +202,53 @@ export interface FileAtCommitEvidence {
     /** Present only for `kind: "text"`. Untrusted data; raw base64 is never returned. */
     text?: UntrustedText;
 }
+/**
+ * One page of a listing, exactly as GitHub windowed it: nothing is read beyond it, so it is
+ * never complete evidence of the whole listing. `hasMore` is GitHub's page being full.
+ */
+export interface PageWindow<T> {
+    items: T[];
+    page: number;
+    perPage: number;
+    hasMore: boolean;
+}
+export interface PageRequest {
+    /** 1-based. */
+    page?: number;
+    /** 1–100. */
+    perPage?: number;
+}
+export interface IssueEventEvidence {
+    event: string;
+    actor: string | null;
+    label: string | null;
+    performedViaGitHubApp: string | null;
+    createdAt: string;
+}
+export interface ReviewCommentEvidence {
+    id: number;
+    author: string | null;
+    path: string;
+    line: number | null;
+    commitSha: string;
+    createdAt: string;
+    body: UntrustedText;
+}
+/** Exact bytes of a file at one commit (never decoded or re-encoded). */
+export type FileBytesEvidence = {
+    commitSha: string;
+    path: string;
+    blobSha: string;
+    size: number;
+    kind: "bytes";
+    bytes: Uint8Array;
+} | {
+    commitSha: string;
+    path: string;
+    blobSha: string;
+    size: number;
+    kind: "too-large";
+};
 export interface GitHubEvidence {
     readonly repository: string;
     getIssue(number: number): Promise<IssueEvidence>;
@@ -235,6 +301,45 @@ export interface GitHubEvidence {
     getFileAtCommit(commitSha: string, path: string, limits?: Partial<FileLimits>): Promise<FileAtCommitEvidence>;
     /** How commit `head` relates to commit `base` (both full SHAs), as GitHub's compare reports it. */
     compareCommits(base: string, head: string): Promise<CommitComparison>;
+    /** Issues of one page; pull requests are dropped from the page and counted. */
+    listIssuesPage(options?: PageRequest & {
+        state?: "open" | "closed" | "all";
+        labels?: readonly string[];
+        sort?: "created" | "updated" | "comments";
+        direction?: "asc" | "desc";
+    }): Promise<PageWindow<IssueEvidence> & {
+        excludedPullRequests: number;
+    }>;
+    listPullRequestsPage(options?: PageRequest & {
+        state?: "open" | "closed" | "all";
+        sort?: "created" | "updated";
+        direction?: "asc" | "desc";
+    }): Promise<PageWindow<PullRequestSummary>>;
+    listIssueCommentsPage(issue: number, options?: PageRequest): Promise<PageWindow<IssueCommentEvidence>>;
+    listIssueEventsPage(issue: number, options?: PageRequest): Promise<PageWindow<IssueEventEvidence>>;
+    listReviewsPage(pullRequest: number, options?: PageRequest): Promise<PageWindow<ReviewEvidence>>;
+    /** Inline review comments of a pull request (`pulls/{n}/comments`). */
+    listReviewCommentsPage(pullRequest: number, options?: PageRequest): Promise<PageWindow<ReviewCommentEvidence>>;
+    /** One issue or pull-request comment by id, with the issue number it belongs to. */
+    getIssueComment(id: number): Promise<IssueCommentEvidence & {
+        issueNumber: number;
+    }>;
+    /**
+     * The exact bytes of a file at a full 40-hex commit, under the same path and target checks as
+     * `getFileAtCommit`. `too-large`: over `maxBytes`, or GitHub sent no inline content.
+     */
+    getFileBytesAtCommit(commitSha: string, path: string, limits?: Partial<FileLimits>): Promise<FileBytesEvidence>;
+    /**
+     * Whether `commitSha` is the head or one of the commits of a pull request. Reads at most
+     * `maxCommits` commits (GitHub lists at most 250); a commit beyond them is reported as not
+     * belonging, so a caller that needs membership refuses it.
+     */
+    pullRequestContainsCommit(pullRequest: number, commitSha: string, options?: {
+        maxCommits?: number;
+    }): Promise<{
+        belongs: boolean;
+        isHead: boolean;
+    }>;
 }
 export declare function createGitHubEvidence(options: {
     transport: GitHubTransport;

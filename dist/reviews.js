@@ -11,6 +11,8 @@ export async function listAdvisoryReviews(evidence, protocol, pullRequest, optio
             author: c.author,
             authorAssociation: c.authorAssociation,
             createdAt: c.createdAt,
+            updatedAt: c.updatedAt,
+            commentUrl: c.url,
             provenance: reviewProvenance(c.author, options.trustedAuthors),
         };
         // A truncated body may have lost the end of its marker: it cannot be verified.
@@ -19,6 +21,7 @@ export async function listAdvisoryReviews(evidence, protocol, pullRequest, optio
             reviews.push({
                 ...common,
                 integrity: "unreadable",
+                markerPrNumber: null,
                 reviewedHeadSha: null,
                 stale: true,
                 verdict: null,
@@ -35,6 +38,7 @@ export async function listAdvisoryReviews(evidence, protocol, pullRequest, optio
         const base = {
             ...common,
             integrity,
+            markerPrNumber: marker.prNumber,
             reviewedHeadSha: marker.headSha,
             stale: isReviewStale(marker.headSha, pullRequest.headSha),
             reviewDigest: marker.digest,

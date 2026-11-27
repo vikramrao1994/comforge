@@ -29,6 +29,12 @@ export interface AdvisoryReview {
   author: string | null;
   authorAssociation: string;
   createdAt: string;
+  /** The comment's last edit, as GitHub reported it (0.6.0). */
+  updatedAt: string;
+  /** The comment's web URL, when GitHub sent it (0.6.0). */
+  commentUrl: string | null;
+  /** The pull request the marker names; null when no marker could be read (0.6.0). */
+  markerPrNumber: number | null;
   provenance: ReviewProvenance;
   integrity: ReviewIntegrity;
   /** The head the marker names (null when no marker could be read). Unverified unless `integrity` is `verified`. */
@@ -67,6 +73,8 @@ export async function listAdvisoryReviews(
       author: c.author,
       authorAssociation: c.authorAssociation,
       createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+      commentUrl: c.url,
       provenance: reviewProvenance(c.author, options.trustedAuthors),
     };
     // A truncated body may have lost the end of its marker: it cannot be verified.
@@ -75,6 +83,7 @@ export async function listAdvisoryReviews(
       reviews.push({
         ...common,
         integrity: "unreadable",
+        markerPrNumber: null,
         reviewedHeadSha: null,
         stale: true,
         verdict: null,
@@ -92,6 +101,7 @@ export async function listAdvisoryReviews(
     const base = {
       ...common,
       integrity,
+      markerPrNumber: marker.prNumber,
       reviewedHeadSha: marker.headSha,
       stale: isReviewStale(marker.headSha, pullRequest.headSha),
       reviewDigest: marker.digest,

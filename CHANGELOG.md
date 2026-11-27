@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+- Additive reads: page-window listings (issues, PRs, comments, events, reviews, inline review comments), attribution fields, single comment by id, exact file bytes at a commit, PR commit membership, and review URL/updatedAt/markerPrNumber.
+
 ## 0.5.0
 
 - Accepts @comforge/core ^0.1.2 || ^0.2.0, so a consumer of core 0.2.0 command scopes shares one core copy with github.

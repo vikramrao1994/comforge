@@ -16,6 +16,7 @@ const NAME = /^[A-Za-z0-9_.-]{1,100}$/;
 const SHA = /^[0-9a-f]{40}$/;
 const User = z.object({ login: z.string() }).nullable().optional();
 const Label = z.union([z.string(), z.object({ name: z.string() })]);
+const App = z.object({ slug: z.string() }).nullable().optional();
 const IssueSchema = z.object({
     number: z.number().int().positive(),
     title: z.string(),
@@ -27,6 +28,10 @@ const IssueSchema = z.object({
     pull_request: z.unknown().optional(),
     created_at: z.string(),
     updated_at: z.string(),
+    author_association: z.string().optional(),
+    performed_via_github_app: App,
+    closed_at: z.string().nullable().optional(),
+    comments: z.number().int().nonnegative().optional(),
 });
 const RefSchema = z.object({
     ref: z.string(),
@@ -44,6 +49,11 @@ const PullSchema = z.object({
     user: User,
     base: RefSchema,
     head: RefSchema,
+    body: z.string().nullable().optional(),
+    created_at: z.string().optional(),
+    updated_at: z.string().optional(),
+    commits: z.number().int().nonnegative().optional(),
+    changed_files: z.number().int().nonnegative().optional(),
 });
 const CommentSchema = z.object({
     id: z.number().int(),
@@ -52,6 +62,9 @@ const CommentSchema = z.object({
     created_at: z.string(),
     updated_at: z.string(),
     body: z.string().nullable().optional(),
+    html_url: z.string().optional(),
+    issue_url: z.string().optional(),
+    performed_via_github_app: App,
 });
 const PullListSchema = z.object({
     number: z.number().int().positive(),
@@ -61,10 +74,28 @@ const PullListSchema = z.object({
     merged_at: z.string().nullable().optional(),
     user: User,
     head: z.object({ ref: z.string(), sha: z.string().regex(SHA) }),
-    base: z.object({ ref: z.string() }),
+    base: z.object({ ref: z.string(), sha: z.string().regex(SHA).optional() }),
     created_at: z.string(),
     updated_at: z.string(),
 });
+const EventSchema = z.object({
+    id: z.number().int().optional(),
+    event: z.string(),
+    actor: User,
+    created_at: z.string(),
+    label: z.object({ name: z.string() }).nullable().optional(),
+    performed_via_github_app: App,
+});
+const ReviewCommentSchema = z.object({
+    id: z.number().int(),
+    user: User,
+    path: z.string(),
+    line: z.number().int().nullable().optional(),
+    commit_id: z.string(),
+    created_at: z.string(),
+    body: z.string().nullable().optional(),
+});
+const CommitRefSchema = z.object({ sha: z.string().regex(SHA) });
 const ContentsSchema = z.object({
     type: z.string(),
     path: z.string(),
@@ -148,6 +179,19 @@ function positive(value, what) {
         throw new GitHubAdapterError("invalid-input", `Invalid ${what}`);
     return value;
 }
+function pageRequest(options) {
+    const page = options?.page ?? 1;
+    const perPage = options?.perPage ?? 30;
+    if (!Number.isSafeInteger(page) ||
+        page < 1 ||
+        !Number.isSafeInteger(perPage) ||
+        perPage < 1 ||
+        perPage > 100)
+        throw new GitHubAdapterError("invalid-input", "Invalid page request");
+    return { page, perPage };
+}
+// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is refused
+const LABEL = /^[^,\u0000-\u001f]{1,100}$/;
 function sha(value, what = "commit SHA") {
     if (typeof value !== "string" || !SHA.test(value))
         throw new GitHubAdapterError("invalid-input", `${what} must be a full 40-character lowercase SHA`);
@@ -209,7 +253,81 @@ export function createGitHubEvidence(options) {
         url: i.html_url,
         createdAt: i.created_at,
         updatedAt: i.updated_at,
+        authorAssociation: i.author_association ?? "",
+        performedViaGitHubApp: i.performed_via_github_app?.slug ?? null,
+        closedAt: i.closed_at ?? null,
+        commentCount: i.comments ?? null,
     });
+    const commentEvidence = (c) => ({
+        id: c.id,
+        author: c.user?.login ?? null,
+        authorType: c.user?.type ?? null,
+        authorAssociation: c.author_association ?? "",
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+        body: untrusted(c.body),
+        url: c.html_url ?? null,
+        performedViaGitHubApp: c.performed_via_github_app?.slug ?? null,
+    });
+    const pullSummary = (p) => ({
+        number: p.number,
+        state: p.state,
+        draft: p.draft ?? false,
+        merged: p.merged_at !== null && p.merged_at !== undefined,
+        title: untrusted(p.title),
+        author: p.user?.login ?? null,
+        headRef: p.head.ref,
+        headSha: p.head.sha,
+        baseRef: p.base.ref,
+        baseSha: p.base.sha ?? null,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+    });
+    const reviewEvidence = (r) => ({
+        id: r.id,
+        author: r.user?.login ?? null,
+        state: r.state,
+        commitSha: r.commit_id ?? null,
+        submittedAt: r.submitted_at ?? null,
+        body: untrusted(r.body),
+    });
+    /** One page, as GitHub windowed it. */
+    async function windowOf(segments, query, request, schema, what, map) {
+        const { page, perPage } = pageRequest(request);
+        const raw = parse(schema, await get(segments, { ...query, per_page: String(perPage), page: String(page) }), what);
+        if (raw.length > perPage)
+            throw new GitHubAdapterError("malformed-response", `GitHub returned more ${what} than requested`);
+        return { items: raw.map(map), page, perPage, hasMore: raw.length === perPage, raw };
+    }
+    async function fileContents(commitSha, path, fileLimits) {
+        sha(commitSha);
+        const segments = safePath(path);
+        const maxBytes = fileLimits.maxBytes ?? DEFAULT_FILE_LIMITS.maxBytes;
+        if (!Number.isSafeInteger(maxBytes) || maxBytes < 1)
+            throw new GitHubAdapterError("invalid-input", "Invalid file limits");
+        const body = await get(["contents", ...segments], { ref: commitSha });
+        if (Array.isArray(body))
+            throw new GitHubAdapterError("wrong-target", "The path is a directory, not a file", {
+                reason: "not-a-file",
+            });
+        const f = parse(ContentsSchema, body, "file contents");
+        if (f.type !== "file")
+            throw new GitHubAdapterError("wrong-target", `The path is a ${f.type}, not a file`, {
+                reason: "not-a-file",
+            });
+        // A symlinked directory on the way would make GitHub answer for a different path.
+        if (f.path !== path)
+            throw new GitHubAdapterError("wrong-target", "GitHub answered for another path", {
+                reason: "other-path",
+            });
+        const base = { commitSha, path, blobSha: f.sha, size: f.size };
+        if (f.size > maxBytes || f.encoding !== "base64" || !f.content)
+            return { base, bytes: null, tooLarge: true };
+        const bytes = Buffer.from(f.content.replace(/\s/g, ""), "base64");
+        if (bytes.length !== f.size)
+            throw new GitHubAdapterError("malformed-response", "File content does not match its size");
+        return { base, bytes, tooLarge: false };
+    }
     async function getPullRequest(number, opts = {}) {
         if (opts.expectedHeadSha !== undefined)
             sha(opts.expectedHeadSha, "expectedHeadSha");
@@ -225,6 +343,12 @@ export function createGitHubEvidence(options) {
             url: p.html_url,
             base: { ref: p.base.ref, sha: p.base.sha },
             head: { ref: p.head.ref, sha: p.head.sha, repository: p.head.repo?.full_name ?? null },
+            body: untrusted(p.body),
+            createdAt: p.created_at ?? null,
+            updatedAt: p.updated_at ?? null,
+            mergedAt: p.merged_at ?? null,
+            commits: p.commits ?? null,
+            changedFiles: p.changed_files ?? null,
         };
         if (opts.expectedHeadSha !== undefined && evidence.head.sha !== opts.expectedHeadSha)
             throw new GitHubAdapterError("stale", `The pull request head is ${evidence.head.sha}, not ${opts.expectedHeadSha}`, {
@@ -304,14 +428,7 @@ export function createGitHubEvidence(options) {
                 sha(opts.commitSha, "commitSha");
             const reviews = await pages(["pulls", positive(number, "pull request number"), "reviews"], {}, (body) => ({ items: parse(z.array(ReviewSchema), body, "reviews") }));
             return reviews
-                .map((r) => ({
-                id: r.id,
-                author: r.user?.login ?? null,
-                state: r.state,
-                commitSha: r.commit_id ?? null,
-                submittedAt: r.submitted_at ?? null,
-                body: untrusted(r.body),
-            }))
+                .map(reviewEvidence)
                 .filter((r) => opts.commitSha === undefined || r.commitSha === opts.commitSha);
         },
         async getChecks(commit, required = []) {
@@ -374,15 +491,7 @@ export function createGitHubEvidence(options) {
             if (opts.since !== undefined && Number.isNaN(Date.parse(opts.since)))
                 throw new GitHubAdapterError("invalid-input", "since must be an ISO 8601 timestamp");
             const comments = await pages(["issues", positive(number, "issue number"), "comments"], opts.since === undefined ? {} : { since: opts.since }, (body) => ({ items: parse(z.array(CommentSchema), body, "issue comments") }));
-            return comments.map((c) => ({
-                id: c.id,
-                author: c.user?.login ?? null,
-                authorType: c.user?.type ?? null,
-                authorAssociation: c.author_association ?? "",
-                createdAt: c.created_at,
-                updatedAt: c.updated_at,
-                body: untrusted(c.body),
-            }));
+            return comments.map(commentEvidence);
         },
         async listPullRequests(opts = {}) {
             const state = opts.state ?? "open";
@@ -400,40 +509,12 @@ export function createGitHubEvidence(options) {
                 direction: "desc",
                 ...(opts.base === undefined ? {} : { base: opts.base }),
             }, (body) => ({ items: parse(z.array(PullListSchema), body, "a pull request listing") }));
-            return pulls.map((p) => ({
-                number: p.number,
-                state: p.state,
-                draft: p.draft ?? false,
-                merged: p.merged_at !== null && p.merged_at !== undefined,
-                title: untrusted(p.title),
-                author: p.user?.login ?? null,
-                headRef: p.head.ref,
-                headSha: p.head.sha,
-                baseRef: p.base.ref,
-                createdAt: p.created_at,
-                updatedAt: p.updated_at,
-            }));
+            return pulls.map(pullSummary);
         },
         async getFileAtCommit(commitSha, path, fileLimits = {}) {
-            sha(commitSha);
-            const segments = safePath(path);
-            const maxBytes = fileLimits.maxBytes ?? DEFAULT_FILE_LIMITS.maxBytes;
-            if (!Number.isSafeInteger(maxBytes) || maxBytes < 1)
-                throw new GitHubAdapterError("invalid-input", "Invalid file limits");
-            const body = await get(["contents", ...segments], { ref: commitSha });
-            if (Array.isArray(body))
-                throw new GitHubAdapterError("wrong-target", "The path is a directory, not a file");
-            const f = parse(ContentsSchema, body, "file contents");
-            if (f.type !== "file")
-                throw new GitHubAdapterError("wrong-target", `The path is a ${f.type}, not a file`);
-            if (f.path !== path)
-                throw new GitHubAdapterError("wrong-target", "GitHub answered for another path");
-            const base = { commitSha, path, blobSha: f.sha, size: f.size };
-            if (f.size > maxBytes || f.encoding !== "base64" || !f.content)
+            const { base, bytes, tooLarge } = await fileContents(commitSha, path, fileLimits);
+            if (tooLarge)
                 return { ...base, kind: "too-large" };
-            const bytes = Buffer.from(f.content.replace(/\s/g, ""), "base64");
-            if (bytes.length !== f.size)
-                throw new GitHubAdapterError("malformed-response", "File content does not match its size");
             if (bytes.includes(0))
                 return { ...base, kind: "binary" };
             let text;
@@ -461,6 +542,106 @@ export function createGitHubEvidence(options) {
                 behindBy: c.behind_by,
                 mergeBase: c.merge_base_commit.sha,
             };
+        },
+        async listIssuesPage(opts = {}) {
+            const state = opts.state ?? "open";
+            if (!["open", "closed", "all"].includes(state))
+                throw new GitHubAdapterError("invalid-input", "Invalid issue state");
+            if (opts.sort !== undefined && !["created", "updated", "comments"].includes(opts.sort))
+                throw new GitHubAdapterError("invalid-input", "Invalid sort");
+            if (opts.direction !== undefined && !["asc", "desc"].includes(opts.direction))
+                throw new GitHubAdapterError("invalid-input", "Invalid direction");
+            if (opts.labels && (opts.labels.length > 20 || opts.labels.some((l) => !LABEL.test(l))))
+                throw new GitHubAdapterError("invalid-input", "Invalid labels");
+            const query = {
+                state,
+                sort: opts.sort ?? "created",
+                direction: opts.direction ?? "desc",
+            };
+            if (opts.labels?.length)
+                query.labels = opts.labels.join(",");
+            const w = await windowOf(["issues"], query, opts, z.array(IssueSchema), "issues", issueEvidence);
+            const items = w.items.filter((i) => !i.isPullRequest);
+            return {
+                items,
+                page: w.page,
+                perPage: w.perPage,
+                hasMore: w.hasMore,
+                excludedPullRequests: w.items.length - items.length,
+            };
+        },
+        async listPullRequestsPage(opts = {}) {
+            const state = opts.state ?? "open";
+            if (!["open", "closed", "all"].includes(state))
+                throw new GitHubAdapterError("invalid-input", "Invalid pull request state");
+            if (opts.sort !== undefined && !["created", "updated"].includes(opts.sort))
+                throw new GitHubAdapterError("invalid-input", "Invalid sort");
+            if (opts.direction !== undefined && !["asc", "desc"].includes(opts.direction))
+                throw new GitHubAdapterError("invalid-input", "Invalid direction");
+            const { raw: _raw, ...w } = await windowOf(["pulls"], { state, sort: opts.sort ?? "created", direction: opts.direction ?? "desc" }, opts, z.array(PullListSchema), "pull requests", pullSummary);
+            return w;
+        },
+        async listIssueCommentsPage(number, opts = {}) {
+            const { raw: _raw, ...w } = await windowOf(["issues", positive(number, "issue number"), "comments"], {}, opts, z.array(CommentSchema), "issue comments", commentEvidence);
+            return w;
+        },
+        async listIssueEventsPage(number, opts = {}) {
+            const { raw: _raw, ...w } = await windowOf(["issues", positive(number, "issue number"), "events"], {}, opts, z.array(EventSchema), "issue events", (e) => ({
+                event: e.event,
+                actor: e.actor?.login ?? null,
+                label: e.label?.name ?? null,
+                performedViaGitHubApp: e.performed_via_github_app?.slug ?? null,
+                createdAt: e.created_at,
+            }));
+            return w;
+        },
+        async listReviewsPage(number, opts = {}) {
+            const { raw: _raw, ...w } = await windowOf(["pulls", positive(number, "pull request number"), "reviews"], {}, opts, z.array(ReviewSchema), "reviews", reviewEvidence);
+            return w;
+        },
+        async listReviewCommentsPage(number, opts = {}) {
+            const { raw: _raw, ...w } = await windowOf(["pulls", positive(number, "pull request number"), "comments"], {}, opts, z.array(ReviewCommentSchema), "review comments", (c) => ({
+                id: c.id,
+                author: c.user?.login ?? null,
+                path: c.path,
+                line: c.line ?? null,
+                commitSha: c.commit_id,
+                createdAt: c.created_at,
+                body: untrusted(c.body),
+            }));
+            return w;
+        },
+        async getIssueComment(id) {
+            const c = parse(CommentSchema, await get(["issues", "comments", positive(id, "comment id")]), "an issue comment");
+            // The comment's own issue URL must be under this repository; anything else is not its comment.
+            const m = /\/repos\/([^/]+)\/([^/]+)\/issues\/(\d+)$/.exec(c.issue_url ?? "");
+            if (!m || `${m[1]}/${m[2]}`.toLowerCase() !== repository.toLowerCase())
+                throw new GitHubAdapterError("wrong-target", "The comment does not belong to this repository");
+            return { ...commentEvidence(c), issueNumber: Number(m[3]) };
+        },
+        async getFileBytesAtCommit(commitSha, path, fileLimits = {}) {
+            const { base, bytes, tooLarge } = await fileContents(commitSha, path, fileLimits);
+            if (tooLarge)
+                return { ...base, kind: "too-large" };
+            return { ...base, kind: "bytes", bytes: new Uint8Array(bytes) };
+        },
+        async pullRequestContainsCommit(number, commitSha, opts = {}) {
+            sha(commitSha);
+            const maxCommits = opts.maxCommits ?? 250;
+            if (!Number.isSafeInteger(maxCommits) || maxCommits < 1)
+                throw new GitHubAdapterError("invalid-input", "Invalid maxCommits");
+            const pr = await getPullRequest(number);
+            if (pr.head.sha === commitSha)
+                return { belongs: true, isHead: true };
+            const pageCount = Math.ceil(maxCommits / 100);
+            for (let page = 1; page <= pageCount; page++) {
+                const commits = parse(z.array(CommitRefSchema), await get(["pulls", number, "commits"], { per_page: "100", page: String(page) }), "pull request commits");
+                if (commits.some((c) => c.sha === commitSha))
+                    return { belongs: true, isHead: false };
+                if (commits.length < 100)
+                    return { belongs: false, isHead: false };
+            }
+            return { belongs: false, isHead: false };
         },
     });
 }

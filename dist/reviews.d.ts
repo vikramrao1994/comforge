@@ -20,6 +20,12 @@ export interface AdvisoryReview {
     author: string | null;
     authorAssociation: string;
     createdAt: string;
+    /** The comment's last edit, as GitHub reported it (0.6.0). */
+    updatedAt: string;
+    /** The comment's web URL, when GitHub sent it (0.6.0). */
+    commentUrl: string | null;
+    /** The pull request the marker names; null when no marker could be read (0.6.0). */
+    markerPrNumber: number | null;
     provenance: ReviewProvenance;
     integrity: ReviewIntegrity;
     /** The head the marker names (null when no marker could be read). Unverified unless `integrity` is `verified`. */

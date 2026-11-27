@@ -36,6 +36,7 @@ const SHA = /^[0-9a-f]{40}$/;
 
 const User = z.object({ login: z.string() }).nullable().optional();
 const Label = z.union([z.string(), z.object({ name: z.string() })]);
+const App = z.object({ slug: z.string() }).nullable().optional();
 const IssueSchema = z.object({
   number: z.number().int().positive(),
   title: z.string(),
@@ -47,6 +48,10 @@ const IssueSchema = z.object({
   pull_request: z.unknown().optional(),
   created_at: z.string(),
   updated_at: z.string(),
+  author_association: z.string().optional(),
+  performed_via_github_app: App,
+  closed_at: z.string().nullable().optional(),
+  comments: z.number().int().nonnegative().optional(),
 });
 const RefSchema = z.object({
   ref: z.string(),
@@ -64,6 +69,11 @@ const PullSchema = z.object({
   user: User,
   base: RefSchema,
   head: RefSchema,
+  body: z.string().nullable().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+  commits: z.number().int().nonnegative().optional(),
+  changed_files: z.number().int().nonnegative().optional(),
 });
 const CommentSchema = z.object({
   id: z.number().int(),
@@ -72,6 +82,9 @@ const CommentSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   body: z.string().nullable().optional(),
+  html_url: z.string().optional(),
+  issue_url: z.string().optional(),
+  performed_via_github_app: App,
 });
 const PullListSchema = z.object({
   number: z.number().int().positive(),
@@ -81,10 +94,28 @@ const PullListSchema = z.object({
   merged_at: z.string().nullable().optional(),
   user: User,
   head: z.object({ ref: z.string(), sha: z.string().regex(SHA) }),
-  base: z.object({ ref: z.string() }),
+  base: z.object({ ref: z.string(), sha: z.string().regex(SHA).optional() }),
   created_at: z.string(),
   updated_at: z.string(),
 });
+const EventSchema = z.object({
+  id: z.number().int().optional(),
+  event: z.string(),
+  actor: User,
+  created_at: z.string(),
+  label: z.object({ name: z.string() }).nullable().optional(),
+  performed_via_github_app: App,
+});
+const ReviewCommentSchema = z.object({
+  id: z.number().int(),
+  user: User,
+  path: z.string(),
+  line: z.number().int().nullable().optional(),
+  commit_id: z.string(),
+  created_at: z.string(),
+  body: z.string().nullable().optional(),
+});
+const CommitRefSchema = z.object({ sha: z.string().regex(SHA) });
 const ContentsSchema = z.object({
   type: z.string(),
   path: z.string(),
@@ -169,6 +200,13 @@ export interface IssueEvidence {
   url: string;
   createdAt: string;
   updatedAt: string;
+  /** GitHub's `author_association`; empty when GitHub sent none. */
+  authorAssociation: string;
+  /** The GitHub App the issue was created through, when GitHub said. Attribution, not authority. */
+  performedViaGitHubApp: string | null;
+  closedAt: string | null;
+  /** GitHub's comment count, when it said. */
+  commentCount: number | null;
 }
 
 export interface PullRequestEvidence {
@@ -182,6 +220,13 @@ export interface PullRequestEvidence {
   url: string;
   base: { ref: string; sha: string };
   head: { ref: string; sha: string; repository: string | null };
+  body: UntrustedText;
+  /** The fields below are null when GitHub did not send them. */
+  createdAt: string | null;
+  updatedAt: string | null;
+  mergedAt: string | null;
+  commits: number | null;
+  changedFiles: number | null;
 }
 
 export type PatchStatus =
@@ -289,6 +334,9 @@ export interface IssueCommentEvidence {
   createdAt: string;
   updatedAt: string;
   body: UntrustedText;
+  /** The comment's web URL, when GitHub sent it. */
+  url: string | null;
+  performedViaGitHubApp: string | null;
 }
 
 export interface PullRequestSummary {
@@ -302,6 +350,8 @@ export interface PullRequestSummary {
   headRef: string;
   headSha: string;
   baseRef: string;
+  /** The base branch's SHA as GitHub listed it, when it did. */
+  baseSha: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -323,6 +373,50 @@ export interface FileAtCommitEvidence {
   /** Present only for `kind: "text"`. Untrusted data; raw base64 is never returned. */
   text?: UntrustedText;
 }
+
+/**
+ * One page of a listing, exactly as GitHub windowed it: nothing is read beyond it, so it is
+ * never complete evidence of the whole listing. `hasMore` is GitHub's page being full.
+ */
+export interface PageWindow<T> {
+  items: T[];
+  page: number;
+  perPage: number;
+  hasMore: boolean;
+}
+export interface PageRequest {
+  /** 1-based. */
+  page?: number;
+  /** 1–100. */
+  perPage?: number;
+}
+export interface IssueEventEvidence {
+  event: string;
+  actor: string | null;
+  label: string | null;
+  performedViaGitHubApp: string | null;
+  createdAt: string;
+}
+export interface ReviewCommentEvidence {
+  id: number;
+  author: string | null;
+  path: string;
+  line: number | null;
+  commitSha: string;
+  createdAt: string;
+  body: UntrustedText;
+}
+/** Exact bytes of a file at one commit (never decoded or re-encoded). */
+export type FileBytesEvidence =
+  | {
+      commitSha: string;
+      path: string;
+      blobSha: string;
+      size: number;
+      kind: "bytes";
+      bytes: Uint8Array;
+    }
+  | { commitSha: string; path: string; blobSha: string; size: number; kind: "too-large" };
 
 const SAFE_REF = /^[A-Za-z0-9._/-]{1,200}$/;
 
@@ -391,6 +485,59 @@ export interface GitHubEvidence {
   ): Promise<FileAtCommitEvidence>;
   /** How commit `head` relates to commit `base` (both full SHAs), as GitHub's compare reports it. */
   compareCommits(base: string, head: string): Promise<CommitComparison>;
+
+  // Page windows (0.6.0): one page as GitHub returned it, for callers with their own paging.
+  /** Issues of one page; pull requests are dropped from the page and counted. */
+  listIssuesPage(
+    options?: PageRequest & {
+      state?: "open" | "closed" | "all";
+      labels?: readonly string[];
+      sort?: "created" | "updated" | "comments";
+      direction?: "asc" | "desc";
+    },
+  ): Promise<PageWindow<IssueEvidence> & { excludedPullRequests: number }>;
+  listPullRequestsPage(
+    options?: PageRequest & {
+      state?: "open" | "closed" | "all";
+      sort?: "created" | "updated";
+      direction?: "asc" | "desc";
+    },
+  ): Promise<PageWindow<PullRequestSummary>>;
+  listIssueCommentsPage(
+    issue: number,
+    options?: PageRequest,
+  ): Promise<PageWindow<IssueCommentEvidence>>;
+  listIssueEventsPage(
+    issue: number,
+    options?: PageRequest,
+  ): Promise<PageWindow<IssueEventEvidence>>;
+  listReviewsPage(pullRequest: number, options?: PageRequest): Promise<PageWindow<ReviewEvidence>>;
+  /** Inline review comments of a pull request (`pulls/{n}/comments`). */
+  listReviewCommentsPage(
+    pullRequest: number,
+    options?: PageRequest,
+  ): Promise<PageWindow<ReviewCommentEvidence>>;
+  /** One issue or pull-request comment by id, with the issue number it belongs to. */
+  getIssueComment(id: number): Promise<IssueCommentEvidence & { issueNumber: number }>;
+  /**
+   * The exact bytes of a file at a full 40-hex commit, under the same path and target checks as
+   * `getFileAtCommit`. `too-large`: over `maxBytes`, or GitHub sent no inline content.
+   */
+  getFileBytesAtCommit(
+    commitSha: string,
+    path: string,
+    limits?: Partial<FileLimits>,
+  ): Promise<FileBytesEvidence>;
+  /**
+   * Whether `commitSha` is the head or one of the commits of a pull request. Reads at most
+   * `maxCommits` commits (GitHub lists at most 250); a commit beyond them is reported as not
+   * belonging, so a caller that needs membership refuses it.
+   */
+  pullRequestContainsCommit(
+    pullRequest: number,
+    commitSha: string,
+    options?: { maxCommits?: number },
+  ): Promise<{ belongs: boolean; isHead: boolean }>;
 }
 
 function positive(value: number, what: string): number {
@@ -398,6 +545,23 @@ function positive(value: number, what: string): number {
     throw new GitHubAdapterError("invalid-input", `Invalid ${what}`);
   return value;
 }
+
+function pageRequest(options: PageRequest | undefined): { page: number; perPage: number } {
+  const page = options?.page ?? 1;
+  const perPage = options?.perPage ?? 30;
+  if (
+    !Number.isSafeInteger(page) ||
+    page < 1 ||
+    !Number.isSafeInteger(perPage) ||
+    perPage < 1 ||
+    perPage > 100
+  )
+    throw new GitHubAdapterError("invalid-input", "Invalid page request");
+  return { page, perPage };
+}
+
+// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what is refused
+const LABEL = /^[^,\u0000-\u001f]{1,100}$/;
 
 function sha(value: string, what = "commit SHA"): string {
   if (typeof value !== "string" || !SHA.test(value))
@@ -492,7 +656,100 @@ export function createGitHubEvidence(options: {
     url: i.html_url,
     createdAt: i.created_at,
     updatedAt: i.updated_at,
+    authorAssociation: i.author_association ?? "",
+    performedViaGitHubApp: i.performed_via_github_app?.slug ?? null,
+    closedAt: i.closed_at ?? null,
+    commentCount: i.comments ?? null,
   });
+
+  const commentEvidence = (c: z.infer<typeof CommentSchema>): IssueCommentEvidence => ({
+    id: c.id,
+    author: c.user?.login ?? null,
+    authorType: c.user?.type ?? null,
+    authorAssociation: c.author_association ?? "",
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
+    body: untrusted(c.body),
+    url: c.html_url ?? null,
+    performedViaGitHubApp: c.performed_via_github_app?.slug ?? null,
+  });
+
+  const pullSummary = (p: z.infer<typeof PullListSchema>): PullRequestSummary => ({
+    number: p.number,
+    state: p.state,
+    draft: p.draft ?? false,
+    merged: p.merged_at !== null && p.merged_at !== undefined,
+    title: untrusted(p.title),
+    author: p.user?.login ?? null,
+    headRef: p.head.ref,
+    headSha: p.head.sha,
+    baseRef: p.base.ref,
+    baseSha: p.base.sha ?? null,
+    createdAt: p.created_at,
+    updatedAt: p.updated_at,
+  });
+
+  const reviewEvidence = (r: z.infer<typeof ReviewSchema>): ReviewEvidence => ({
+    id: r.id,
+    author: r.user?.login ?? null,
+    state: r.state,
+    commitSha: r.commit_id ?? null,
+    submittedAt: r.submitted_at ?? null,
+    body: untrusted(r.body),
+  });
+
+  /** One page, as GitHub windowed it. */
+  async function windowOf<R, T>(
+    segments: readonly (string | number)[],
+    query: Record<string, string>,
+    request: PageRequest | undefined,
+    schema: z.ZodType<R[]>,
+    what: string,
+    map: (r: R) => T,
+  ): Promise<PageWindow<T> & { raw: R[] }> {
+    const { page, perPage } = pageRequest(request);
+    const raw = parse(
+      schema,
+      await get(segments, { ...query, per_page: String(perPage), page: String(page) }),
+      what,
+    );
+    if (raw.length > perPage)
+      throw new GitHubAdapterError(
+        "malformed-response",
+        `GitHub returned more ${what} than requested`,
+      );
+    return { items: raw.map(map), page, perPage, hasMore: raw.length === perPage, raw };
+  }
+
+  async function fileContents(commitSha: string, path: string, fileLimits: Partial<FileLimits>) {
+    sha(commitSha);
+    const segments = safePath(path);
+    const maxBytes = fileLimits.maxBytes ?? DEFAULT_FILE_LIMITS.maxBytes;
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1)
+      throw new GitHubAdapterError("invalid-input", "Invalid file limits");
+    const body = await get(["contents", ...segments], { ref: commitSha });
+    if (Array.isArray(body))
+      throw new GitHubAdapterError("wrong-target", "The path is a directory, not a file", {
+        reason: "not-a-file",
+      });
+    const f = parse(ContentsSchema, body, "file contents");
+    if (f.type !== "file")
+      throw new GitHubAdapterError("wrong-target", `The path is a ${f.type}, not a file`, {
+        reason: "not-a-file",
+      });
+    // A symlinked directory on the way would make GitHub answer for a different path.
+    if (f.path !== path)
+      throw new GitHubAdapterError("wrong-target", "GitHub answered for another path", {
+        reason: "other-path",
+      });
+    const base = { commitSha, path, blobSha: f.sha, size: f.size };
+    if (f.size > maxBytes || f.encoding !== "base64" || !f.content)
+      return { base, bytes: null, tooLarge: true as const };
+    const bytes = Buffer.from(f.content.replace(/\s/g, ""), "base64");
+    if (bytes.length !== f.size)
+      throw new GitHubAdapterError("malformed-response", "File content does not match its size");
+    return { base, bytes, tooLarge: false as const };
+  }
 
   async function getPullRequest(
     number: number,
@@ -515,6 +772,12 @@ export function createGitHubEvidence(options: {
       url: p.html_url,
       base: { ref: p.base.ref, sha: p.base.sha },
       head: { ref: p.head.ref, sha: p.head.sha, repository: p.head.repo?.full_name ?? null },
+      body: untrusted(p.body),
+      createdAt: p.created_at ?? null,
+      updatedAt: p.updated_at ?? null,
+      mergedAt: p.merged_at ?? null,
+      commits: p.commits ?? null,
+      changedFiles: p.changed_files ?? null,
     };
     if (opts.expectedHeadSha !== undefined && evidence.head.sha !== opts.expectedHeadSha)
       throw new GitHubAdapterError(
@@ -620,14 +883,7 @@ export function createGitHubEvidence(options: {
         (body) => ({ items: parse(z.array(ReviewSchema), body, "reviews") }),
       );
       return reviews
-        .map((r) => ({
-          id: r.id,
-          author: r.user?.login ?? null,
-          state: r.state,
-          commitSha: r.commit_id ?? null,
-          submittedAt: r.submitted_at ?? null,
-          body: untrusted(r.body),
-        }))
+        .map(reviewEvidence)
         .filter((r) => opts.commitSha === undefined || r.commitSha === opts.commitSha);
     },
 
@@ -702,17 +958,7 @@ export function createGitHubEvidence(options: {
         opts.since === undefined ? {} : { since: opts.since },
         (body) => ({ items: parse(z.array(CommentSchema), body, "issue comments") }),
       );
-      return comments.map(
-        (c): IssueCommentEvidence => ({
-          id: c.id,
-          author: c.user?.login ?? null,
-          authorType: c.user?.type ?? null,
-          authorAssociation: c.author_association ?? "",
-          createdAt: c.created_at,
-          updatedAt: c.updated_at,
-          body: untrusted(c.body),
-        }),
-      );
+      return comments.map(commentEvidence);
     },
 
     async listPullRequests(opts: { state?: "open" | "closed" | "all"; base?: string } = {}) {
@@ -737,43 +983,12 @@ export function createGitHubEvidence(options: {
         },
         (body) => ({ items: parse(z.array(PullListSchema), body, "a pull request listing") }),
       );
-      return pulls.map(
-        (p): PullRequestSummary => ({
-          number: p.number,
-          state: p.state,
-          draft: p.draft ?? false,
-          merged: p.merged_at !== null && p.merged_at !== undefined,
-          title: untrusted(p.title),
-          author: p.user?.login ?? null,
-          headRef: p.head.ref,
-          headSha: p.head.sha,
-          baseRef: p.base.ref,
-          createdAt: p.created_at,
-          updatedAt: p.updated_at,
-        }),
-      );
+      return pulls.map(pullSummary);
     },
 
     async getFileAtCommit(commitSha: string, path: string, fileLimits: Partial<FileLimits> = {}) {
-      sha(commitSha);
-      const segments = safePath(path);
-      const maxBytes = fileLimits.maxBytes ?? DEFAULT_FILE_LIMITS.maxBytes;
-      if (!Number.isSafeInteger(maxBytes) || maxBytes < 1)
-        throw new GitHubAdapterError("invalid-input", "Invalid file limits");
-      const body = await get(["contents", ...segments], { ref: commitSha });
-      if (Array.isArray(body))
-        throw new GitHubAdapterError("wrong-target", "The path is a directory, not a file");
-      const f = parse(ContentsSchema, body, "file contents");
-      if (f.type !== "file")
-        throw new GitHubAdapterError("wrong-target", `The path is a ${f.type}, not a file`);
-      if (f.path !== path)
-        throw new GitHubAdapterError("wrong-target", "GitHub answered for another path");
-      const base = { commitSha, path, blobSha: f.sha, size: f.size };
-      if (f.size > maxBytes || f.encoding !== "base64" || !f.content)
-        return { ...base, kind: "too-large" as const };
-      const bytes = Buffer.from(f.content.replace(/\s/g, ""), "base64");
-      if (bytes.length !== f.size)
-        throw new GitHubAdapterError("malformed-response", "File content does not match its size");
+      const { base, bytes, tooLarge } = await fileContents(commitSha, path, fileLimits);
+      if (tooLarge) return { ...base, kind: "too-large" as const };
       if (bytes.includes(0)) return { ...base, kind: "binary" as const };
       let text: string;
       try {
@@ -804,6 +1019,184 @@ export function createGitHubEvidence(options: {
         behindBy: c.behind_by,
         mergeBase: c.merge_base_commit.sha,
       };
+    },
+
+    async listIssuesPage(
+      opts: PageRequest & {
+        state?: "open" | "closed" | "all";
+        labels?: readonly string[];
+        sort?: "created" | "updated" | "comments";
+        direction?: "asc" | "desc";
+      } = {},
+    ) {
+      const state = opts.state ?? "open";
+      if (!["open", "closed", "all"].includes(state))
+        throw new GitHubAdapterError("invalid-input", "Invalid issue state");
+      if (opts.sort !== undefined && !["created", "updated", "comments"].includes(opts.sort))
+        throw new GitHubAdapterError("invalid-input", "Invalid sort");
+      if (opts.direction !== undefined && !["asc", "desc"].includes(opts.direction))
+        throw new GitHubAdapterError("invalid-input", "Invalid direction");
+      if (opts.labels && (opts.labels.length > 20 || opts.labels.some((l) => !LABEL.test(l))))
+        throw new GitHubAdapterError("invalid-input", "Invalid labels");
+      const query: Record<string, string> = {
+        state,
+        sort: opts.sort ?? "created",
+        direction: opts.direction ?? "desc",
+      };
+      if (opts.labels?.length) query.labels = opts.labels.join(",");
+      const w = await windowOf(
+        ["issues"],
+        query,
+        opts,
+        z.array(IssueSchema),
+        "issues",
+        issueEvidence,
+      );
+      const items = w.items.filter((i) => !i.isPullRequest);
+      return {
+        items,
+        page: w.page,
+        perPage: w.perPage,
+        hasMore: w.hasMore,
+        excludedPullRequests: w.items.length - items.length,
+      };
+    },
+
+    async listPullRequestsPage(
+      opts: PageRequest & {
+        state?: "open" | "closed" | "all";
+        sort?: "created" | "updated";
+        direction?: "asc" | "desc";
+      } = {},
+    ) {
+      const state = opts.state ?? "open";
+      if (!["open", "closed", "all"].includes(state))
+        throw new GitHubAdapterError("invalid-input", "Invalid pull request state");
+      if (opts.sort !== undefined && !["created", "updated"].includes(opts.sort))
+        throw new GitHubAdapterError("invalid-input", "Invalid sort");
+      if (opts.direction !== undefined && !["asc", "desc"].includes(opts.direction))
+        throw new GitHubAdapterError("invalid-input", "Invalid direction");
+      const { raw: _raw, ...w } = await windowOf(
+        ["pulls"],
+        { state, sort: opts.sort ?? "created", direction: opts.direction ?? "desc" },
+        opts,
+        z.array(PullListSchema),
+        "pull requests",
+        pullSummary,
+      );
+      return w;
+    },
+
+    async listIssueCommentsPage(number: number, opts: PageRequest = {}) {
+      const { raw: _raw, ...w } = await windowOf(
+        ["issues", positive(number, "issue number"), "comments"],
+        {},
+        opts,
+        z.array(CommentSchema),
+        "issue comments",
+        commentEvidence,
+      );
+      return w;
+    },
+
+    async listIssueEventsPage(number: number, opts: PageRequest = {}) {
+      const { raw: _raw, ...w } = await windowOf(
+        ["issues", positive(number, "issue number"), "events"],
+        {},
+        opts,
+        z.array(EventSchema),
+        "issue events",
+        (e): IssueEventEvidence => ({
+          event: e.event,
+          actor: e.actor?.login ?? null,
+          label: e.label?.name ?? null,
+          performedViaGitHubApp: e.performed_via_github_app?.slug ?? null,
+          createdAt: e.created_at,
+        }),
+      );
+      return w;
+    },
+
+    async listReviewsPage(number: number, opts: PageRequest = {}) {
+      const { raw: _raw, ...w } = await windowOf(
+        ["pulls", positive(number, "pull request number"), "reviews"],
+        {},
+        opts,
+        z.array(ReviewSchema),
+        "reviews",
+        reviewEvidence,
+      );
+      return w;
+    },
+
+    async listReviewCommentsPage(number: number, opts: PageRequest = {}) {
+      const { raw: _raw, ...w } = await windowOf(
+        ["pulls", positive(number, "pull request number"), "comments"],
+        {},
+        opts,
+        z.array(ReviewCommentSchema),
+        "review comments",
+        (c): ReviewCommentEvidence => ({
+          id: c.id,
+          author: c.user?.login ?? null,
+          path: c.path,
+          line: c.line ?? null,
+          commitSha: c.commit_id,
+          createdAt: c.created_at,
+          body: untrusted(c.body),
+        }),
+      );
+      return w;
+    },
+
+    async getIssueComment(id: number) {
+      const c = parse(
+        CommentSchema,
+        await get(["issues", "comments", positive(id, "comment id")]),
+        "an issue comment",
+      );
+      // The comment's own issue URL must be under this repository; anything else is not its comment.
+      const m = /\/repos\/([^/]+)\/([^/]+)\/issues\/(\d+)$/.exec(c.issue_url ?? "");
+      if (!m || `${m[1]}/${m[2]}`.toLowerCase() !== repository.toLowerCase())
+        throw new GitHubAdapterError(
+          "wrong-target",
+          "The comment does not belong to this repository",
+        );
+      return { ...commentEvidence(c), issueNumber: Number(m[3]) };
+    },
+
+    async getFileBytesAtCommit(
+      commitSha: string,
+      path: string,
+      fileLimits: Partial<FileLimits> = {},
+    ) {
+      const { base, bytes, tooLarge } = await fileContents(commitSha, path, fileLimits);
+      if (tooLarge) return { ...base, kind: "too-large" as const };
+      return { ...base, kind: "bytes" as const, bytes: new Uint8Array(bytes) };
+    },
+
+    async pullRequestContainsCommit(
+      number: number,
+      commitSha: string,
+      opts: { maxCommits?: number } = {},
+    ) {
+      sha(commitSha);
+      const maxCommits = opts.maxCommits ?? 250;
+      if (!Number.isSafeInteger(maxCommits) || maxCommits < 1)
+        throw new GitHubAdapterError("invalid-input", "Invalid maxCommits");
+      const pr = await getPullRequest(number);
+      if (pr.head.sha === commitSha) return { belongs: true, isHead: true };
+      const pageCount = Math.ceil(maxCommits / 100);
+      for (let page = 1; page <= pageCount; page++) {
+        const commits = parse(
+          z.array(CommitRefSchema),
+          await get(["pulls", number, "commits"], { per_page: "100", page: String(page) }),
+          "pull request commits",
+        );
+        if (commits.some((c) => c.sha === commitSha)) return { belongs: true, isHead: false };
+        if (commits.length < 100) return { belongs: false, isHead: false };
+      }
+      return { belongs: false, isHead: false };
     },
   });
 }
