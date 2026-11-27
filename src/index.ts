@@ -58,6 +58,8 @@ export {
   completionProtocol,
   currentResults,
   detectSecrets,
+  REVIEW_LIMITS,
+  reviewProtocol,
   specificationProtocol,
   TRUSTED_ASSOCIATIONS,
 } from "./protocols.ts";

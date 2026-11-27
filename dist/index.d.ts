@@ -14,7 +14,7 @@ export { type CommandContext, type ContextOptions, type CredentialProvider, open
 export { CliError, ERROR_CODES, type ErrorCode, EXIT, type ExitStatus } from "./errors.ts";
 export { type HostPolicy, type ResolvedHost, resolveHost } from "./host.ts";
 export { stableJson } from "./json.ts";
-export { completionProtocol, currentResults, detectSecrets, specificationProtocol, TRUSTED_ASSOCIATIONS, } from "./protocols.ts";
+export { completionProtocol, currentResults, detectSecrets, REVIEW_LIMITS, reviewProtocol, specificationProtocol, TRUSTED_ASSOCIATIONS, } from "./protocols.ts";
 export { PROVISION_RESULT_SCHEMA } from "./provision.ts";
 export type { Repository } from "./repository.ts";
 export { checkManifest, routeTask } from "./routing.ts";

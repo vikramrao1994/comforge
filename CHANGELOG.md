@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+- Exports reviewProtocol and REVIEW_LIMITS (the advisory-review protocol a trusted configuration defines) and moves to @comforge/github 0.6.0.
+
 ## 0.3.0
 
 - Depends on @comforge/core 0.2.0 (command scopes) and @comforge/github 0.5.0 (evidence reads); released only after both are published, read back and pinned.

@@ -14,7 +14,7 @@ export { openContext, } from "./context.js";
 export { CliError, ERROR_CODES, EXIT } from "./errors.js";
 export { resolveHost } from "./host.js";
 export { stableJson } from "./json.js";
-export { completionProtocol, currentResults, detectSecrets, specificationProtocol, TRUSTED_ASSOCIATIONS, } from "./protocols.js";
+export { completionProtocol, currentResults, detectSecrets, REVIEW_LIMITS, reviewProtocol, specificationProtocol, TRUSTED_ASSOCIATIONS, } from "./protocols.js";
 export { PROVISION_RESULT_SCHEMA } from "./provision.js";
 export { checkManifest, routeTask } from "./routing.js";
 export { defaultRuntime, spawnRun, } from "./runtime.js";
