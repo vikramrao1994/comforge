@@ -34,7 +34,7 @@ three library packages directly is supported but couples a consumer to their ver
 
 - `core` performs no I/O and imports no other package (`packages/core/test/boundary.test.ts`).
 - Packages import each other only through package names, never relative paths
-  (`tests/repository/boundaries.test.ts`).
+  (`tests/repository/validators.test.ts`, `bun run validate`).
 - Package sources import nothing from `tooling/`, `tests/`, `benchmarks/` or `harness/`.
 - The harness (`harness/`) is the published release that governs this repository; workspace
   candidates never resolve as the harness ([decision 0002](decisions/0002-published-harness.md)).
