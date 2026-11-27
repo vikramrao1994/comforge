@@ -1,6 +1,7 @@
 node_modules/
 generated/
-dist/
+/packages/*/dist/
+/examples/*/dist/
 *.tgz
 .comforge-candidates.json
 .DS_Store
