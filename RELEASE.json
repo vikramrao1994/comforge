@@ -1,0 +1,61 @@
+{
+  "schema": "comforge-release/v1",
+  "package": "@comforge/mcp",
+  "version": "0.1.0",
+  "tag": "mcp/v0.1.0",
+  "source": {
+    "commit": "4bc785e1bed85dfa7e1ec88c6a719a15b2b09d2b",
+    "packageTree": "e20198fd217f21d947f09cb887ad2c530a9e1730",
+    "exampleTree": "86dfde952096bd0da1a1347c09b011ab6c1b9ce5"
+  },
+  "toolchain": {
+    "typescript": "7.0.2"
+  },
+  "tarball": {
+    "file": "comforge-mcp-0.1.0.tgz",
+    "sha256": "21b5c12eee9777d42b1e39594ba3e34b3c814fe27d1bd35922ac3d3f30621f8c",
+    "integrity": "sha512-J7f91tEA33sTK1Ny6RC/tBOWSCnQU0udid3NPMGlttSPcKdXyumo0g9iyKBxYIerFsSddi0DVnuE4f6EAJQx2Q=="
+  },
+  "files": {
+    ".github/comforge/npm-release.mjs": "c28caae77426ec2c1233cd55bb11036d5b29c2e414bb6c41e0ff46fc72cfe55a",
+    ".github/workflows/npm-publish-mcp.yml": "f782808f19a2344311411b3652d43a8d9aebe326528a25b180d945319bf60dbe",
+    "CHANGELOG.md": "3a0ca7cd35e0a3d41e763195419717ce48cac0e773bf9e96971f1b092c3bef8f",
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "README.md": "c0316b953c6f8423b9ec2febf70c0f076cee0b7c795fc4f45874bb5aa7436795",
+    "dist/bin.d.ts": "43e818adf60173644896298637f47b01d5819b17eda46eaa32d0c7d64724d012",
+    "dist/bin.js": "321267a3af07921ca43605725f968823129e9c209fabdce51346e5563ec3769e",
+    "dist/contracts.d.ts": "de52f7a68c549f076a7718673cb17d54805de5ceea100659ee2b06dd09800a36",
+    "dist/contracts.js": "1af2343da68f96d7af3095d481e68acee93f81c0bb0e79d8bd07b3b7987b42d2",
+    "dist/grants.d.ts": "5894731538b51646ea8993b99664b9552d3ad3afec505b3e7faf66f2f1df98e6",
+    "dist/grants.js": "43c5faec7664be1e6e56652f08fb66b7af4c5a239484514740f516e27c77720b",
+    "dist/host.d.ts": "8894f8995541e7e25965463a3d074bdb9e72c4a3715e0545513992fe21499686",
+    "dist/host.js": "d8519db28bb5e36b316f132457bb39835977ad716dc3900ff7c06e6ccc933317",
+    "dist/http.d.ts": "fa75ae31450db6f2457e37f9b7494841310a2c7f8acaffc682001adb3ea51786",
+    "dist/http.js": "b22853fbf0257ed90f3f8481d08be44c31a6668fc7bdc503f9fa077f5feeb2d5",
+    "dist/index.d.ts": "16dcfb8793685ecbcbe88f95b0a6e00b61ff5919c75b7924a6b5afce519787d5",
+    "dist/index.js": "d4d97604bd03cd6aa88200f5fb50f9b5180b9ef953fd7aac90ee454580ee9b09",
+    "dist/results.d.ts": "3bf23b02076ba38fbb7ed4008eaefd5ca39fd8dfb67d5af63a1ac70a9d244c37",
+    "dist/results.js": "214ad315843d0ba2060f034d448d506da4ac17b5611a294ccd7799ec9f1d3e92",
+    "dist/server.d.ts": "915f9d8c257459f1d79067f4de988f5bb19373e33a49ed58a56d357c8f777cb3",
+    "dist/server.js": "2a4919cc4571b80dfcf76737f55152f2228a03305c9ecfae45d944f828b266b5",
+    "dist/stdio.d.ts": "e60c8817bf5e12bdf9321689cfd3918cc9940036be0f9f105b486195aa6d6af3",
+    "dist/stdio.js": "ef53cc77976966a2cec252d88c6884f42d1c550c14cd3ad183a715d630d6bbf4",
+    "dist/tools.d.ts": "a011548e6fe5cd4b65dc6c0eaf82871fcaf6c7c77876f658960586560e64ac3f",
+    "dist/tools.js": "3b243db433b9fdf58db6fc0c76edf07b3386bf74c2a08975c1f2640e6a9ef573",
+    "examples/factory-mcp-consumer/README.md": "43a4a3d82ebb593f9419c90206de4442f8bfccb223e322ce9369996e222feadf",
+    "examples/factory-mcp-consumer/demo.mjs": "98b8d4b4c0d55fe03ae52482fcb247b8d1edca1d52ede0a69f91c3f9653619df",
+    "examples/factory-mcp-consumer/package.json": "f55e957fb48762a5ad032854f7a3f31fa3e9fc3b3e77ade33b2dc45c7e509314",
+    "llms.txt": "21fb85018a5c139fcea2506c1bf61082fc2d747c05a0074b350e52ef9e31d4e4",
+    "package.json": "bcce0582a13ca1e9c17373c4e517db620ba5e5e3cc38ce8b7e2031576d49b69b",
+    "src/bin.ts": "439c691f5ba4b4261cf80428fc78182a0c16d582bbb72f0dd36a7d3729e374c1",
+    "src/contracts.ts": "7b4a1f69ded0ee1bf93ab02ddec415e1102bb75cc9ee4ae18de40007c1275a1d",
+    "src/grants.ts": "573a3deb40c023970799fdd848c73f9b4bf0bdc08b8f42f758b334da9ddeead3",
+    "src/host.ts": "11f718fa51d4e901a2e20c2301e3afd0a47c50fa9ca3d0359685075f2df8109d",
+    "src/http.ts": "f60e11c24d1b79400d94541a1b9017a158a03f4b4d6bc5d27abe067edb1ab3cc",
+    "src/index.ts": "5616a34fe2a6c4f0a83c53a08458687d77a36472a1d51acce63f34309b319e93",
+    "src/results.ts": "d295d619df59214ab118fbc2ab7327e7b698dd4a1c2b23e28ef1de2c566a4e7f",
+    "src/server.ts": "7ef843c6fb18b7ce278594f56d1435dc21a429525178e7bd41752afff6f2c6ac",
+    "src/stdio.ts": "f3514ac28dead32a60a7dadf7c85429eb79355bdf45ffb0971c57628dddbef5a",
+    "src/tools.ts": "83270e33845ff55c089b5dfedf37cbe8ad45e788e0744324788ec0681801cccf"
+  }
+}
