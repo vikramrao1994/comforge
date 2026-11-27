@@ -475,6 +475,23 @@ type Pin = { version: string; source: { commit: string }; files: Record<string, 
  * first release, the placeholder 0.0.0 with no shipped files at the parent of the commit that
  * introduced the package, so every commit of the package is in the window and needs an intent.
  */
+export const ANCHOR_FILE = "releases/baseline/anchor.json";
+
+/**
+ * A baseline built before the packages moved to this repository names a source commit that
+ * does not exist here. The reviewed anchor file maps it to the import commit that brought the
+ * same sources; without an entry the commit stays foreign and the plan refuses
+ * (`baseline-unrelated`), as before.
+ */
+export function anchoredCommit(repo: string, head: string, commit: string): string {
+  if (spawnSync("git", ["cat-file", "-e", `${commit}^{commit}`], { cwd: repo }).status === 0)
+    return commit;
+  const text = show(repo, head, ANCHOR_FILE);
+  if (!text) return commit;
+  const anchors = (JSON.parse(text) as { anchors?: Record<string, string> }).anchors ?? {};
+  return anchors[commit] ?? commit;
+}
+
 export function baselineOf(repo: string, head: string, pkg: ReleasePackage) {
   const profile = profileOf(pkg);
   const pinned = show(repo, head, pinFile(profile));
@@ -482,7 +499,7 @@ export function baselineOf(repo: string, head: string, pkg: ReleasePackage) {
     const pin = JSON.parse(pinned) as Pin;
     return {
       version: pin.version,
-      sourceCommit: pin.source.commit,
+      sourceCommit: anchoredCommit(repo, head, pin.source.commit),
       files: pin.files,
       firstRelease: false,
     };
