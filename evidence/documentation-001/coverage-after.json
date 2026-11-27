@@ -1,0 +1,44 @@
+{
+  "cliCommands": {
+    "total": 21,
+    "documented": 21
+  },
+  "cliFlags": {
+    "total": 50,
+    "documented": 50
+  },
+  "cliGlobalFlags": {
+    "total": 6,
+    "documented": 6
+  },
+  "cliErrorCodes": {
+    "total": 25,
+    "documented": 25
+  },
+  "mcpTools": {
+    "total": 18,
+    "documented": 18
+  },
+  "mcpProfiles": {
+    "total": 4,
+    "documented": 4
+  },
+  "mcpLaunchFlags": {
+    "total": 4,
+    "documented": 4
+  },
+  "mcpErrorCodes": {
+    "total": 11,
+    "documented": 11
+  },
+  "configSectionsAndKeys": {
+    "total": 72,
+    "documented": 72
+  },
+  "runtimeExportsInventory": {
+    "total": 238,
+    "documented": 238
+  },
+  "runtimeExportsWithSourceSummary": 115,
+  "runtimeExportsExplainedByHand": 61
+}

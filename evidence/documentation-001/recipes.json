@@ -1,0 +1,386 @@
+{
+  "schema": "comforge-recipes/v1",
+  "runtime": "node",
+  "harness": {
+    "@comforge/cli": "0.5.0",
+    "@comforge/mcp": "0.3.0"
+  },
+  "results": [
+    {
+      "recipe": "01-first-governed-initiative.md",
+      "title": "Recipe 1 — your first governed initiative",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 23,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 57,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 2,
+          "line": 67,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 3,
+          "line": 75,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 4,
+          "line": 94,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 5,
+          "line": 110,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 6,
+          "line": 115,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "02-mcp-for-coding-agents.md",
+      "title": "Recipe 2 — give a coding agent governed tools over MCP",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 20,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 60,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 2,
+          "line": 86,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "03-parallel-initiatives.md",
+      "title": "Recipe 3 — parallel initiatives",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 19,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 42,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 2,
+          "line": 54,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 3,
+          "line": 66,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 4,
+          "line": 73,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 5,
+          "line": 80,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "04-interrupted-handover-and-recovery.md",
+      "title": "Recipe 4 — interrupted handover and recovery",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 24,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 47,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 2,
+          "line": 70,
+          "pass": true,
+          "detail": "exit 4"
+        },
+        {
+          "block": 3,
+          "line": 79,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 4,
+          "line": 87,
+          "pass": true,
+          "detail": "exit 4"
+        },
+        {
+          "block": 5,
+          "line": 98,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 6,
+          "line": 104,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "05-owner-grants.md",
+      "title": "Recipe 5 — owner authorization and scoped grants",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 21,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 41,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 2,
+          "line": 75,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 3,
+          "line": 86,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 4,
+          "line": 96,
+          "pass": true,
+          "detail": "exit 1"
+        },
+        {
+          "block": 5,
+          "line": 103,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 6,
+          "line": 110,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "06-specification-review-revision.md",
+      "title": "Recipe 6 — specification, implementation, advisory review, revision",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 22,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 49,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 2,
+          "line": 74,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 3,
+          "line": 88,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 4,
+          "line": 102,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 5,
+          "line": 119,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "07-embedded-host-services.md",
+      "title": "Recipe 7 — embed the lifecycle and host services in your own program",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 24,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 58,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "08-file-and-sqlite-persistence.md",
+      "title": "Recipe 8 — durable state in a file or in SQLite",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 16,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 58,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "09-non-typescript-project.md",
+      "title": "Recipe 9 — a non-TypeScript project (Python)",
+      "world": "github",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 18,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 56,
+          "pass": true,
+          "detail": "exit 1"
+        },
+        {
+          "block": 2,
+          "line": 68,
+          "pass": true,
+          "detail": "exit 1"
+        },
+        {
+          "block": 3,
+          "line": 78,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 4,
+          "line": 85,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "10-governed-npm-release.md",
+      "title": "Recipe 10 — a governed npm release",
+      "world": "repository",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 25,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    },
+    {
+      "recipe": "11-context-routing.md",
+      "title": "Recipe 11 — route a task to the right context",
+      "world": "repository",
+      "pass": true,
+      "steps": [
+        {
+          "block": 0,
+          "line": 12,
+          "pass": true,
+          "detail": "exit 0"
+        },
+        {
+          "block": 1,
+          "line": 17,
+          "pass": true,
+          "detail": "exit 0"
+        }
+      ]
+    }
+  ]
+}

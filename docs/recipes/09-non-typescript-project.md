@@ -36,7 +36,7 @@ cat > comforge.config.json <<EOF
   "schema": "comforge-config/v1",
   "repository": { "owner": "acme", "name": "widgets", "baseBranch": "main", "remote": "origin",
                   "apiOrigin": "$COMFORGE_API_ORIGIN" },
-  "validation": { "commands": [{ "name": "unittest", "run": ["python3", "-m", "unittest", "discover", "-s", "tests", "-t", "."] }] },
+  "validation": { "commands": [{ "name": "unittest", "run": ["python3", "-B", "-m", "unittest", "discover", "-s", "tests", "-t", "."] }] },
   "specification": { "required": true, "digestScheme": "acme-spec/v1", "markerNamespace": "acme-spec",
                      "publisherName": "Acme Specs", "publishToolName": "acme_create_issue" },
   "completion": { "scheme": "acme-completion/v1", "markerNamespace": "acme-lifecycle",
@@ -92,6 +92,7 @@ comforge publish ACME-901 --title "Louder widget" --execute --json --summary
 |---|---|
 | `validation-failed` / `FAIL` | a configured command exited non-zero |
 | `dirty-checkout` | files the validation wrote (`__pycache__/`) are not ignored: add them to `.gitignore` |
+| a fixed test still fails | stale bytecode: a same-size edit within one second can reuse an old `.pyc`; `python3 -B` (used above) writes none |
 | `UNAVAILABLE` (exit 3) | the environment could not validate (for example `python3` missing) |
 
 - **Writes:** one issue, one branch push, one pull request. Validation runs your project's code
