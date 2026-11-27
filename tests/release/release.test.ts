@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -236,6 +236,19 @@ describe("dry run", () => {
     expect(git(dest, ["status", "--porcelain"])).toBe("");
     expect(git(dest, ["symbolic-ref", "--short", "HEAD"])).toBe("main");
     expect(existsSync(path.join(dest, "package.json"))).toBe(false);
+  });
+
+  test("a mirror whose main tracks a relative symlink still dry-runs from a clean copy", () => {
+    const { dest } = mirror("dry-symlink", false);
+    mkdirSync(path.join(dest, "skills"));
+    writeFileSync(path.join(dest, "skills", "README.md"), "skills\n");
+    mkdirSync(path.join(dest, ".claude"));
+    symlinkSync("../skills", path.join(dest, ".claude", "skills"));
+    git(dest, ["add", "skills", ".claude"]);
+    git(dest, [...COMMITTER, "commit", "-q", "-m", "skills link"]);
+    const { outcome } = dryRunRelease(candidate.dir, dest, work);
+    expect(outcome.changed).toBe(true);
+    expect(git(dest, ["status", "--porcelain"])).toBe("");
   });
 });
 
