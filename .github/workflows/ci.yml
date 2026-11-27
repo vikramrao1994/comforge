@@ -1,7 +1,9 @@
 name: CI
 
-# The authoritative gate for every pull request and every push to main. Local hooks
-# (.githooks) run the fast subset earlier; this workflow decides. No job holds a credential,
+# The gate for every pull request and every push to main. It becomes authoritative only once
+# the protect-main ruleset requires it (.github/rulesets/protect-main.json, verified by
+# `bun tooling/verifyRuleset.ts`); until then it is advisory. Local hooks (.githooks) run the
+# fast subset earlier. No job holds a credential,
 # calls a model, or writes anything outside its runner.
 on:
   pull_request:

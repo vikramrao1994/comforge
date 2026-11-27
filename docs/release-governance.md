@@ -23,6 +23,16 @@ Campaigns (`releases/campaigns/*.json`, `bun run release:campaign`) order severa
 dependency and recover from a partial publication: a package that published is read back and
 recorded; one that did not is retried from its own candidate.
 
+## Branch protection
+
+**Status: planned** (owner configuration). `.github/rulesets/protect-main.json` is the exact
+ruleset for `main`: no deletion or force-push, pull requests with code-owner review, and every
+CI job (bound to the GitHub Actions app) required on an up-to-date branch. Until
+`bun tooling/verifyRuleset.ts` prints `PASS` against the live repository, CI is advisory, not
+the enforcement boundary: a direct push to `main` would not wait for it. With a single
+maintainer, code-owner review cannot be given by the pull request's own author; the owner
+decides whether to add a second code owner or relax that one parameter, and records it here.
+
 ## Single publisher, and the switch-over
 
 Exactly one publisher may be active. Until the owner switches, releases are still published by
