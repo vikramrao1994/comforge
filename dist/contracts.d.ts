@@ -186,6 +186,18 @@ export declare const INPUTS: {
             signature: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>;
+    readonly comforge_publish_comment: z.ZodObject<{
+        repository: z.ZodString;
+        issue: z.ZodNumber;
+        body: z.ZodString;
+        idempotencyKey: z.ZodString;
+        relatedReview: z.ZodOptional<z.ZodObject<{
+            prNumber: z.ZodNumber;
+            commentId: z.ZodNumber;
+            reviewedHeadSha: z.ZodString;
+        }, z.core.$strict>>;
+        execute: z.ZodBoolean;
+    }, z.core.$strict>;
 };
 export type ToolName = keyof typeof INPUTS;
 export declare const TOOL_NAMES: ToolName[];

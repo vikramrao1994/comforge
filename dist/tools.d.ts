@@ -17,7 +17,7 @@ export declare const SERVER_NAME = "comforge-mcp";
  * Reported as `serverInfo.version`. A literal on purpose: a bundler cannot resolve a runtime
  * read of package.json. test/version.test.ts fails when it differs from package.json.
  */
-export declare const SERVER_VERSION = "0.3.0";
+export declare const SERVER_VERSION = "0.4.0";
 export interface CallContext {
     principal: Principal;
     binding: RepositoryBinding | null;
@@ -48,6 +48,12 @@ type Input<N extends ToolName> = z.infer<(typeof INPUTS)[N]>;
  * trusted configuration. Nothing that runs commands, reads lifecycle state or writes.
  */
 export declare const REMOTE_READ_TOOLS: readonly ToolName[];
+/**
+ * The governed publications a checkout-free repository serves when its host supplies governance
+ * (0.4.0): no command runs, no lifecycle state is read; every write is authorized, reconciled and
+ * read back exactly as with a checkout.
+ */
+export declare const REMOTE_GOVERNANCE_TOOLS: readonly ToolName[];
 export declare const HANDLERS: {
     [N in ToolName]: (c: CallContext, input: Input<N>) => Promise<HandlerOutcome>;
 };

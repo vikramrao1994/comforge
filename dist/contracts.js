@@ -218,6 +218,23 @@ export const INPUTS = {
         grant: GrantEnvelope.optional(),
     })
         .strict(),
+    comforge_publish_comment: z
+        .object({
+        repository: RepositoryId,
+        issue: Positive.describe("A published specification issue"),
+        body: z.string().min(1).max(20_000).describe("Markdown, exactly as the owner confirmed it"),
+        idempotencyKey: z
+            .string()
+            .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/)
+            .describe("Reuse the same key to retry; a new key only for a new comment"),
+        relatedReview: z
+            .object({ prNumber: Positive, commentId: Positive, reviewedHeadSha: Sha })
+            .strict()
+            .optional()
+            .describe("An advisory review the comment refers to; its findings are not copied"),
+        execute: z.boolean().describe("false plans without any write"),
+    })
+        .strict(),
 };
 export const TOOL_NAMES = Object.keys(INPUTS);
 const READ = PROFILES;
@@ -383,6 +400,15 @@ export const TOOLS = {
         name: "comforge_publish_specification",
         title: "Publish a specification",
         description: "Publish or replace a specification issue, idempotently. execute:false plans.",
+        profiles: PUBLISHER,
+        executes: false,
+        writes: true,
+        destructive: false,
+    },
+    comforge_publish_comment: {
+        name: "comforge_publish_comment",
+        title: "Publish a discussion comment",
+        description: "Comment on an open, published specification issue, idempotently per key; evidence only, never an approval or authorization. execute:false plans.",
         profiles: PUBLISHER,
         executes: false,
         writes: true,
