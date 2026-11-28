@@ -1,9 +1,19 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { approvalFromCandidate, buildCandidateRecord, type CandidateInput, CandidateRefusal, ciProof, renderCandidate } from "../../tooling/release/candidate";
+import {
+  approvalFromCandidate,
+  buildCandidateRecord,
+  type CandidateInput,
+  CandidateRefusal,
+  ciProof,
+  REQUIRED_CHECKS,
+  renderCandidate,
+} from "../../tooling/release/candidate";
 import { INTENT_SCHEMA } from "../../tooling/release/releaseIntent";
 import { evaluatePlan, type PlanInput } from "../../tooling/release/releasePlan";
+
+const REPO = path.resolve(import.meta.dir, "../..");
 
 // the owner approves a candidate, not a typed SHA. The
 // publishing job derives the approval only from a candidate its own rebuild matches.
@@ -97,16 +107,26 @@ describe("the immutable candidate", () => {
 describe("CI proof", () => {
   const respond = (body: unknown, status = 200) => (async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;
 
+  const allGreen = REQUIRED_CHECKS.map((name) => ({ name, conclusion: "success" }));
+
+  test("the required checks are exactly the ruleset's required status checks", () => {
+    const ruleset = JSON.parse(readFileSync(path.join(REPO, ".github/rulesets/protect-main.json"), "utf8")) as {
+      rules: { type: string; parameters?: { required_status_checks?: { context: string }[] } }[];
+    };
+    const contexts = ruleset.rules
+      .filter((r) => r.type === "required_status_checks")
+      .flatMap((r) => r.parameters?.required_status_checks ?? [])
+      .map((c) => c.context);
+    expect([...REQUIRED_CHECKS].sort() as string[]).toEqual([...contexts].sort());
+  });
+
   test("a required check that succeeded for the commit proves it, even after a failed attempt", async () => {
     const proof = await ciProof({
       repository: "o/r",
       sha: SOURCE,
       token: "t",
       fetchImpl: respond({
-        check_runs: [
-          { name: "Validate (test:verify)", conclusion: "failure" },
-          { name: "Validate (test:verify)", conclusion: "success" },
-        ],
+        check_runs: [{ name: REQUIRED_CHECKS[0], conclusion: "failure" }, ...allGreen],
       }),
     });
     expect(proof.ok).toBe(true);
@@ -115,7 +135,8 @@ describe("CI proof", () => {
   test("a missing or failed check, or an API error, proves nothing", async () => {
     for (const fetchImpl of [
       respond({ check_runs: [] }),
-      respond({ check_runs: [{ name: "Validate (test:verify)", conclusion: "failure" }] }),
+      respond({ check_runs: allGreen.slice(1) }),
+      respond({ check_runs: [{ ...allGreen[0], conclusion: "failure" }, ...allGreen.slice(1)] }),
       respond({}, 403),
     ])
       expect((await ciProof({ repository: "o/r", sha: SOURCE, token: undefined, fetchImpl })).ok).toBe(false);

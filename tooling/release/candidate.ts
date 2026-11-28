@@ -12,7 +12,21 @@
 import { digestOf, type ReleasePlan } from "./releasePlan";
 
 export const CANDIDATE_SCHEMA = "comforge-release-candidate/v1";
-export const REQUIRED_CHECKS = ["Validate (test:verify)"] as const;
+/**
+ * The checks that must have succeeded for a candidate's source commit: exactly the required status
+ * checks of `.github/rulesets/protect-main.json` (tests/release/candidate.test.ts keeps them equal).
+ */
+export const REQUIRED_CHECKS = [
+  "Lint, types, repository validators, security",
+  "Host policy with a real second OS user (Linux)",
+  "Release rehearsal (credential-free, all five packages)",
+  "Tests · ubuntu-latest · Node 22 + Bun",
+  "Tests · ubuntu-latest · Node 24 + Bun",
+  "Tests · ubuntu-latest · Node 26 + Bun",
+  "Tests · macos-latest · Node 22 + Bun",
+  "Tests · macos-latest · Node 24 + Bun",
+  "Tests · macos-latest · Node 26 + Bun",
+] as const;
 
 export type CiProof = {
   ok: boolean;
