@@ -24,9 +24,7 @@ function region(file: string, name: string): string {
   return body.map((l) => l.slice(indent)).join("\n");
 }
 
-const exampleBlocks = (text: string) => [
-  ...text.matchAll(/<!-- example: ([^#\s]+)#([\w-]+) -->\n```ts\n([\s\S]*?)\n```/g),
-];
+const exampleBlocks = (text: string) => [...text.matchAll(/<!-- example: ([^#\s]+)#([\w-]+) -->\n```ts\n([\s\S]*?)\n```/g)];
 const blocks = exampleBlocks(readme);
 const walkthroughBlocks = exampleBlocks(walkthrough);
 
@@ -38,7 +36,10 @@ describe("core README and walkthrough", () => {
     expect((walkthrough.match(/```ts\n/g) ?? []).length).toBe(walkthroughBlocks.length);
   });
 
-  for (const [where, list] of [["README", blocks], ["walkthrough", walkthroughBlocks]] as const)
+  for (const [where, list] of [
+    ["README", blocks],
+    ["walkthrough", walkthroughBlocks],
+  ] as const)
     for (const [, file, name, code] of list)
       test(`${where}: ${file}#${name} is copied verbatim`, () => {
         expect(code).toBe(region(file as string, name as string));

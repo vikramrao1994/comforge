@@ -93,7 +93,9 @@ export function checkLinks(): string[] {
       // The release mirror's disclosure scan allows only github.com/<repository> in shipped
       // files, so a package README links images through github.com/<repository>/raw/main/.
       if (isPackageReadme && target.startsWith("https://raw.githubusercontent.com/"))
-        problems.push(`${file}: ${target} fails the release disclosure scan; use github.com/${PUBLIC}/raw/main/`);
+        problems.push(
+          `${file}: ${target} fails the release disclosure scan; use github.com/${PUBLIC}/raw/main/`,
+        );
       const absolute = target.match(ABSOLUTE);
       if (absolute) {
         rel = decodeURIComponent(absolute[1] as string).replace(/\/$/, "");

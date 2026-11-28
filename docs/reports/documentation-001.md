@@ -177,6 +177,7 @@ request after the first one merged.
 | Twelve links pointed at package-README anchors that no longer existed (after the README rewrite) | caught by the new `links` check, retargeted to the reference |
 | The mcp changelog repeated, as "Unreleased", two items already shipped in 0.3.0 | confirmed in the published tarball's `dist/http.js`; section removed |
 | Known limitations still called self-hosted publication "planned" | the publisher switch-over is complete; reworded |
+| A first draft of the package READMEs failed three existing gates: hand-written core examples (the documentation test), and `raw.githubusercontent.com` image URLs (the release disclosure scan) | caught by the full test suite before the pull request; fixed as described below, gates unchanged |
 | The cited historical numbers (2587/1191, 1431/969, 11019/6759, 1543/1230) | each matches `evidence/benchmarks/historical.json` and the original measurement record field for field |
 
 ### What changed
@@ -190,8 +191,12 @@ request after the first one merged.
   longer carries moved to the overview and known-limitations pages.
 - **Package READMEs:** one structure for all five (install, quick example, what it provides,
   compatibility, limitations, documentation), absolute links for npm. cli 427→99, mcp 273→98,
-  core 387→102, github 174→82, ledger 207→78 lines; their detail moved, not deleted, into the
-  reference and concept pages.
+  core 387→129, github 174→82, ledger 207→78 lines; their detail moved, not
+  deleted, into the reference and concept pages. The core README's examples stay verbatim
+  regions of the executed example consumer; its full walkthrough and export reference moved to
+  [`docs/reference/core.md`](../reference/core.md), and `tests/release/documentation.test.ts`
+  checks both pages. Package images use `github.com/<repository>/raw/main/`, the only
+  owner-named host the release disclosure scan admits in shipped files.
 - **Terminal demonstrations** (`docs/demos/`, `docs/assets/demos/`): first governed workflow,
   parallel agents, interrupted-agent recovery — each recorded by running the scenario against
   the published harness and a local synthetic GitHub, with a text transcript. Commit time and
@@ -238,3 +243,15 @@ README and changelog edits change shipped files. Every package already has a rev
 intent (repository metadata), so these changes ship with those patch releases; nothing was
 versioned or published, and no historical release was rewritten. `bun run release:plan`
 passes.
+
+### Validation (local, before the pull request)
+
+| Check | Result |
+|---|---|
+| `bun run test` (Node and Bun runtimes) | 1,165 pass, 6 skip, 0 fail (86 files) |
+| `bun run validate` | 15 of 15 PASS, including the new `links`, `excerpts`, `brand`, `demos` |
+| `bun run lint` / `bun run typecheck` | no errors (27 warnings, all in files this change does not touch) / 6 projects |
+| `bun run release:plan` | exit 0; README changes ride the pending patch intents |
+| README install commands against npm | pass (`evidence/documentation-001/presentation/presentation.json`) |
+
+CI on the pull request is the authoritative run.

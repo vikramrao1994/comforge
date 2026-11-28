@@ -1,0 +1,96 @@
+{
+  "schema": "comforge-presentation-evidence/v1",
+  "baseline": "8e2ddb8",
+  "installVerification": {
+    "what": "README install commands against the npm registry in an empty repository",
+    "commands": [
+      "npm install --save-dev --save-exact @comforge/cli @comforge/mcp",
+      "npx comforge --version",
+      "npx comforge init",
+      "npx comforge init --write",
+      "npx comforge-mcp --help"
+    ],
+    "resolved": {
+      "@comforge/cli": "0.5.0",
+      "@comforge/mcp": "0.3.0"
+    },
+    "runtime": "node v26.3.0, npm 11.16.0, macOS",
+    "result": "all exit 0; init previewed then wrote comforge.config.json; comforge-mcp usage lists --repository",
+    "defectFound": "comforge-mcp --repo exits 'unknown option --repo' (docs used --repo; fixed)"
+  },
+  "historicalProvenance": {
+    "checked": [
+      "pr-list 2587/1617/1191",
+      "issue-comments 1431/1264/969",
+      "compact-discovery 11019/6759 and 6110/3332",
+      "cli-compact 1543/1230 and 3701/3120",
+      "mcp-costs-more 4224/3701 and 1831/1543"
+    ],
+    "against": "evidence/benchmarks/historical.json and the original measurement record it reproduces",
+    "result": "all equal"
+  },
+  "readmeLines": {
+    "root": [
+      119,
+      215
+    ],
+    "cli": [
+      427,
+      99
+    ],
+    "mcp": [
+      273,
+      98
+    ],
+    "core": [
+      387,
+      129
+    ],
+    "github": [
+      174,
+      82
+    ],
+    "ledger": [
+      207,
+      78
+    ]
+  },
+  "demos": {
+    "recorded": [
+      "first-workflow",
+      "parallel-agents",
+      "interrupted-recovery"
+    ],
+    "world": "published harness (@comforge/cli 0.5.0, @comforge/mcp 0.3.0) and a synthetic GitHub on 127.0.0.1",
+    "reproducible": "re-recording produced byte-identical files (bun run validate demos)",
+    "normalized": [
+      "temporary directory → ~",
+      "ISO timestamps → <time>",
+      "durationMs → <ms>"
+    ]
+  },
+  "rendering": {
+    "source": "github.com blob view of README.md",
+    "before": "8e2ddb8",
+    "after": "4789a5b (root README; unchanged since)",
+    "variants": [
+      "light 1280x900",
+      "light 390x844",
+      "dark 1280x900",
+      "dark 390x844"
+    ],
+    "tool": "agent-browser (headless Chromium), full-page captures",
+    "notChecked": [
+      "npm package pages (nothing published)",
+      "package README logos before merge (absolute URLs to main)"
+    ]
+  },
+  "repositoryMetadata": "prepared in docs/contributing/visual-identity.md; not applied (owner setting)",
+  "validation": {
+    "test": "1165 pass, 6 skip, 0 fail across 86 files (COMFORGE_TEST_RUNTIMES=node,bun)",
+    "validate": "15/15 PASS",
+    "lint": "0 errors, 27 pre-existing warnings",
+    "typecheck": "6 projects pass",
+    "releasePlan": "exit 0"
+  }
+}
