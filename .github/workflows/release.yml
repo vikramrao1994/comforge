@@ -109,12 +109,13 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
+      # The release tests read the published harness (tests/release/npmRelease.test.ts), as in CI.
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile && bun run harness:install
       # Every package, whichever is released: @comforge/github's suite is the compatibility
-      # check for any @comforge/core change.
+      # check for any @comforge/core change. Bun ignores bunfig's test timeout, hence the flag.
       - name: Test the packages and the publisher
-        run: bun run release:candidates && bun test --isolate packages/core/test packages/github/test packages/ledger/test packages/cli/test packages/mcp/test tests/release tests/github tests/ledger tests/cli tests/mcp
+        run: bun run release:candidates && bun test --isolate --timeout 30000 packages/core/test packages/github/test packages/ledger/test packages/cli/test packages/mcp/test tests/release tests/github tests/ledger tests/cli tests/mcp
       # The repository is public: the candidate job reads it anonymously, through git and not
       # the rate-limited REST API (see the script). Without the repository, the dry run plans a
       # first release into an empty local repository.
