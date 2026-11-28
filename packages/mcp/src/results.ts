@@ -54,6 +54,10 @@ export const MCP_CODES = {
   "config-stale": "the host's trusted configuration snapshot is older than allowed",
   "config-mismatch":
     "the configuration is not the pinned one, or not what GitHub holds at its revision",
+  "credential-rejected": "GitHub did not accept the server's read credential (401)",
+  "credential-forbidden":
+    "GitHub refused this read for the server's credential (403): it lacks the permission or repository access",
+  "operation-not-served": "the host does not serve this governed publication for this repository",
 } as const;
 
 const HINTS: Record<string, string> = {
@@ -74,6 +78,11 @@ const HINTS: Record<string, string> = {
   "unknown-repository": "comforge_capabilities lists the repositories you may use",
   "checkout-required": "use a local stdio server bound to a checkout of this repository",
   "config-stale": "the host refreshes its snapshot; retry later",
+  "credential-rejected":
+    "the server's own read credential is invalid or expired; the server owner replaces it. No grant changes this",
+  "credential-forbidden":
+    "the server's own read credential lacks this read's GitHub permission (for example Checks: read on a private repository); the server owner widens that credential's read permissions. No grant or write authorization changes this",
+  "operation-not-served": "comforge_capabilities lists the governed publications per repository",
 };
 
 /** Retrying the same call can help only for transient failures, never for a refusal. */

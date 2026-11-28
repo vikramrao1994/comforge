@@ -17,3 +17,6 @@ MCP results also carry every CLI error code (see [cli-errors.md](cli-errors.md))
 | `config-missing` | the host supplied no trusted configuration for this repository |
 | `config-stale` | the host's trusted configuration snapshot is older than allowed |
 | `config-mismatch` | the configuration is not the pinned one, or not what GitHub holds at its revision |
+| `credential-rejected` | GitHub did not accept the server's read credential (401) |
+| `credential-forbidden` | GitHub refused this read for the server's credential (403): it lacks the permission or repository access |
+| `operation-not-served` | the host does not serve this governed publication for this repository |

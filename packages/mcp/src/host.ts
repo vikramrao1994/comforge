@@ -222,6 +222,12 @@ export interface RemoteGovernanceHost {
    * Required for a GitHub App installation token, which cannot read `GET /user`.
    */
   identity?(command: RemoteGovernanceCommand): string | undefined;
+  /**
+   * The publications this host serves for this repository (0.6.0); undefined serves every command
+   * the principal's profiles reach. A command outside the list is refused before any read or
+   * authorization (`operation-not-served`), and `comforge_capabilities` lists only these.
+   */
+  commands?: readonly RemoteGovernanceCommand[];
 }
 
 export interface RemoteHost {

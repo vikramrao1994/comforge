@@ -313,6 +313,13 @@ async function remoteGovernance(c: CallContext, tool: ToolName): Promise<RemoteG
       1,
       { repository: binding.id },
     );
+  if (governance.commands !== undefined && !governance.commands.includes(command))
+    throw new ToolRefusal(
+      "operation-not-served",
+      `${command} is not a governed publication this server serves for ${binding.id}`,
+      1,
+      { repository: binding.id, command },
+    );
   const { config } = await evidence(c);
   const token = governance.credentials(command);
   if (!token)
@@ -344,17 +351,79 @@ function noRemoteGrant(c: CallContext, grant: unknown): void {
     );
 }
 
-/** GitHub adapter refusals as the CLI's codes; anything else is rethrown as internal. */
+/** Check-run conclusions that never block: GitHub treats them as passing for required checks. */
+const NON_BLOCKING = new Set(["success", "skipped", "neutral"]);
+
+/**
+ * The check runs of one head commit as an explicit aggregate (0.6.0). Until 0.5.0 `ok` was the
+ * required-check result with no required list, so it was false for every pull request.
+ *
+ * - `state`: `failing` when any completed run concluded outside success/skipped/neutral (failure,
+ *   cancelled, timed_out, action_required, stale, startup_failure or an unknown conclusion);
+ *   else `pending` when any run is not completed; else `passing` when at least one run succeeded;
+ *   else `neutral` (every run skipped or neutral); `none` when the commit has no check run.
+ * - `ok` is `state === "passing"`.
+ * - Only check runs are read. Commit statuses and the repository's required checks are not, so
+ *   `required` says so instead of implying they passed.
+ */
+export function summarizeChecks(
+  runs: readonly { name: string; status: string; conclusion: string | null }[],
+) {
+  const completed = runs.filter((r) => r.status === "completed");
+  const failing = completed.filter((r) => !NON_BLOCKING.has(r.conclusion ?? "")).map((r) => r.name);
+  const pending = runs.filter((r) => r.status !== "completed").map((r) => r.name);
+  const count = (conclusion: string) => completed.filter((r) => r.conclusion === conclusion).length;
+  const passed = count("success");
+  const state =
+    runs.length === 0
+      ? "none"
+      : failing.length > 0
+        ? "failing"
+        : pending.length > 0
+          ? "pending"
+          : passed > 0
+            ? "passing"
+            : "neutral";
+  return {
+    ok: state === "passing",
+    state,
+    total: runs.length,
+    counts: {
+      passed,
+      skipped: count("skipped"),
+      neutral: count("neutral"),
+      failing: failing.length,
+      pending: pending.length,
+    },
+    failing,
+    pending,
+    sources: ["check-runs"],
+    required: {
+      evaluated: false,
+      reason:
+        "required checks and commit statuses are not read; state covers check runs only and is not merge readiness",
+    },
+  };
+}
+
+/**
+ * GitHub adapter refusals of a read as the server's codes; anything else is rethrown as internal.
+ * Every caller is a read, so a 401 or 403 is the server's own read credential being refused
+ * (0.6.0): `credential-rejected` / `credential-forbidden`, never `unauthorized`, which names an
+ * authorization (grant or host policy) refusal of a write and would point the caller at a grant.
+ */
 function githubRefusal(error: unknown): never {
   if (error instanceof GitHubAdapterError) {
     const code =
       error.code === "not-found"
         ? "not-found"
-        : error.code === "unauthorized" || error.code === "forbidden"
-          ? "unauthorized"
-          : error.code === "stale"
-            ? "stale"
-            : "github-failed";
+        : error.code === "unauthorized"
+          ? "credential-rejected"
+          : error.code === "forbidden"
+            ? "credential-forbidden"
+            : error.code === "stale"
+              ? "stale"
+              : "github-failed";
     throw new ToolRefusal(code, error.message.slice(0, 300), code === "github-failed" ? 3 : 1, {
       github: error.code,
       ...(typeof error.detail.status === "number" ? { status: error.detail.status } : {}),
@@ -408,9 +477,17 @@ export const HANDLERS: {
                   .filter((b) => allowed.includes(b.id))
                   .map((b) => ({
                     repository: b.id,
-                    tools: c.remoteHost?.governance?.(b, c.principal)
-                      ? REMOTE_GOVERNANCE_TOOLS.filter((t) => c.server.tools.includes(t))
-                      : [],
+                    tools: ((g) =>
+                      g
+                        ? REMOTE_GOVERNANCE_TOOLS.filter(
+                            (t) =>
+                              c.server.tools.includes(t) &&
+                              (g.commands === undefined ||
+                                g.commands.includes(
+                                  GOVERNANCE_COMMAND[t] as RemoteGovernanceCommand,
+                                )),
+                          )
+                        : [])(c.remoteHost?.governance?.(b, c.principal)),
                   })),
               },
             }
@@ -606,19 +683,8 @@ export const HANDLERS: {
         },
       };
       let page: ReturnType<typeof paginate>["page"] | undefined;
-      if (include.has("checks")) {
-        const checks = await reads.getChecks(pr.head.sha);
-        data.checks = {
-          ok: checks.ok,
-          total: checks.checks.length,
-          failing: checks.checks
-            .filter(
-              (x) => x.conclusion && !["success", "skipped", "neutral"].includes(x.conclusion),
-            )
-            .map((x) => x.name),
-          pending: checks.checks.filter((x) => x.status !== "completed").map((x) => x.name),
-        };
-      }
+      if (include.has("checks"))
+        data.checks = summarizeChecks((await reads.getChecks(pr.head.sha)).checks);
       if (include.has("files")) {
         const files = await reads.listPullRequestFiles(
           pr.number,

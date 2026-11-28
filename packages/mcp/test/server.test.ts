@@ -231,9 +231,11 @@ describe("reads", () => {
       pageSize: 5,
     });
     expect(r.isError).toBe(false);
-    expect(r.body.data.checks).toEqual({
+    expect(r.body.data.checks).toMatchObject({
       ok: false,
+      state: "failing",
       total: 3,
+      counts: { passed: 1, failing: 1, pending: 1 },
       failing: ["e2e"],
       pending: ["lint"],
     });
