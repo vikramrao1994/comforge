@@ -61,5 +61,8 @@ The MCP server returns every CLI code above plus its own:
 | `config-missing` | the host supplied no trusted configuration | the host provides `trustedConfig` |
 | `config-stale` | the host's configuration snapshot is too old (retryable) | retry; the host refreshes it |
 | `config-mismatch` | the configuration is not the pinned one, or not GitHub's bytes at its revision | the host fixes the pin or the source |
+| `credential-rejected` | a read: GitHub did not accept the server's own read credential (401) | the server owner replaces the credential; no grant changes this |
+| `credential-forbidden` | a read: GitHub refused it for the server's own credential (403), e.g. no `Checks: read` on a private repository | the server owner widens that credential's read permissions; no grant or write authorization changes this |
+| `operation-not-served` | the host does not serve this governed publication for this repository | use a publication `comforge_capabilities` lists for the repository |
 
 More by symptom: [troubleshooting](../troubleshooting/troubleshooting.md).

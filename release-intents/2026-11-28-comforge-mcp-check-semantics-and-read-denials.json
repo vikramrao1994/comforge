@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "comforge_pr checks report an explicit aggregate (state, ok = passing, counts); a read refused for the server's credential is credential-rejected/credential-forbidden, not unauthorized; RemoteGovernanceHost.commands limits a repository's publications.",
+  "breaking": null,
+  "covers": []
+}

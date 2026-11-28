@@ -741,3 +741,183 @@ describe("a GitHub App write credential", () => {
     await s.close();
   });
 });
+
+describe("pull request checks and read denials (0.6.0)", () => {
+  const HEAD = "a".repeat(40);
+  type Run = { name: string; status: string; conclusion: string | null };
+  const withRuns = (r: Repo, runs: Run[]) =>
+    r.gh.readOverrides.push((p) =>
+      p.endsWith(`/commits/${HEAD}/check-runs`)
+        ? Response.json({
+            total_count: runs.length,
+            check_runs: runs.map((x, i) => ({
+              id: i + 1,
+              ...x,
+              head_sha: HEAD,
+              app: { slug: "ci" },
+            })),
+          })
+        : undefined,
+    );
+  const checksOf = async (runs: Run[]) => {
+    const r = repo("widgets", "widgets", TOKEN, WRITE_TOKEN);
+    const pr = r.gh.seedPull("feature/checks", HEAD);
+    withRuns(r, runs);
+    const s = await open(createComforgeMcpServer(options([r], principal(["read-only"]), null)));
+    const out = await s.call("comforge_pr", {
+      repository: "widgets",
+      number: pr.number,
+      include: ["checks"],
+    });
+    await s.close();
+    return out.data.checks;
+  };
+  const run = (name: string, conclusion: string | null, status = "completed"): Run => ({
+    name,
+    status,
+    conclusion,
+  });
+
+  test("all runs passed is ok; skipped and neutral runs never block", async () => {
+    const checks = await checksOf([
+      run("build", "success"),
+      run("docs", "skipped"),
+      run("lint", "neutral"),
+    ]);
+    expect(checks).toMatchObject({
+      ok: true,
+      state: "passing",
+      total: 3,
+      counts: { passed: 1, skipped: 1, neutral: 1, failing: 0, pending: 0 },
+      failing: [],
+      pending: [],
+      sources: ["check-runs"],
+      required: { evaluated: false },
+    });
+  });
+
+  test("no failing and no pending entry is never silently not ok: the state says why", async () => {
+    expect(await checksOf([])).toMatchObject({
+      ok: false,
+      state: "none",
+      total: 0,
+      failing: [],
+      pending: [],
+    });
+    expect(await checksOf([run("docs", "skipped"), run("lint", "neutral")])).toMatchObject({
+      ok: false,
+      state: "neutral",
+      failing: [],
+      pending: [],
+    });
+  });
+
+  test("a failing run outranks a pending one; every blocking conclusion counts as failing", async () => {
+    const blocking = [
+      "failure",
+      "cancelled",
+      "timed_out",
+      "action_required",
+      "stale",
+      "startup_failure",
+      "surprising",
+    ];
+    const checks = await checksOf([
+      run("build", "success"),
+      run("wait", null, "in_progress"),
+      ...blocking.map((c) => run(c, c)),
+    ]);
+    expect(checks).toMatchObject({
+      ok: false,
+      state: "failing",
+      failing: blocking,
+      pending: ["wait"],
+    });
+    expect(await checksOf([run("build", "success"), run("queued", null, "queued")])).toMatchObject({
+      ok: false,
+      state: "pending",
+      pending: ["queued"],
+    });
+  });
+
+  test("a read refused for the server's own credential is a credential code, never a grant refusal", async () => {
+    const r = repo("widgets", "widgets", TOKEN, WRITE_TOKEN);
+    const pr = r.gh.seedPull("feature/denied", HEAD);
+    r.gh.readOverrides.push((p) =>
+      p.endsWith(`/commits/${HEAD}/check-runs`)
+        ? Response.json(
+            { message: "Resource not accessible by personal access token" },
+            { status: 403 },
+          )
+        : undefined,
+    );
+    const s = await open(createComforgeMcpServer(options([r], principal(["read-only"]), null)));
+    const out = await s.call("comforge_pr", {
+      repository: "widgets",
+      number: pr.number,
+      include: ["checks"],
+    });
+    expect(out).toMatchObject({
+      code: "credential-forbidden",
+      exit: 1,
+      retryable: false,
+      detail: { github: "forbidden", status: 403 },
+    });
+    expect(out.hint).toMatch(/read permissions/);
+    expect(out.hint).not.toMatch(/owner grant for this initiative/);
+    // The same pull request without checks still reads: only the denied read fails.
+    expect((await s.call("comforge_pr", { repository: "widgets", number: pr.number })).ok).toBe(
+      true,
+    );
+    await s.close();
+  });
+});
+
+describe("per-repository governed commands (0.6.0)", () => {
+  const onlyReviews = (r: Repo, spy: GovernanceSpy) => {
+    const o = options([r], principal(["publisher", "reviewer"]), spy);
+    const remote = o.remote as RemoteHost;
+    return createComforgeMcpServer({
+      ...o,
+      remote: {
+        ...remote,
+        governance: (binding, p) => ({
+          ...(remote.governance?.(binding, p) as RemoteGovernanceHost),
+          commands: ["publish-review"],
+        }),
+      },
+    });
+  };
+
+  test("capabilities list only the commands the host serves for that repository", async () => {
+    const r = repo("widgets", "widgets", TOKEN, WRITE_TOKEN);
+    const s = await open(onlyReviews(r, spyOf()));
+    const caps = await s.call("comforge_capabilities");
+    expect(caps.data.withoutCheckout.governance).toEqual([
+      { repository: "widgets", tools: ["comforge_publish_review"] },
+    ]);
+    await s.close();
+  });
+
+  test("a command the host does not serve is refused before any read, authorization or write", async () => {
+    const r = repo("widgets", "widgets", TOKEN, WRITE_TOKEN);
+    const spy = spyOf();
+    const s = await open(onlyReviews(r, spy));
+    const before = r.gh.requests.length;
+    const out = await s.call("comforge_publish_specification", {
+      repository: "widgets",
+      ticket: "ACME-9",
+      title: "Not served",
+      body: "## Objective\nNo.",
+      execute: true,
+    });
+    expect(out).toMatchObject({
+      code: "operation-not-served",
+      detail: { repository: "widgets", command: "publish-specification" },
+    });
+    expect(spy.requests).toHaveLength(0);
+    expect(r.gh.requests.length).toBe(before);
+    expect(r.gh.writes()).toHaveLength(0);
+    await s.close();
+  });
+});
