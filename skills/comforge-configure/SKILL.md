@@ -50,4 +50,3 @@ npx comforge doctor --json && npx comforge schema config >/dev/null
 ## References
 
 - [docs/reference/configuration.md](../../docs/reference/configuration.md)
-- [packages/cli/README.md#configuration](../../packages/cli/README.md#configuration)

@@ -50,6 +50,6 @@ Run tests/mcp/twoPackageConsumer.test.ts as a template: a host that depends on e
 
 - [docs/concepts/host-services.md](../../docs/concepts/host-services.md)
 - [docs/concepts/protocols-and-authority.md](../../docs/concepts/protocols-and-authority.md)
-- [packages/mcp/README.md#host-services](../../packages/mcp/README.md#host-services)
+- [docs/reference/mcp.md#host-services-comforgemcphost](../../docs/reference/mcp.md#host-services-comforgemcphost)
 - [docs/recipes/07-embedded-host-services.md](../../docs/recipes/07-embedded-host-services.md)
 - [docs/reference/api.md](../../docs/reference/api.md)

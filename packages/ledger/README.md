@@ -1,207 +1,78 @@
+<p align="center">
+  <a href="https://github.com/vikramrao1994/comforge">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/vikramrao1994/comforge/main/docs/assets/brand/comforge-logo-dark.svg">
+      <img alt="Comforge" src="https://raw.githubusercontent.com/vikramrao1994/comforge/main/docs/assets/brand/comforge-logo-light.svg" height="40">
+    </picture>
+  </a>
+</p>
+
 # @comforge/ledger
 
-Durable operation ledgers for Comforge governance. A ledger keeps one record per operation identity: it is created once, then replaced only as its next version, under a compare-and-swap on the version. That is the store a writer needs to make an external side effect idempotent across retries, restarts and concurrent processes. For example, the `OperationLedger` of `@comforge/github`'s writer is this contract.
+Durable, recoverable operation storage: a write-ahead ledger that keeps one record per operation identity, replaced only as its next version under a compare-and-swap. It makes an external side effect safe to retry across restarts and concurrent processes, with memory, file and SQLite adapters and no dependencies.
 
-- **Two durable adapters.** Immutable files, or one SQLite table on a connection you own.
-- **Also included.** A memory adapter for tests and examples, and shared conformance cases for any adapter.
-- **No dependencies.** No SQLite module is imported, and there is no runtime-specific API.
-- **Typed errors** for invalid records, corruption, foreign namespaces, unsafe paths, unsupported filesystems and I/O.
-- **Retention** that never silently weakens idempotency.
+[![npm](https://img.shields.io/npm/v/@comforge/ledger?label=npm&color=0b7285)](https://www.npmjs.com/package/@comforge/ledger)
+[![CI](https://github.com/vikramrao1994/comforge/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/vikramrao1994/comforge/actions/workflows/ci.yml)
+[![License](https://img.shields.io/npm/l/@comforge/ledger?color=0b7285)](https://github.com/vikramrao1994/comforge/blob/main/LICENSE)
+[![Node](https://img.shields.io/node/v/@comforge/ledger?color=0b7285)](https://github.com/vikramrao1994/comforge/blob/main/docs/reference/compatibility.md)
 
 ## Install
 
 ```sh
-npm install @comforge/ledger
+npm install --save-exact @comforge/ledger      # or: bun add --exact @comforge/ledger
 ```
 
-The package ships compiled JavaScript with declarations and has no dependencies.
-
-## Requirements, support and limits
-
-Read this before choosing an adapter.
-
-**Tested runtimes.** These were tested for 0.1.0: the package's own tests, the packed example consumer (the shared conformance cases on the memory, file and `node:sqlite` adapters) and independent-process contention and kill tests.
-
-| Runtime | macOS (APFS) | Linux (CI, ubuntu-latest) |
-|---|---|---|
-| Node 22 | 22.23.5 | Node 22 job |
-| Node 24 | 24.11.0 | Node 24 job |
-| Node 26 | 26.3.0 | Node 26 job |
-| Bun 1.4 | 1.4.1 | 1.4.1 |
-
-`engines` declares Node `>=22.18` (and Bun `>=1.4`); the tested Node 22 release above is 22.23.5.
-
-**File adapter requirements:**
-
-- a local POSIX filesystem with hard links and `fsync`, such as APFS, ext4, xfs, btrfs or tmpfs;
-- a directory owned by the running user and not writable by others.
-
-**What the file adapter refuses, rather than risking a silent duplicate:**
-
-| Situation | Error |
-|---|---|
-| Windows (`createFileLedger` throws) | `unsupported` |
-| A filesystem without hard links: FAT, exFAT, some network or bind mounts | `unsupported`, from `probe()` or the first write |
-| Symbolic links, directories open to other users | `unsafe-path` |
-
-Call `probe()` when you configure a ledger directory. It checks safety and hard-link support and reports whether directory `fsync` is available.
-
-**Not supported in 0.1.0:**
-
-- Windows;
-- network filesystems (NFS, SMB, cloud-synced folders): these are not validated even when `probe()` passes, because atomic `link` and `fsync` semantics vary;
-- several machines sharing one file ledger.
-
-On any of these, use the SQLite adapter on a local database file instead.
-
-**SQLite drivers:**
-
-| Driver | Status |
-|---|---|
-| `bun:sqlite` | tested |
-| `node:sqlite` (unflagged from Node 22.13; prints an experimental-feature warning on Node 22 and 24) | tested |
-| Anything else with `prepare(sql).get/all/run` and positional parameters (for example `better-sqlite3`) | expected to work through `statementDriver`; **untested** |
-
-**Durability** (file adapter; SQLite is as durable as your connection's journal and synchronous settings):
-
-| Event | Outcome |
-|---|---|
-| Visibility | A version appears complete or not at all |
-| Process crash (including `SIGKILL` mid-write or mid-compaction) | The ledger stays consistent; at most an orphaned temp file remains (tested) |
-| Power loss | Only as durable as the platform's `fsync`. On macOS `fsync` does not flush the drive cache (no `F_FULLFSYNC`), so the last version can be lost and readers see the one before it. Not tested |
-
-**No exactly-once.** A ledger makes a retried side effect safe to reconcile; it does not make the side effect itself atomic.
-
-## The contract
+## Quick example
 
 ```ts
-import type { Ledger, LedgerRecord } from "@comforge/ledger";
-
-interface LedgerRecord { operationId: string; version: number }
-interface Ledger<R extends LedgerRecord> {
-  get(operationId: string): Promise<R | null>;
-  create(record: R): Promise<boolean>;                // version 1, only if no record exists
-  replace(id: string, expectedVersion: number, next: R): Promise<boolean>; // next.version = expected + 1
-}
-```
-
-- A record's first version is always 1, in every adapter.
-- `create` and `replace` return `false` when another writer got there first, and leave the stored record unchanged.
-- They throw `LedgerError` for anything else.
-- Records are JSON. `get` returns a copy.
-- Every adapter accepts a `validate(record)` callback, run on every write and every read. Throw from it to refuse a record.
-
-## File adapter
-
-```ts
+import type { LedgerRecord } from "@comforge/ledger";
 import { createFileLedger } from "@comforge/ledger/file";
 
-const ledger = createFileLedger<MyRecord>({ directory: "/var/lib/acme", namespace: "jobs" });
+interface Job extends LedgerRecord { state: "queued" | "done"; body: string }
+
+const jobs = createFileLedger<Job>({ directory: "/var/lib/acme", namespace: "acme-jobs" });
+
+await jobs.create({ operationId: "j1", version: 1, state: "queued", body: "payload" }); // true
+const won = await jobs.replace("j1", 1, { operationId: "j1", version: 2, state: "done", body: "payload" });   // true
+const lost = await jobs.replace("j1", 1, { operationId: "j1", version: 2, state: "done", body: "other" });    // false: another writer got there first
 ```
 
-**Layout.** Records live at `<directory>/<namespace>/<sha256(operationId)>/<version>.json`, one file per version.
+Based on [examples/ledger-consumer](https://github.com/vikramrao1994/comforge/tree/main/examples/ledger-consumer), which also runs the conformance cases against all three adapters.
 
-**Writes.** Each version is written to a private temp file, flushed with `fsync`, then hard-linked into place. `link` fails when the name exists, so:
+## What it provides
 
-- creating a version is atomic and exclusive across any number of processes;
-- `replace` is the exclusive creation of version n + 1, attempted only while n is the highest version;
-- there are no locks and no timed lock takeover, so a stalled writer can only lose.
-
-**Safety.**
-
-- The namespace and operation directories are created 0700.
-- They are refused as `unsafe-path` when they are symbolic links, owned by another user or open to other users.
-- `directory` itself is refused if it is a link or writable by others.
-- Version files are opened without following links.
-- An operation id never becomes a path.
-
-**Maintenance.**
-
-- `inspect({ classify })` gives a read-only summary: operations by class, empty operations, unreadable operations (named by directory) and orphaned temp files.
-- `sweepOrphans({ olderThanMs })` removes temp files left by writers that died. It removes only files that are old and whose process no longer runs. A writer whose temp file is removed anyway fails with `io` and publishes nothing.
-- `compactHistory(operationId)` rewrites superseded versions in place as small stubs. Their bodies leave the disk but their names stay taken. Each stub is a flushed temp file renamed over the version, so the name is never absent, and an interrupted compaction leaves a version as either its record or its stub. The current version is never rewritten, unreadable old versions are left as they are, and it is safe alongside writers, readers and other compactors (tested across processes). Versions are never deleted: deleting version n + 1 would let a writer that stalled after reading n create it again.
-- `probe()` checks that the namespace is safe and the filesystem supports hard links.
-
-**Durability and platform limits:** see [Requirements, support and limits](#requirements-support-and-limits).
-
-## SQLite adapter
-
-```ts
-import { DatabaseSync } from "node:sqlite"; // or bun:sqlite
-import { createSQLiteLedger, ledgerTableStatements, statementDriver } from "@comforge/ledger/sqlite";
-
-const db = new DatabaseSync("ledger.db");
-for (const sql of ledgerTableStatements({ columns: { state: "TEXT" } })) db.prepare(sql).run(); // your migration
-const ledger = createSQLiteLedger<MyRecord>({
-  driver: statementDriver(db),
-  namespace: "acme/widgets",
-  columns: (r) => ({ state: r.state }), // extra columns kept in step with each version
-});
-```
-
-**Statements.** Each operation is one statement, atomic by SQLite:
-
-- `create` is `INSERT … ON CONFLICT(operation_id) DO NOTHING`;
-- `replace` is `UPDATE … WHERE operation_id = ? AND version = ?`.
-
-**Namespaces.** An operation id is global in a table. An id held by another namespace is refused as `foreign` and never read or written.
-
-**Your own table.** You may keep an existing table with your own name and namespace column:
-
-- `fixedColumns` lists columns a replacement may not change;
-- `encode` sets the stored form, for example a body digest once an operation is finished.
-
-The connection, its pragmas (WAL, `busy_timeout`), transactions and migrations stay yours.
-
-## Retention
-
-| | Keeps the identity | Idempotency |
+| Export | Subpath | Use |
 |---|---|---|
-| File `compactHistory` | yes | unlimited |
-| SQLite `compact({ updatedBefore, limit, select, rewrite })` | yes: same id and version, smaller record | unlimited |
-| SQLite `purge({ updatedBefore, limit, select })` | **no**: the row is deleted | ends at `updatedBefore`: a later `create` of that id succeeds |
+| `Ledger`, `LedgerRecord`, `LedgerError` | `@comforge/ledger` | The contract (`get`, `create`, `replace`) and typed errors: `invalid-record`, `corrupt`, `foreign`, `unsafe-path`, `unsupported`, `io` |
+| `createMemoryLedger` | `@comforge/ledger` | An in-process ledger for tests and examples |
+| `createFileLedger` | `@comforge/ledger/file` | Immutable files, one per version, hard-linked into place; `probe`, `inspect`, `sweepOrphans` and `compactHistory` |
+| `createSQLiteLedger`, `ledgerTableStatements`, `statementDriver` | `@comforge/ledger/sqlite` | One table on a connection you own; `compact` and `purge` for retention |
+| `ledgerConformance` | `@comforge/ledger/conformance` | Shared test cases for any adapter you write |
 
-`select` decides what may change, and only what it accepts is compacted or purged. Select only finished operations: never compact or purge an unresolved one (reserved, sending, indeterminate). Unreadable rows and other namespaces are never touched. A compaction that races a replacement never writes over the newer version: its update is guarded on the version and the stored text, so the newer version is kept, or compacted in its own right.
+`create` and `replace` return `false` when another writer got there first, and leave the stored record unchanged. Every adapter accepts a `validate(record)` callback run on every write and read. Retention never silently weakens idempotency: compaction keeps the identity, while SQLite `purge` ends idempotency for the purged identity.
 
-**With `@comforge/github`.** The writer's records keep everything a replay needs once a finished record's body is replaced by a digest (the `rewrite` the portfolio uses): identity, version, state, fingerprint, descriptor (except the body), authorization reference, marker, outcome with the written resource, failure and timestamps. Tested against the published writer:
-- a compacted record replays with no request, also from a new process and connection;
-- a different request under the same identity is refused as `conflict`.
+## Compatibility
 
-After `purge`, all of that ends for the purged identity: no replay, no conflict detection, and a later request with that id is a new write. Use `purge` only when your operation ids are never reused after the horizon you choose.
+- Node.js 22.18 or later, or Bun 1.4 or later; tested on macOS and Linux.
+- File adapter: a local POSIX filesystem with hard links and `fsync` (APFS, ext4, xfs, btrfs, tmpfs), in a directory owned by the running user and not writable by others.
+- SQLite adapter: `bun:sqlite` and `node:sqlite` are tested; other drivers with `prepare(sql).get/all/run` are expected to work through `statementDriver` but are untested.
 
-## Conformance
+Details: [compatibility](https://github.com/vikramrao1994/comforge/blob/main/docs/reference/compatibility.md).
 
-```ts
-import { ledgerConformance } from "@comforge/ledger/conformance";
+## Limitations
 
-for (const c of ledgerConformance((namespace) => openMyLedger(namespace))) test(c.name, () => c.run());
-```
+- Not supported: Windows, network filesystems (NFS, SMB, cloud-synced folders) and several machines sharing one file ledger. The file adapter refuses Windows and filesystems without hard links; on any of these, use the SQLite adapter on a local database file.
+- Power loss is only as durable as the platform's `fsync`; on macOS the last version can be lost. Crash safety (including `SIGKILL`) is tested.
+- A ledger makes a retried side effect safe to reconcile. It does not make the side effect itself atomic, and it is not an exactly-once guarantee.
 
-The cases run in one process and cover:
+See [adapter requirements, durability and retention](https://github.com/vikramrao1994/comforge/blob/main/docs/concepts/persistence-and-reconciliation.md#comforgeledger-adapter-requirements).
 
-- empty reads and copy isolation;
-- exclusive create and the initial version;
-- the compare-and-swap, stale and skipped versions;
-- concurrent creators and replacers;
-- long chains and namespace isolation.
+## Documentation
 
-Contention between processes, crashes and filesystem faults are adapter-specific, so test them with real processes.
-
-## Errors
-
-`LedgerError.code`:
-
-| Code | Meaning |
-|---|---|
-| `invalid-record` | The request breaks the contract; nothing was stored |
-| `corrupt` | A stored record cannot be read as this operation's |
-| `foreign` | Another namespace holds the id |
-| `unsafe-path` | A link, a wrong file type, or a path open to other users |
-| `unsupported` | For example, no hard links |
-| `io` | Storage failed |
-
-After an `io` error from `create` or `replace`, the write may have taken effect, exactly as after a crash. `detail.published` is `true` when a file version was linked but its directory flush failed.
-
-## License
-
-Apache License, Version 2.0.
+- [Repository README](https://github.com/vikramrao1994/comforge#readme)
+- [Persistence and reconciliation](https://github.com/vikramrao1994/comforge/blob/main/docs/concepts/persistence-and-reconciliation.md), [API](https://github.com/vikramrao1994/comforge/blob/main/docs/reference/api.md)
+- [Recipe: file and SQLite persistence](https://github.com/vikramrao1994/comforge/blob/main/docs/recipes/08-file-and-sqlite-persistence.md)
+- [Architecture](https://github.com/vikramrao1994/comforge/blob/main/docs/concepts/architecture.md)
+- [Runnable example](https://github.com/vikramrao1994/comforge/tree/main/examples/ledger-consumer)
+- [Changelog](https://github.com/vikramrao1994/comforge/blob/main/packages/ledger/CHANGELOG.md)
+- [License (Apache-2.0)](https://github.com/vikramrao1994/comforge/blob/main/LICENSE)
