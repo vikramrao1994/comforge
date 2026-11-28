@@ -646,3 +646,98 @@ describe("checkout-free advisory reviews", () => {
     await s.close();
   });
 });
+
+describe("a GitHub App write credential", () => {
+  const HEAD = "c".repeat(40);
+  const APP = "acme-reviewer[bot]";
+  const input = (prNumber: number) => ({
+    prNumber,
+    expectedHeadSha: HEAD,
+    ticketId: "ACME-1",
+    verdict: "revision_recommended",
+    summary: "One thing to fix.",
+    findings: [{ id: "H1", severity: "high", title: "A defect", evidence: "See file a.txt." }],
+    idempotencyKey: "review-key-app-000001",
+  });
+  // An installation token cannot read GET /user.
+  const appRepo = () => {
+    const r = repo("widgets", "widgets", TOKEN, WRITE_TOKEN);
+    r.gh.readOverrides.length = 0;
+    r.gh.readOverrides.push((p) =>
+      p === "/user"
+        ? Response.json({ message: "Resource not accessible by integration" }, { status: 403 })
+        : undefined,
+    );
+    return r;
+  };
+  const server = (r: Repo, identity?: string) => {
+    const o = options([r], principal(["reviewer"]), spyOf());
+    const remote = o.remote as RemoteHost;
+    return createComforgeMcpServer({
+      ...o,
+      remote: {
+        ...remote,
+        governance: (binding, p) => {
+          const g = remote.governance?.(binding, p) as RemoteGovernanceHost;
+          return { ...g, ...(identity ? { identity: () => identity } : {}) };
+        },
+      },
+    });
+  };
+
+  test("without the host's identity the write is refused before anything is sent", async () => {
+    const r = appRepo();
+    const pr = r.gh.seedPull("feature/app", HEAD, { author: "alice" });
+    const s = await open(server(r));
+    const out = await s.call("comforge_publish_review", {
+      repository: "widgets",
+      review: input(pr.number),
+      execute: true,
+    });
+    expect(out.ok).not.toBe(true);
+    expect(r.gh.writes()).toHaveLength(0);
+    await s.close();
+  });
+
+  test("with it the review is published as the App, replays, and its own pull request is refused", async () => {
+    const r = appRepo();
+    const pr = r.gh.seedPull("feature/app", HEAD, { author: "alice" });
+    const s = await open(server(r, APP));
+    const first = await s.call("comforge_publish_review", {
+      repository: "widgets",
+      review: input(pr.number),
+      execute: true,
+    });
+    expect(first.ok).toBe(true);
+    expect(first.data.action).toBe("created");
+    expect(r.gh.writes()).toHaveLength(1);
+    const again = await s.call("comforge_publish_review", {
+      repository: "widgets",
+      review: input(pr.number),
+      execute: true,
+    });
+    expect(again.data.action).toBe("replayed");
+    const own = r.gh.seedPull("feature/own", HEAD, { author: APP });
+    const refused = await s.call("comforge_publish_review", {
+      repository: "widgets",
+      review: { ...input(own.number), idempotencyKey: "review-key-app-000002" },
+      execute: true,
+    });
+    expect(refused.code).toBe("policy-denied");
+    await s.close();
+  });
+
+  test("a malformed identity is refused", async () => {
+    const r = appRepo();
+    const pr = r.gh.seedPull("feature/app", HEAD, { author: "alice" });
+    const s = await open(server(r, "not a login"));
+    const out = await s.call("comforge_publish_review", {
+      repository: "widgets",
+      review: input(pr.number),
+      execute: true,
+    });
+    expect(out.code).toBe("config-invalid");
+    expect(r.gh.writes()).toHaveLength(0);
+    await s.close();
+  });
+});

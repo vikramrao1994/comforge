@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "createRemoteGovernance and createGitHubAccess take the login the write credential acts as (identity, login), so a GitHub App installation token, which cannot read GET /user, can publish; a malformed login is refused.",
+  "breaking": null,
+  "covers": []
+}

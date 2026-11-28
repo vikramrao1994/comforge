@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "RemoteGovernanceHost.identity(command) names the login each write credential acts as, for GitHub App installation tokens that cannot read GET /user. Needs the next @comforge/cli minor.",
+  "breaking": null,
+  "covers": []
+}
