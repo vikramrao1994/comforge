@@ -7,7 +7,7 @@ One ticket from a published specification to a pull request with a completion re
 ![First governed workflow: terminal recording](../assets/demos/first-workflow.svg)
 
 **What this is.** The real output of an executable scenario, recorded with the published
-`@comforge/cli` 0.6.0, `@comforge/mcp` 0.4.0 against a **local synthetic GitHub** (127.0.0.1, repository `acme/widgets`):
+`@comforge/cli` 0.7.0, `@comforge/mcp` 0.5.0 against a **local synthetic GitHub** (127.0.0.1, repository `acme/widgets`):
 nothing reaches github.com, and the credential is synthetic. Setup steps that are not shown
 (writing the configuration and completion result) follow
 [the recipe](../recipes/01-first-governed-initiative.md). Normalized: the temporary directory is shown as `~`,

@@ -3,7 +3,7 @@
   "private": true,
   "description": "The published Comforge release that governs this repository's engineering workflow. Pinned exactly and installed from npm in isolation from the workspace candidates; upgraded only by a reviewed change to this file and its lockfile.",
   "dependencies": {
-    "@comforge/cli": "0.6.0",
-    "@comforge/mcp": "0.4.0"
+    "@comforge/cli": "0.7.0",
+    "@comforge/mcp": "0.5.0"
   }
 }

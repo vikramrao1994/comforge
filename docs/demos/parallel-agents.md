@@ -7,7 +7,7 @@ Two agents work on two tickets at once, each in its own checkout, with no shared
 ![Parallel agent development: terminal recording](../assets/demos/parallel-agents.svg)
 
 **What this is.** The real output of an executable scenario, recorded with the published
-`@comforge/cli` 0.6.0, `@comforge/mcp` 0.4.0 against a **local synthetic GitHub** (127.0.0.1, repository `acme/widgets`):
+`@comforge/cli` 0.7.0, `@comforge/mcp` 0.5.0 against a **local synthetic GitHub** (127.0.0.1, repository `acme/widgets`):
 nothing reaches github.com, and the credential is synthetic. Setup steps that are not shown
 (writing the configuration and completion result) follow
 [the recipe](../recipes/03-parallel-initiatives.md). Normalized: the temporary directory is shown as `~`,

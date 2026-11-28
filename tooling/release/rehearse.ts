@@ -278,6 +278,16 @@ async function rehearsePackage(
     result.pass = true;
     return result;
   }
+  // Released, recorded and adopted, with nothing shipped changed since: nothing to rehearse either.
+  if (status === "no-release") {
+    steps.push({
+      step: "version commit (local branch only, nothing pushed)",
+      pass: true,
+      detail: "nothing shipped differs from the last release: nothing to rehearse",
+    });
+    result.pass = true;
+    return result;
+  }
   if (status === "release-ready") {
     steps.push({
       step: "version commit (local branch only, nothing pushed)",

@@ -1,0 +1,53 @@
+{
+  "schema": "comforge-npm-pin/v1",
+  "package": "@comforge/mcp",
+  "version": "0.5.0",
+  "registry": "https://registry.npmjs.org",
+  "integrity": "sha512-9vj8ttU0S7CkuqE5PJ3lfvVL0WyxFSWBFbsG7jq+v/1H+MK+NzYNk0dQHQ8iLfiVDBpWcEPj0PZ3FJZ/JPUcrA==",
+  "provenance": "verified",
+  "gitRelease": {
+    "repository": "vikramrao1994/comforge",
+    "commit": "62adb0aeaef36d55213ceb3ff551e30857dfc6c4",
+    "tag": "mcp/v0.5.0",
+    "releaseRecordSha256": "bac6ef338c742e0941ffd41c70c3c35c6c2e88bff40bc16c32d6f0f5ec7b61fb",
+    "source": {
+      "commit": "27d2c03e6939546a90c82f0b3511632de77ce07c",
+      "packageTree": "12cf851423c05ac54b1c10150f8220c5ab6898c2",
+      "exampleTree": "ff16d1ea3dc9737de0b872a0041039020d9f9c60"
+    }
+  },
+  "manifest": {
+    "transforms": [
+      "remove private"
+    ],
+    "sha256": "31c6e6c151551e5779c8726d66d034713877c358d47bac51e609edf0ae502d9b"
+  },
+  "files": {
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "README.md": "37eef18fa0008a70e2412eed44b005e211ced3bdc0f05fd04b7e09f485cc21fa",
+    "dist/bin.d.ts": "43e818adf60173644896298637f47b01d5819b17eda46eaa32d0c7d64724d012",
+    "dist/bin.js": "321267a3af07921ca43605725f968823129e9c209fabdce51346e5563ec3769e",
+    "dist/contracts.d.ts": "16805d6766dbc431db21f62f94846fecc830374514aea292b3a0e2fc8b464acc",
+    "dist/contracts.js": "6f6240faf3b27042ac4d51f6190af4ba5e9f28ba2a19a9d81e5bf0e67473e29c",
+    "dist/grants.d.ts": "5894731538b51646ea8993b99664b9552d3ad3afec505b3e7faf66f2f1df98e6",
+    "dist/grants.js": "43c5faec7664be1e6e56652f08fb66b7af4c5a239484514740f516e27c77720b",
+    "dist/host.d.ts": "7c993c4b59416faf9515b6c4beabdd3b607b7cdf376aca607440c4497f87d001",
+    "dist/host.js": "1d498f4f90f8f2a88e0907d2ba3e8e7bb890e00510b5e747eaa3594522411e81",
+    "dist/hostServices.d.ts": "943490c542ec660a5118873b1c2353a15d518d9ab1277eebe6522a53e798a44f",
+    "dist/hostServices.js": "2a1029cdbf315eb03b644ece9085e1c6d33407a89e9e45d8082739fd76be71b4",
+    "dist/http.d.ts": "55ffd0cf38269813ba0ee91adc5754b51aba04e40e797e3562eb1d3aa789594a",
+    "dist/http.js": "54853e8c41ac8a2c3bbbdb005ea0cb4442cdc8e81a5b443cff4fce0f93d2c926",
+    "dist/index.d.ts": "f0296a4ffded39735fc31606edf1e8936b4c26a09f388a09db75b0fad13dbd20",
+    "dist/index.js": "a529814fc19bd3fe7a256ee860d3cccb9fa88611ccc7e496579a24c5215ca237",
+    "dist/results.d.ts": "8fe239fcb1ba3a2cdda97c357f358ec36b35780016be69e4c389062b0495b9b6",
+    "dist/results.js": "7e0195a84559d9c91cafdd8405d5a3ecf8d4a84e7337c61a5f6d834a632137cb",
+    "dist/server.d.ts": "fbc3d4aaf83da114ea2e5920d8043f2a9235f852bf79ea925b0698e9ceab1f6d",
+    "dist/server.js": "b5280e800c128809416e7a38437ffe4e29c25511ee8371caef6aa2c0844cb692",
+    "dist/stdio.d.ts": "e60c8817bf5e12bdf9321689cfd3918cc9940036be0f9f105b486195aa6d6af3",
+    "dist/stdio.js": "ef53cc77976966a2cec252d88c6884f42d1c550c14cd3ad183a715d630d6bbf4",
+    "dist/tools.d.ts": "618dd1f0c6b00665fdff86d49e6b559f1277e624621af1312bb2ea157db743be",
+    "dist/tools.js": "15a9dd1889110ddd0048153451555851a5bcfe44de9646f1c51752d682be5d2c",
+    "llms.txt": "cd9c1833865030fc985416d7551d6948ba39373c605b8dc487ac9b5094620022",
+    "package.json": "31c6e6c151551e5779c8726d66d034713877c358d47bac51e609edf0ae502d9b"
+  }
+}
