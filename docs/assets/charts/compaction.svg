@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="466" viewBox="0 0 760 466" role="img" aria-labelledby="t s"><title id="t">Compact output for the same content</title><desc id="s">Tokens before and after the compact flags (equivalent content). Lower is smaller. MCP discovery, 17 tools: tools/list 11,019, --compact-discovery 6,759; MCP discovery, 10 tools: tools/list 6,110, --compact-discovery 3,332; CLI, one initiative's full record: --json 1,543, --json --compact 1,230; CLI, every initiative's status: --json 3,701, --json --compact 3,120.</desc>
+<style>
+.bg{fill:#ffffff;stroke:#d0d7de}.title{fill:#0f1720;font:600 16px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.sub,.note{fill:#4b5563;font:12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.group{fill:#0f1720;font:600 13px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.label{fill:#0f1720;font:12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.value{fill:#0f1720;font:600 12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.baseline{fill:#8c959f}.comforge{fill:#0b7285}.larger{fill:#b45309}
+@media (prefers-color-scheme: dark){.bg{fill:#0d1117;stroke:#30363d}.title,.group,.label,.value{fill:#e6edf3}.sub,.note{fill:#9aa4b2}.baseline{fill:#6e7681}.comforge{fill:#3bc9db}.larger{fill:#f59e0b}}
+</style>
+<rect class="bg" x="0.5" y="0.5" width="759" height="465" rx="8"/>
+<text x="24" y="30" class="title">Compact output for the same content</text>
+<text x="24" y="50" class="sub">Tokens before and after the compact flags (equivalent content). Lower is smaller.</text>
+<text x="24" y="74" class="group">MCP discovery, 17 tools</text>
+<text x="198" y="97" class="label" text-anchor="end">tools/list</text>
+<rect x="206" y="84" width="460" height="18" rx="3" class="baseline"><title>MCP discovery, 17 tools — tools/list: 11,019 tokens</title></rect>
+<text x="672" y="97" class="value">11,019</text>
+<text x="198" y="121" class="label" text-anchor="end">--compact-discovery</text>
+<rect x="206" y="108" width="282" height="18" rx="3" class="comforge"><title>MCP discovery, 17 tools — --compact-discovery: 6,759 tokens</title></rect>
+<text x="494" y="121" class="value">6,759</text>
+<text x="24" y="154" class="group">MCP discovery, 10 tools</text>
+<text x="198" y="177" class="label" text-anchor="end">tools/list</text>
+<rect x="206" y="164" width="255" height="18" rx="3" class="baseline"><title>MCP discovery, 10 tools — tools/list: 6,110 tokens</title></rect>
+<text x="467" y="177" class="value">6,110</text>
+<text x="198" y="201" class="label" text-anchor="end">--compact-discovery</text>
+<rect x="206" y="188" width="139" height="18" rx="3" class="comforge"><title>MCP discovery, 10 tools — --compact-discovery: 3,332 tokens</title></rect>
+<text x="351" y="201" class="value">3,332</text>
+<text x="24" y="234" class="group">CLI, one initiative's full record</text>
+<text x="198" y="257" class="label" text-anchor="end">--json</text>
+<rect x="206" y="244" width="64" height="18" rx="3" class="baseline"><title>CLI, one initiative's full record — --json: 1,543 tokens</title></rect>
+<text x="276" y="257" class="value">1,543</text>
+<text x="198" y="281" class="label" text-anchor="end">--json --compact</text>
+<rect x="206" y="268" width="51" height="18" rx="3" class="comforge"><title>CLI, one initiative's full record — --json --compact: 1,230 tokens</title></rect>
+<text x="263" y="281" class="value">1,230</text>
+<text x="24" y="314" class="group">CLI, every initiative's status</text>
+<text x="198" y="337" class="label" text-anchor="end">--json</text>
+<rect x="206" y="324" width="155" height="18" rx="3" class="baseline"><title>CLI, every initiative's status — --json: 3,701 tokens</title></rect>
+<text x="367" y="337" class="value">3,701</text>
+<text x="198" y="361" class="label" text-anchor="end">--json --compact</text>
+<rect x="206" y="348" width="130" height="18" rx="3" class="comforge"><title>CLI, every initiative's status — --json --compact: 3,120 tokens</title></rect>
+<text x="342" y="361" class="value">3,120</text>
+<rect x="24" y="390" width="12" height="12" rx="2" class="baseline"/>
+<text x="42" y="400" class="note">baseline</text>
+<rect x="106.8" y="390" width="12" height="12" rx="2" class="comforge"/>
+<text x="124.8" y="400" class="note">Comforge (smaller)</text>
+<text x="24" y="424" class="note">Historical: release candidates before the current releases; Anthropic token counts per text.</text>
+<text x="24" y="441" class="note">Component-level only — not an end-to-end agent saving. Method and limits: docs/benchmarks/README.md</text>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="470" viewBox="0 0 760 470" role="img" aria-labelledby="t d"><title id="t">Comforge architecture</title><desc id="d">Three interfaces — the comforge CLI, the comforge-mcp server and embedded services — call one set of lifecycle services built on @comforge/core (contracts and authorization, no I/O), @comforge/github (governed GitHub transport) and @comforge/ledger (durable operation records). They act on Git checkouts, GitHub and local state, and never merge, approve, deploy or close.</desc>
+<style>
+.bg{fill:#ffffff;stroke:#d0d7de}.box{stroke-width:1.2}.plain{fill:#f6f8fa;stroke:#d0d7de}.accent{fill:#0b7285;stroke:#0b7285}
+.outer{fill:none;stroke:#8c959f;stroke-dasharray:4 4}.people{fill:#fff8e6;stroke:#d4a72c}
+.t-title{fill:#0f1720;font:600 13px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.t-accent{fill:#ffffff;font:600 13px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.t-sub{fill:#4b5563;font:11.5px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.label{fill:#4b5563;font:600 11px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;letter-spacing:.04em}.edge{stroke:#6e7781;stroke-width:1.4;fill:none}.dashed{stroke-dasharray:5 4}.head{fill:#6e7781}
+.t-on{fill:#e6fcff;font:11.5px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+@media (prefers-color-scheme: dark){.bg{fill:#0d1117;stroke:#30363d}.plain{fill:#161b22;stroke:#30363d}.accent{fill:#3bc9db;stroke:#3bc9db}.outer{stroke:#6e7681}.people{fill:#2b2111;stroke:#9e6a03}
+.t-title{fill:#e6edf3}.t-accent{fill:#0d1117}.t-sub{fill:#9aa4b2}.label{fill:#9aa4b2}.edge{stroke:#8b949e}.head{fill:#8b949e}.t-on{fill:#0d1117}}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker></defs>
+<rect class="bg" x="0.5" y="0.5" width="759" height="469" rx="10"/>
+<text x="24" y="30" class="label">WHO CALLS IT</text>
+<rect x="24" y="40" width="224" height="46" rx="8" class="box people"/>
+<text x="136" y="68" text-anchor="middle" class="t-title">Agents with a shell, scripts, CI</text>
+<rect x="268" y="40" width="224" height="46" rx="8" class="box people"/>
+<text x="380" y="57.5" text-anchor="middle" class="t-title">MCP clients</text>
+<text x="380" y="73.5" text-anchor="middle" class="t-sub">Claude Code · Codex · Cursor · any client</text>
+<rect x="512" y="40" width="224" height="46" rx="8" class="box people"/>
+<text x="624" y="68" text-anchor="middle" class="t-title">Your own server or supervisor</text>
+<path d="M136 86 L136 112" class="edge" marker-end="url(#arrow)"/>
+<path d="M380 86 L380 112" class="edge" marker-end="url(#arrow)"/>
+<path d="M624 86 L624 112" class="edge" marker-end="url(#arrow)"/>
+<text x="24" y="108" class="label">INTERFACES</text>
+<rect x="24" y="114" width="224" height="52" rx="8" class="box accent"/>
+<text x="136" y="134.5" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">comforge</text>
+<text x="136" y="150.5" text-anchor="middle" class="t-on">@comforge/cli</text>
+<rect x="268" y="114" width="224" height="52" rx="8" class="box accent"/>
+<text x="380" y="134.5" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">comforge-mcp</text>
+<text x="380" y="150.5" text-anchor="middle" class="t-on">@comforge/mcp · stdio, HTTP</text>
+<rect x="512" y="114" width="224" height="52" rx="8" class="box accent"/>
+<text x="624" y="134.5" text-anchor="middle" class="t-accent">Embedded services</text>
+<text x="624" y="150.5" text-anchor="middle" class="t-on">@comforge/cli · @comforge/mcp/host</text>
+<path d="M136 166 L136 196" class="edge" marker-end="url(#arrow)"/>
+<path d="M380 166 L380 196" class="edge" marker-end="url(#arrow)"/>
+<path d="M624 166 L624 196" class="edge" marker-end="url(#arrow)"/>
+<rect x="24" y="198" width="712" height="52" rx="8" class="box plain"/>
+<text x="380" y="218.5" text-anchor="middle" class="t-title">Lifecycle services — one implementation, one governance</text>
+<text x="380" y="234.5" text-anchor="middle" class="t-sub">specification · start · verify · publish · complete · recover · cleanup</text>
+<path d="M136 250 L136 286" class="edge" marker-end="url(#arrow)"/>
+<path d="M380 250 L380 286" class="edge" marker-end="url(#arrow)"/>
+<path d="M624 250 L624 286" class="edge" marker-end="url(#arrow)"/>
+<text x="24" y="280" class="label">LIBRARIES</text>
+<rect x="24" y="288" width="224" height="56" rx="8" class="box plain"/>
+<text x="136" y="303" text-anchor="middle" class="t-title" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">@comforge/core</text>
+<text x="136" y="319" text-anchor="middle" class="t-sub">contracts and authorization</text>
+<text x="136" y="334" text-anchor="middle" class="t-sub">pure: no I/O</text>
+<rect x="268" y="288" width="224" height="56" rx="8" class="box plain"/>
+<text x="380" y="303" text-anchor="middle" class="t-title" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">@comforge/github</text>
+<text x="380" y="319" text-anchor="middle" class="t-sub">typed, governed GitHub operations</text>
+<text x="380" y="334" text-anchor="middle" class="t-sub">caller-authorized transport</text>
+<rect x="512" y="288" width="224" height="56" rx="8" class="box plain"/>
+<text x="624" y="303" text-anchor="middle" class="t-title" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">@comforge/ledger</text>
+<text x="624" y="319" text-anchor="middle" class="t-sub">durable operation records</text>
+<text x="624" y="334" text-anchor="middle" class="t-sub">memory · file · SQLite</text>
+<path d="M380 344 L380 378" class="edge" marker-end="url(#arrow)"/>
+<path d="M624 344 L624 378" class="edge" marker-end="url(#arrow)"/>
+<text x="24" y="374" class="label">WHAT IT TOUCHES</text>
+<rect x="24" y="380" width="224" height="46" rx="8" class="box outer"/>
+<text x="136" y="397.5" text-anchor="middle" class="t-title">Git</text>
+<text x="136" y="413.5" text-anchor="middle" class="t-sub">one isolated checkout per ticket</text>
+<rect x="268" y="380" width="224" height="46" rx="8" class="box outer"/>
+<text x="380" y="397.5" text-anchor="middle" class="t-title">GitHub</text>
+<text x="380" y="413.5" text-anchor="middle" class="t-sub">issues · pull requests · comments</text>
+<rect x="512" y="380" width="224" height="46" rx="8" class="box outer"/>
+<text x="624" y="397.5" text-anchor="middle" class="t-title">Local state</text>
+<text x="624" y="413.5" text-anchor="middle" class="t-sub">write-ahead ledger, initiative records</text>
+<text x="24" y="452" class="t-sub">Never merges, approves, deploys or closes an issue: every approval stays with people.</text>
+</svg>

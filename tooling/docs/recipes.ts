@@ -133,7 +133,11 @@ function at(value: unknown, dotted: string): unknown {
 }
 
 /** The synthetic world, its fixture hooks and the bash state the blocks share. */
-export async function createWorld(kind: Recipe["world"], runtime: string) {
+export async function createWorld(
+  kind: Recipe["world"],
+  runtime: string,
+  options: { env?: Record<string, string>; port?: number } = {},
+) {
   const root = mkdtempSync(path.join(tmpdir(), "comforge-recipe-"));
   const bin = path.join(root, ".bin");
   const home = path.join(root, ".home");
@@ -188,7 +192,9 @@ export async function createWorld(kind: Recipe["world"], runtime: string) {
   });
   const server = Bun.serve({
     hostname: "127.0.0.1",
-    port: 0,
+    // A fixed port makes the configuration (which names the origin) and so every commit SHA
+    // reproducible; the demos use one. Recipes take any free port.
+    port: options.port ?? 0,
     async fetch(req) {
       const url = new URL(req.url);
       const body = req.method === "GET" ? undefined : await req.text();
@@ -216,6 +222,7 @@ export async function createWorld(kind: Recipe["world"], runtime: string) {
     WORK: work,
     COMFORGE_API_ORIGIN: `http://127.0.0.1:${server.port}`,
     ACME_TOKEN: TOKEN,
+    ...options.env,
   };
   let cwd = kind === "repository" ? REPO_ROOT : root;
   if (kind === "github") {

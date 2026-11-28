@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="306" viewBox="0 0 760 306" role="img" aria-labelledby="t s"><title id="t">Where MCP costs more than the CLI</title><desc id="s">Equivalent initiative state: MCP's envelope and per-call split add tokens. Lower is smaller. Every initiative's status: CLI --json (one call) 3,701, MCP tool results 4,224; One full record: CLI --json (one call) 1,543, MCP tool results 1,831.</desc>
+<style>
+.bg{fill:#ffffff;stroke:#d0d7de}.title{fill:#0f1720;font:600 16px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.sub,.note{fill:#4b5563;font:12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.group{fill:#0f1720;font:600 13px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.label{fill:#0f1720;font:12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.value{fill:#0f1720;font:600 12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.baseline{fill:#8c959f}.comforge{fill:#0b7285}.larger{fill:#b45309}
+@media (prefers-color-scheme: dark){.bg{fill:#0d1117;stroke:#30363d}.title,.group,.label,.value{fill:#e6edf3}.sub,.note{fill:#9aa4b2}.baseline{fill:#6e7681}.comforge{fill:#3bc9db}.larger{fill:#f59e0b}}
+</style>
+<rect class="bg" x="0.5" y="0.5" width="759" height="305" rx="8"/>
+<text x="24" y="30" class="title">Where MCP costs more than the CLI</text>
+<text x="24" y="50" class="sub">Equivalent initiative state: MCP's envelope and per-call split add tokens. Lower is smaller.</text>
+<text x="24" y="74" class="group">Every initiative's status</text>
+<text x="198" y="97" class="label" text-anchor="end">CLI --json (one call)</text>
+<rect x="206" y="84" width="403" height="18" rx="3" class="baseline"><title>Every initiative's status — CLI --json (one call): 3,701 tokens</title></rect>
+<text x="615" y="97" class="value">3,701</text>
+<text x="198" y="121" class="label" text-anchor="end">MCP tool results</text>
+<rect x="206" y="108" width="460" height="18" rx="3" class="larger"><title>Every initiative's status — MCP tool results: 4,224 tokens</title></rect>
+<text x="672" y="121" class="value">4,224</text>
+<text x="24" y="154" class="group">One full record</text>
+<text x="198" y="177" class="label" text-anchor="end">CLI --json (one call)</text>
+<rect x="206" y="164" width="168" height="18" rx="3" class="baseline"><title>One full record — CLI --json (one call): 1,543 tokens</title></rect>
+<text x="380" y="177" class="value">1,543</text>
+<text x="198" y="201" class="label" text-anchor="end">MCP tool results</text>
+<rect x="206" y="188" width="199" height="18" rx="3" class="larger"><title>One full record — MCP tool results: 1,831 tokens</title></rect>
+<text x="411" y="201" class="value">1,831</text>
+<rect x="24" y="230" width="12" height="12" rx="2" class="baseline"/>
+<text x="42" y="240" class="note">baseline</text>
+<rect x="106.8" y="230" width="12" height="12" rx="2" class="larger"/>
+<text x="124.8" y="240" class="note">Comforge larger (counterexample)</text>
+<text x="24" y="264" class="note">Historical: release candidates before the current releases; Anthropic token counts per text.</text>
+<text x="24" y="281" class="note">Component-level only — not an end-to-end agent saving. Method and limits: docs/benchmarks/README.md</text>
+</svg>

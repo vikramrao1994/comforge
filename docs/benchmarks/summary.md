@@ -28,9 +28,22 @@ Where MCP costs more: equivalent content through MCP is larger than the CLI's co
 and an MCP session pays its `tools/list` once per session; a CLI agent reads help only when
 it needs it.
 
+![Bar chart: characters before and after compact output with the current releases, and the case where MCP is larger than the CLI's compact JSON](../assets/charts/current.svg)
+
 ## Historical (earlier versions; not attributed to the current releases)
 
 Measured before this repository existed, in the development repository of the first MCP release (an MCP context-measurement study, its revision 2) and its adoption study. Only numbers, versions and methods are reproduced here; the original evidence stays in that repository. Versions: release candidates of @comforge/mcp before 0.1.0 and of @comforge/cli between 0.2.0 and 0.4.0; not the current releases. Tokens: Anthropic messages.countTokens (model claude-opus-5-5), minus an 8-token framing; per-text counts, not a model's full context.
+
+These are distinct component-level baselines, each against its own comparison — not one
+end-to-end agent saving. *Selective retrieval* returns the fields an agent needs instead of
+GitHub's full REST payload; *compact output* encodes the same content in fewer tokens; a
+*summary* carries less information and is not compared with equivalent content.
+
+![Bar chart: tokens for listing pull requests and an issue's comments — raw GitHub REST JSON, CLI and MCP](../assets/charts/retrieval.svg)
+
+![Bar chart: tokens before and after compact discovery and compact CLI output](../assets/charts/compaction.svg)
+
+![Bar chart: equivalent initiative state, where MCP tool results are larger than the CLI's JSON](../assets/charts/mcp-larger.svg)
 
 | Result | Kind | Claim | Reproduced here |
 |---|---|---|---|

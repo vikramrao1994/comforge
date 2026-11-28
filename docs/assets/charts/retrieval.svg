@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="371" viewBox="0 0 760 371" role="img" aria-labelledby="t s"><title id="t">Selective retrieval vs raw GitHub JSON</title><desc id="s">Tokens an agent reads for the same information (equivalent content). Lower is smaller. List pull requests: raw GitHub REST JSON 2,587, CLI --json 1,617, MCP tool result 1,191; An issue's comments: raw GitHub REST JSON 1,431, CLI --json 1,264, MCP tool result 969.</desc>
+<style>
+.bg{fill:#ffffff;stroke:#d0d7de}.title{fill:#0f1720;font:600 16px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.sub,.note{fill:#4b5563;font:12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.group{fill:#0f1720;font:600 13px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.label{fill:#0f1720;font:12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.value{fill:#0f1720;font:600 12px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.baseline{fill:#8c959f}.comforge{fill:#0b7285}.larger{fill:#b45309}
+@media (prefers-color-scheme: dark){.bg{fill:#0d1117;stroke:#30363d}.title,.group,.label,.value{fill:#e6edf3}.sub,.note{fill:#9aa4b2}.baseline{fill:#6e7681}.comforge{fill:#3bc9db}.larger{fill:#f59e0b}}
+</style>
+<rect class="bg" x="0.5" y="0.5" width="759" height="370" rx="8"/>
+<text x="24" y="30" class="title">Selective retrieval vs raw GitHub JSON</text>
+<text x="24" y="50" class="sub">Tokens an agent reads for the same information (equivalent content). Lower is smaller.</text>
+<text x="24" y="74" class="group">List pull requests</text>
+<text x="198" y="97" class="label" text-anchor="end">raw GitHub REST JSON</text>
+<rect x="206" y="84" width="460" height="18" rx="3" class="baseline"><title>List pull requests — raw GitHub REST JSON: 2,587 tokens</title></rect>
+<text x="672" y="97" class="value">2,587</text>
+<text x="198" y="121" class="label" text-anchor="end">CLI --json</text>
+<rect x="206" y="108" width="288" height="18" rx="3" class="comforge"><title>List pull requests — CLI --json: 1,617 tokens</title></rect>
+<text x="500" y="121" class="value">1,617</text>
+<text x="198" y="145" class="label" text-anchor="end">MCP tool result</text>
+<rect x="206" y="132" width="212" height="18" rx="3" class="comforge"><title>List pull requests — MCP tool result: 1,191 tokens</title></rect>
+<text x="424" y="145" class="value">1,191</text>
+<text x="24" y="178" class="group">An issue's comments</text>
+<text x="198" y="201" class="label" text-anchor="end">raw GitHub REST JSON</text>
+<rect x="206" y="188" width="254" height="18" rx="3" class="baseline"><title>An issue's comments — raw GitHub REST JSON: 1,431 tokens</title></rect>
+<text x="466" y="201" class="value">1,431</text>
+<text x="198" y="225" class="label" text-anchor="end">CLI --json</text>
+<rect x="206" y="212" width="225" height="18" rx="3" class="comforge"><title>An issue's comments — CLI --json: 1,264 tokens</title></rect>
+<text x="437" y="225" class="value">1,264</text>
+<text x="198" y="249" class="label" text-anchor="end">MCP tool result</text>
+<rect x="206" y="236" width="172" height="18" rx="3" class="comforge"><title>An issue's comments — MCP tool result: 969 tokens</title></rect>
+<text x="384" y="249" class="value">969</text>
+<rect x="24" y="278" width="12" height="12" rx="2" class="baseline"/>
+<text x="42" y="288" class="note">baseline</text>
+<rect x="106.8" y="278" width="12" height="12" rx="2" class="comforge"/>
+<text x="124.8" y="288" class="note">Comforge (smaller)</text>
+<text x="24" y="312" class="note">Selective retrieval: the same fields, without the REST envelope. Not reproducible credential-free (needs live GitHub).</text>
+<text x="24" y="329" class="note">Historical: release candidates before the current releases; Anthropic token counts per text.</text>
+<text x="24" y="346" class="note">Component-level only — not an end-to-end agent saving. Method and limits: docs/benchmarks/README.md</text>
+</svg>
