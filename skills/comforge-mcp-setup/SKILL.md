@@ -21,7 +21,7 @@ Connect an agent client to the Comforge MCP server with the least-privileged too
 ```sh
 // .mcp.json (or the client's equivalent)
 { "mcpServers": { "comforge": { "command": "npx",
-  "args": ["-y", "@comforge/mcp@0.3.0", "--repo", ".", "--profile", "read-only"] } } }
+  "args": ["-y", "@comforge/mcp@0.3.0", "--repository", ".", "--profile", "read-only"] } } }
 # then call the comforge_capabilities tool
 ```
 
@@ -49,7 +49,7 @@ Call comforge_capabilities: the listed profiles and tools match what you configu
 ## References
 
 - [docs/getting-started/quickstart-mcp.md](../../docs/getting-started/quickstart-mcp.md)
-- [packages/mcp/README.md#tools](../../packages/mcp/README.md#tools)
+- [docs/reference/mcp.md#tools](../../docs/reference/mcp.md#tools)
 - [docs/recipes/02-mcp-for-coding-agents.md](../../docs/recipes/02-mcp-for-coding-agents.md)
 - [docs/integrations/README.md](../../docs/integrations/README.md)
 - [docs/reference/mcp.md](../../docs/reference/mcp.md)
