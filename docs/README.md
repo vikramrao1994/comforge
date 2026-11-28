@@ -57,6 +57,7 @@ Real output of executable scenarios against a local synthetic GitHub:
 
 [Index](reference/README.md) · [CLI](reference/cli.md) · [MCP](reference/mcp.md) ·
 [configuration](reference/configuration.md) · [API](reference/api.md) ·
+[core walkthrough](reference/core.md) ·
 [errors](reference/errors.md) · [tool selection](reference/tool-selection.md) ·
 [compatibility](reference/compatibility.md)
 

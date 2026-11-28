@@ -3,7 +3,7 @@
  * without a network call:
  *
  * - relative links and images, and absolute links into this repository
- *   (`github.com/<repo>/blob|tree/main/…`, `raw.githubusercontent.com/<repo>/main/…`), name a
+ *   (`github.com/<repo>/blob|tree|raw/main/…`, `raw.githubusercontent.com/<repo>/main/…`), name a
  *   tracked path, and a `#fragment` names a heading of the target page (GitHub's slug rules);
  * - a package README uses absolute links only, because npm renders it without the repository;
  * - badges point at something that exists: a workspace package (shields.io npm badges) or a
@@ -18,7 +18,7 @@ import { PACKAGES, REPO } from "./contracts";
 
 const PUBLIC = "vikramrao1994/comforge";
 const ABSOLUTE = new RegExp(
-  `^https://(?:github\\.com/${PUBLIC}/(?:blob|tree)/main/|raw\\.githubusercontent\\.com/${PUBLIC}/main/)([^?#]*)(#.*)?$`,
+  `^https://(?:github\\.com/${PUBLIC}/(?:blob|tree|raw)/main/|raw\\.githubusercontent\\.com/${PUBLIC}/main/)([^?#]*)(#.*)?$`,
 );
 
 /** GitHub's heading anchor: lowercase, punctuation dropped, spaces to hyphens, -N on repeats. */
@@ -90,6 +90,10 @@ export function checkLinks(): string[] {
     for (const target of targets(readFileSync(path.join(REPO, file), "utf8"))) {
       let rel: string | undefined;
       let fragment: string | undefined;
+      // The release mirror's disclosure scan allows only github.com/<repository> in shipped
+      // files, so a package README links images through github.com/<repository>/raw/main/.
+      if (isPackageReadme && target.startsWith("https://raw.githubusercontent.com/"))
+        problems.push(`${file}: ${target} fails the release disclosure scan; use github.com/${PUBLIC}/raw/main/`);
       const absolute = target.match(ABSOLUTE);
       if (absolute) {
         rel = decodeURIComponent(absolute[1] as string).replace(/\/$/, "");

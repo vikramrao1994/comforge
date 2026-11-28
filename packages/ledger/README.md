@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://github.com/vikramrao1994/comforge">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/vikramrao1994/comforge/main/docs/assets/brand/comforge-logo-dark.svg">
-      <img alt="Comforge" src="https://raw.githubusercontent.com/vikramrao1994/comforge/main/docs/assets/brand/comforge-logo-light.svg" height="40">
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/vikramrao1994/comforge/raw/main/docs/assets/brand/comforge-logo-dark.svg">
+      <img alt="Comforge" src="https://github.com/vikramrao1994/comforge/raw/main/docs/assets/brand/comforge-logo-light.svg" height="40">
     </picture>
   </a>
 </p>

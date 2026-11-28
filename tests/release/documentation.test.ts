@@ -3,15 +3,16 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import * as kernel from "@comforge/core";
 
-// The factory-core README and llms.txt are the package's
-// consumer documentation: every code block is a verbatim region of the runnable example
-// consumer, every runtime export is named in the export reference, and every relative
-// link resolves, so the documentation cannot drift from code that is executed.
+// The core README, its walkthrough page (docs/reference/core.md) and llms.txt are the package's
+// consumer documentation: every TypeScript block is a verbatim region of the runnable example
+// consumer, every runtime export is named in the walkthrough's export reference, and every
+// relative link resolves, so the documentation cannot drift from code that is executed.
 
 const REPO = path.resolve(import.meta.dir, "..", "..");
 const PACKAGE = path.join(REPO, "packages", "core");
 const readme = readFileSync(path.join(PACKAGE, "README.md"), "utf8");
 const llms = readFileSync(path.join(PACKAGE, "llms.txt"), "utf8");
+const walkthrough = readFileSync(path.join(REPO, "docs", "reference", "core.md"), "utf8");
 
 function region(file: string, name: string): string {
   const lines = readFileSync(path.join(REPO, file), "utf8").split("\n");
@@ -23,21 +24,28 @@ function region(file: string, name: string): string {
   return body.map((l) => l.slice(indent)).join("\n");
 }
 
-const blocks = [...readme.matchAll(/<!-- example: ([^#\s]+)#([\w-]+) -->\n```ts\n([\s\S]*?)\n```/g)];
+const exampleBlocks = (text: string) => [
+  ...text.matchAll(/<!-- example: ([^#\s]+)#([\w-]+) -->\n```ts\n([\s\S]*?)\n```/g),
+];
+const blocks = exampleBlocks(readme);
+const walkthroughBlocks = exampleBlocks(walkthrough);
 
-describe("factory-core README", () => {
-  test("has example-backed code blocks, and every ts block is one", () => {
-    expect(blocks.length).toBeGreaterThanOrEqual(8);
+describe("core README and walkthrough", () => {
+  test("every ts block of both is example-backed, and the walkthrough covers the protocols", () => {
+    expect(blocks.length).toBeGreaterThanOrEqual(1);
     expect((readme.match(/```ts\n/g) ?? []).length).toBe(blocks.length);
+    expect(walkthroughBlocks.length).toBeGreaterThanOrEqual(8);
+    expect((walkthrough.match(/```ts\n/g) ?? []).length).toBe(walkthroughBlocks.length);
   });
 
-  for (const [, file, name, code] of blocks)
-    test(`${file}#${name} is copied verbatim`, () => {
-      expect(code).toBe(region(file as string, name as string));
-    });
+  for (const [where, list] of [["README", blocks], ["walkthrough", walkthroughBlocks]] as const)
+    for (const [, file, name, code] of list)
+      test(`${where}: ${file}#${name} is copied verbatim`, () => {
+        expect(code).toBe(region(file as string, name as string));
+      });
 
   test("names every runtime export in the export reference", () => {
-    const reference = readme.slice(readme.indexOf("## Export reference"));
+    const reference = walkthrough.slice(walkthrough.indexOf("## Export reference"));
     const missing = Object.keys(kernel).filter((name) => !reference.includes(`\`${name}\``));
     expect(missing).toEqual([]);
   });

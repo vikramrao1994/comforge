@@ -1,8 +1,8 @@
 <p align="center">
   <a href="https://github.com/vikramrao1994/comforge">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/vikramrao1994/comforge/main/docs/assets/brand/comforge-logo-dark.svg">
-      <img alt="Comforge" src="https://raw.githubusercontent.com/vikramrao1994/comforge/main/docs/assets/brand/comforge-logo-light.svg" height="40">
+      <source media="(prefers-color-scheme: dark)" srcset="https://github.com/vikramrao1994/comforge/raw/main/docs/assets/brand/comforge-logo-dark.svg">
+      <img alt="Comforge" src="https://github.com/vikramrao1994/comforge/raw/main/docs/assets/brand/comforge-logo-light.svg" height="40">
     </picture>
   </a>
 </p>
@@ -26,37 +26,64 @@ The only runtime dependency is `zod` 4. The package is ESM only and ships declar
 
 ## Quick example
 
-Publish a specification, detect an edit after publication, and evaluate a lifecycle step. The identity values are yours to choose and are trusted configuration: keep them in committed code.
+Configure each protocol once, in committed code (the identity values are yours to choose and
+are trusted configuration; the full configuration is in the
+[walkthrough](https://github.com/vikramrao1994/comforge/blob/main/docs/reference/core.md)).
+Then publish a specification and detect an edit after publication:
 
+<!-- example: examples/core-consumer/src/flows.ts#specification -->
 ```ts
-import { createSpecificationProtocol, evaluateLifecycleAction, idempotencyKeyDigest } from "@comforge/core";
-
-const specifications = createSpecificationProtocol({
-  digestScheme: "acme-engineering-spec/v1",
-  markerNamespace: "acme-factory",
-  publisherName: "Acme Factory",
-  publishToolName: "publish_specification",
-});
-
-const spec = { ticketId: "ACME-101", title: "Rate-limit the export endpoint", body: "## Objective\n\nReturn 429 after 10 requests per minute.\n" };
+const spec = {
+  ticketId: TICKET,
+  title: "Rate-limit the export endpoint",
+  body: "## Objective\n\nReturn 429 after 10 requests per minute.\n",
+};
 const digest = specifications.specificationDigest(spec);
 const issueBody = specifications.composeIssueBody({
-  ticketId: spec.ticketId, body: spec.body, digest, keyDigest: idempotencyKeyDigest("acme-spec-key-0001"),
+  ticketId: spec.ticketId,
+  body: spec.body,
+  digest,
+  keyDigest: idempotencyKeyDigest("acme-spec-key-0001"),
 });
-
 // Later, read the issue back from your forge and verify it.
-specifications.verifyPublishedSpecification({ title: spec.title, body: issueBody })?.digestMatches; // true
-specifications.verifyPublishedSpecification({ title: spec.title, body: issueBody.replace("10 requests", "1000 requests") })?.digestMatches; // false
-
-const head = "a".repeat(40); // the commit you observed, from your own Git
-const decision = evaluateLifecycleAction({
-  action: "publish",
-  evidence: { head, validations: [{ commit: head, status: "FAIL" }, { commit: head, status: "PASS" }] },
+const verified = specifications.verifyPublishedSpecification({
+  title: spec.title,
+  body: issueBody,
 });
-decision.decision; // "allow": the latest validation of exactly this head is PASS (an allow grants nothing)
+// verified: { ticketId: "ACME-101", digest, digestScheme, digestMatches: true }
+const edited = specifications.verifyPublishedSpecification({
+  title: spec.title,
+  body: issueBody.replace("10 requests", "1000 requests"),
+});
+// edited?.digestMatches === false: the specification changed after publication.
 ```
 
-The full, tested example with all five protocols, signing and receipt verification is [examples/core-consumer](https://github.com/vikramrao1994/comforge/tree/main/examples/core-consumer).
+Evaluate a lifecycle step from evidence you observed (an `allow` grants nothing):
+
+<!-- example: examples/core-consumer/src/flows.ts#lifecycle -->
+```ts
+const decision = evaluateLifecycleAction({
+  action: "publish",
+  evidence: {
+    head: CANDIDATE,
+    validations: [
+      { commit: CANDIDATE, status: "FAIL" },
+      { commit: CANDIDATE, status: "PASS" }, // the latest validation of this commit decides
+    ],
+  },
+});
+if (decision.decision === "allow") {
+  // decision.scope says what this allow means, and that it does not authorize publication.
+} else {
+  // "deny": the evidence breaks a rule. "insufficient_evidence": something required is
+  // missing. Never treat either as an allow.
+  for (const reason of decision.reasons) console.error(reason.code, reason.message);
+}
+```
+
+Both blocks are copied verbatim from the [runnable example](https://github.com/vikramrao1994/comforge/tree/main/examples/core-consumer),
+which CI runs under Node.js and Bun. Signing, grants, receipts, reviews and completion records:
+[walkthrough and export reference](https://github.com/vikramrao1994/comforge/blob/main/docs/reference/core.md).
 
 ## What it provides
 
