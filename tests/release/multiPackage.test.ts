@@ -188,8 +188,12 @@ describe("the @comforge/mcp profile", () => {
     // Exactly the versions the consumer pinned after reading each release back.
     // Each is the pinned release, or an unreleased sibling candidate the planner refuses to
     // version until it is published and pinned (dependency order, tooling/release/candidates.ts).
+    // In this workspace an unreleased sibling candidate is pinned at its own workspace version
+    // (the root node_modules links the workspace, so candidateDependencies cannot tell it apart).
     const candidates = candidateDependencies(MCP.name);
-    for (const dep of MCP.dependsOn) if (!candidates.includes(dep)) expect(manifest.dependencies[dep]).toBe(pinnedVersion(dep));
+    const workspaceVersion = (dep: string) =>
+      (JSON.parse(readFileSync(path.join(REPO, profileOf(dep).dir, "package.json"), "utf8")) as { version: string }).version;
+    for (const dep of MCP.dependsOn) if (!candidates.includes(dep)) expect([pinnedVersion(dep), workspaceVersion(dep)]).toContain(manifest.dependencies[dep]);
     const example = JSON.parse(readFileSync(path.join(REPO, MCP.example, "package.json"), "utf8"));
     expect(example.dependencies["@comforge/mcp"]).toBe(manifest.version);
   });

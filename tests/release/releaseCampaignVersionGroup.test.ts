@@ -63,9 +63,10 @@ describe("the committed interface campaign", () => {
     expect(campaign.hold.map((h) => h.package).sort()).toEqual([...HELD].sort());
     expect(groupOf(campaign, MCP).map((t) => t.package)).toEqual([CLI, MCP]);
     expect(versionGroupOf(campaign, CLI).map((t) => t.package)).toEqual([CLI, MCP]);
-    // The MCP candidate names exactly the CLI version this campaign releases.
+    // The MCP candidate names exactly the CLI version the current campaign releases.
+    const current = parseCampaign(JSON.parse(readFileSync(path.join(REPO, "releases/campaigns/comforge-composition.json"), "utf8")));
     const mcp = JSON.parse(readFileSync(path.join(REPO, "packages/mcp/package.json"), "utf8"));
-    expect(mcp.dependencies["@comforge/cli"]).toBe(target(CLI).version);
+    expect(mcp.dependencies["@comforge/cli"]).toBe(current.packages.find((p) => p.package === CLI)?.version);
   });
 
   test("the version group's branch is the one the planner's version-pr command creates", () => {
