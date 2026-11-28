@@ -1,6 +1,6 @@
 {
   "name": "@comforge/mcp",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "comforge-mcp: the governed agent lifecycle of @comforge/cli as a Model Context Protocol server. Intent-oriented tools over the published lifecycle services, capability profiles, a repository allowlist, server-owned credentials, stdio and Streamable HTTP. Remote execution is off unless the host supplies isolation. Never merges, deploys, approves or closes.",
   "license": "Apache-2.0",
