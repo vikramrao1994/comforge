@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "Depends on @comforge/cli 0.6.0, the release whose checkout-free governance (createRemoteGovernance) the server's remote publication tools call.",
+  "breaking": null,
+  "covers": ["b0b8facac8e2eb9af4a35aef369310352dd61634"]
+}
