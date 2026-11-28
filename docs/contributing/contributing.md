@@ -21,6 +21,6 @@ Rules:
   (`release-intents/*.json`); the planner refuses otherwise ([release governance](release-governance.md)).
 - Public API changes follow semver; removing or renumbering an exit or error code is breaking
   (`tests/cli/contracts.test.ts`).
-- Agents: start from [`CLAUDE.md`](../CLAUDE.md) and the routed skill in `skills/`.
+- Agents: start from [`CLAUDE.md`](../../CLAUDE.md) and the routed skill in `skills/`.
 - Never commit credentials, personal data or private repository content; `bun run disclosure`
   and CI refuse them.

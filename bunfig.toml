@@ -1,4 +1,0 @@
-[test]
-# Many cases drive real git and child processes; a loaded CI runner exceeds bun's 5 s default
-# (observed on ubuntu and macOS runners). A case that hangs still fails, at 30 s.
-timeout = 30000

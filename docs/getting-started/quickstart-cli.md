@@ -1,7 +1,7 @@
 # CLI quickstart
 
 Status: published (`@comforge/cli` 0.5.0). Requirements: Node.js ≥ 22.18 or Bun ≥ 1.4, Git ≥ 2.30,
-macOS or Linux ([runtimes](runtimes-and-platforms.md)).
+macOS or Linux ([runtimes](../reference/compatibility.md)).
 
 ```sh
 npm install --save-dev --save-exact @comforge/cli   # or: bun add -d --exact @comforge/cli
@@ -11,7 +11,7 @@ npx comforge doctor          # environment, configuration, credential and ledger
 ```
 
 Choose an authorization mode in the committed configuration before any write
-([authorization](authorization-and-trust.md)). With `security.authorization` unset, every
+([authorization](../security/authorization-and-trust.md)). With `security.authorization` unset, every
 write is refused with `authorization-required`.
 
 One initiative, end to end (an issue whose body is a published specification):
@@ -28,7 +28,11 @@ npx comforge cleanup 34 --execute
 
 Every writing command is a dry run without `--execute`. Output is JSON with `--json`; exit codes
 and error codes are listed by `comforge capabilities` and in the
-[CLI reference](../packages/cli/README.md#exit-codes-and-errors).
+[CLI reference](../../packages/cli/README.md#exit-codes-and-errors).
 
-Next: [configuration](configuration.md), [commands](commands-and-tools.md),
-[recovery](migration-and-recovery.md).
+The same workflow with every command, configuration and expected output, tested in CI:
+[recipe 1](../recipes/01-first-governed-initiative.md).
+
+Next: [configuration](../reference/configuration.md), [CLI reference](../reference/cli.md),
+[commands](../reference/tool-selection.md),
+[recovery](../troubleshooting/migration-and-recovery.md).

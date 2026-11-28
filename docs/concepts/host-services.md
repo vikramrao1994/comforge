@@ -2,7 +2,7 @@
 
 Status: published (`@comforge/mcp/host`, 0.3.0). For an application that runs its own server,
 sessions and storage and needs the engineering services in-process. Reference:
-[MCP › Host services](../packages/mcp/README.md#host-services).
+[MCP › Host services](../../packages/mcp/README.md#host-services).
 
 ```ts
 import { createEngineeringHost, sqliteOperationStore } from "@comforge/mcp/host";

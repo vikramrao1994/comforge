@@ -910,7 +910,7 @@ export function pushRelease(options: {
       if (/workflow/i.test(message) && /(permission|scope)/i.test(message))
         refuse(
           "workflow-permission",
-          `${message} — the credential lacks Workflows: write; see "Workflow changes" in docs/release-governance.md`,
+          `${message} — the credential lacks Workflows: write; see "Workflow changes" in docs/contributing/release-governance.md`,
         );
       refuse("push-rejected", message);
     }

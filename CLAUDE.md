@@ -32,8 +32,10 @@ authorize ([decision 0001](docs/decisions/0001-deterministic-governance.md)).
 |---|---|
 | `bun install` / `bun run harness:install` | workspace / published harness |
 | `bun run lint` · `bun run typecheck` · `bun run test` | Biome · tsc per package + tooling · all tests |
-| `bun run validate` | routing, skills, docs, boundaries, disclosure |
+| `bun run validate` | routing, skills, docs, boundaries, disclosure, reference drift, invented flags, version claims, recipes, benchmark evidence |
+| `bun run docs:generate` · `bun run docs:recipes` | regenerate reference inventories from the contracts · run every recipe against the published harness |
 | `bun run release:plan` | what would be released and why |
 | `bun run harness -- <command>` | the published `comforge` CLI governing this repository |
 
-Docs: [`docs/README.md`](docs/README.md). Skills index: [`skills/README.md`](skills/README.md).
+Docs: [`docs/README.md`](docs/README.md) (reference generated from the contracts: never invent a
+flag; recipes are executed in CI). Skills index: [`skills/README.md`](skills/README.md).

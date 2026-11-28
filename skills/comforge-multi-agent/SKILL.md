@@ -46,5 +46,6 @@ npx comforge status --json   # one record per initiative, each with its own bran
 
 ## References
 
-- [docs/commands-and-tools.md](../../docs/commands-and-tools.md)
+- [docs/reference/tool-selection.md](../../docs/reference/tool-selection.md)
 - [packages/mcp/README.md#tools](../../packages/mcp/README.md#tools)
+- [docs/recipes/03-parallel-initiatives.md](../../docs/recipes/03-parallel-initiatives.md)

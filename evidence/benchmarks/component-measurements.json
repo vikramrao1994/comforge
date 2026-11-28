@@ -1,0 +1,118 @@
+{
+  "schema": "comforge-component-measurements/v1",
+  "versions": {
+    "@comforge/cli": "0.5.0",
+    "@comforge/mcp": "0.3.0"
+  },
+  "runtime": "node v26.3.0",
+  "method": {
+    "texts": "exact stdout of the CLI with the flags shown; the MCP JSON-RPC tools/list result and tool results' text content, from the official MCP SDK client over stdio",
+    "tokens": "approxTokens = ceil(chars / 4); no tokenizer. Compare ratios, not absolute tokens, with historical tokenizer counts",
+    "fixture": "12 verified initiatives in a synthetic repository; synthetic GitHub on 127.0.0.1",
+    "equivalence": "‘equivalent’ = the same information; ‘summary’ = less information (not equivalent)"
+  },
+  "discovery": {
+    "read-only": {
+      "tools": 10,
+      "chars": 14399,
+      "approxTokens": 3600
+    },
+    "read-only (compact)": {
+      "tools": 10,
+      "chars": 7852,
+      "approxTokens": 1963
+    },
+    "executor+publisher": {
+      "tools": 17,
+      "chars": 25690,
+      "approxTokens": 6423
+    },
+    "executor+publisher (compact)": {
+      "tools": 17,
+      "chars": 15689,
+      "approxTokens": 3923
+    }
+  },
+  "cliDiscovery": {
+    "helpPlusCapabilities": {
+      "chars": 11920,
+      "approxTokens": 2980
+    },
+    "help": {
+      "chars": 4129,
+      "approxTokens": 1033
+    },
+    "capabilities": {
+      "chars": 7791,
+      "approxTokens": 1948
+    }
+  },
+  "tasks": [
+    {
+      "task": "every initiative's status (12)",
+      "kind": "equivalent",
+      "cliJson": {
+        "chars": 12315,
+        "approxTokens": 3079
+      },
+      "cliCompact": {
+        "chars": 8611,
+        "approxTokens": 2153
+      },
+      "mcpText": {
+        "calls": 12,
+        "chars": 10981,
+        "approxTokens": 2746
+      }
+    },
+    {
+      "task": "every initiative's status (12)",
+      "kind": "summary",
+      "cliSummary": {
+        "chars": 302,
+        "approxTokens": 76
+      },
+      "mcpListText": {
+        "calls": 2,
+        "chars": 2467,
+        "approxTokens": 617
+      },
+      "mcpListStructured": {
+        "chars": 2467,
+        "approxTokens": 617
+      }
+    },
+    {
+      "task": "one initiative: full record vs first answer",
+      "kind": "summary",
+      "cliJson": {
+        "chars": 1372,
+        "approxTokens": 343
+      },
+      "cliCompact": {
+        "chars": 1043,
+        "approxTokens": 261
+      },
+      "mcpSummaryText": {
+        "chars": 915,
+        "approxTokens": 229
+      }
+    }
+  ],
+  "derived": {
+    "compactDiscoveryReductionPercent": {
+      "read-only": 45.5,
+      "executor+publisher": 38.9
+    },
+    "cliCompactReductionPercent": {
+      "statusAll": 30.1,
+      "statusOne": 24
+    },
+    "mcpVsCliEquivalentStatusPercent": -10.8,
+    "mcpVsCliCompactEquivalentStatusPercent": 27.5,
+    "summaryFirstVsCliFullPercent": {
+      "everyInitiative": 80,
+      "oneInitiative": 33.3
+    }
+  }
+}

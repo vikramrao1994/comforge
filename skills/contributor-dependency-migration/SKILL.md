@@ -46,5 +46,5 @@ cd harness && bun install --frozen-lockfile && cd .. && bun run harness -- docto
 
 ## References
 
-- [docs/release-governance.md](../../docs/release-governance.md)
+- [docs/contributing/release-governance.md](../../docs/contributing/release-governance.md)
 - [docs/decisions/0002-published-harness.md](../../docs/decisions/0002-published-harness.md)

@@ -1,0 +1,147 @@
+{
+  "schema": "comforge-historical-measurements/v1",
+  "provenance": "Measured before this repository existed, in the development repository of the first MCP release (an MCP context-measurement study, its revision 2) and its adoption study. Only numbers, versions and methods are reproduced here; the original evidence stays in that repository.",
+  "versions": "release candidates of @comforge/mcp before 0.1.0 and of @comforge/cli between 0.2.0 and 0.4.0; not the current releases",
+  "tokenizer": "Anthropic messages.countTokens (model claude-opus-5-5), minus an 8-token framing; per-text counts, not a model's full context",
+  "fixture": "one real repository's initiative state (12 initiatives) and its GitHub data",
+  "results": [
+    {
+      "id": "pr-list",
+      "what": "list pull requests: MCP comforge_prs vs CLI prs --json vs raw GitHub REST JSON (gh api)",
+      "kind": "equivalent",
+      "tokens": {
+        "mcp": 1191,
+        "cli": 1617,
+        "rawGitHub": 2587
+      },
+      "claim": "MCP 54.0% fewer tokens than raw GitHub, 26.3% fewer than the CLI",
+      "reproducibleCredentialFree": false,
+      "why": "needs live GitHub: the synthetic server returns fewer fields than github.com, which would understate the raw baseline"
+    },
+    {
+      "id": "issue-comments",
+      "what": "an issue's comments: MCP comforge_comments vs CLI comments --json vs raw GitHub REST JSON",
+      "kind": "equivalent",
+      "tokens": {
+        "mcp": 969,
+        "cli": 1264,
+        "rawGitHub": 1431
+      },
+      "claim": "MCP 32.3% fewer tokens than raw GitHub",
+      "reproducibleCredentialFree": false,
+      "why": "needs live GitHub, as above"
+    },
+    {
+      "id": "compact-discovery",
+      "what": "tools/list with and without --compact-discovery",
+      "kind": "equivalent (same tools; output schemas omitted)",
+      "tokens": {
+        "read-only": [
+          6110,
+          3332
+        ],
+        "executor+publisher (17 tools)": [
+          11019,
+          6759
+        ]
+      },
+      "claim": "39–45% fewer discovery tokens",
+      "reproducibleCredentialFree": true
+    },
+    {
+      "id": "cli-compact",
+      "what": "CLI --json vs --json --compact",
+      "kind": "equivalent",
+      "tokens": {
+        "every initiative's status": [
+          3701,
+          3120
+        ],
+        "one initiative": [
+          1543,
+          1230
+        ]
+      },
+      "claim": "15.7–20.3% fewer tokens",
+      "reproducibleCredentialFree": true
+    },
+    {
+      "id": "summary-first",
+      "what": "MCP first answer (summary) vs the CLI's full output",
+      "kind": "summary (NOT equivalent: less information)",
+      "tokens": {
+        "every initiative (summary page)": [
+          3701,
+          731
+        ],
+        "one initiative (status only)": [
+          1543,
+          473
+        ]
+      },
+      "claim": "69–80% smaller, for an agent that needs less than everything",
+      "reproducibleCredentialFree": true
+    },
+    {
+      "id": "mcp-costs-more",
+      "what": "equivalent initiative state through MCP vs the CLI",
+      "kind": "equivalent",
+      "tokens": {
+        "every initiative's status": {
+          "mcp": 4224,
+          "cli": 3701
+        },
+        "one full record": {
+          "mcp": 1831,
+          "cli": 1543
+        }
+      },
+      "claim": "MCP 14–19% MORE tokens than the CLI's single JSON (envelope and split across calls)",
+      "reproducibleCredentialFree": true
+    },
+    {
+      "id": "summary-can-grow",
+      "what": "--summary on a tiny result (recovery report)",
+      "kind": "summary",
+      "tokens": {
+        "recovery report": [
+          34,
+          48
+        ]
+      },
+      "claim": "a very small result grows by its summary marker",
+      "reproducibleCredentialFree": true
+    },
+    {
+      "id": "routing",
+      "what": "comforge_context over the development repository's manifest",
+      "kind": "regression check",
+      "claim": "15 of 15 cases routed as expected; expectations set by the implementer",
+      "reproducibleCredentialFree": false,
+      "why": "that manifest is private; this repository has its own evaluation set"
+    },
+    {
+      "id": "onboarding",
+      "what": "copy an example consumer into an empty directory, install from npm with an empty cache, run its checks",
+      "kind": "machine time",
+      "consumers": [
+        {
+          "consumer": "CLI example, @comforge/cli 0.4.0",
+          "installSeconds": 1.5,
+          "nodeSeconds": 2.6,
+          "bunSeconds": 1.2,
+          "checks": 13
+        },
+        {
+          "consumer": "MCP example, @comforge/mcp 0.2.0",
+          "installSeconds": 0.8,
+          "nodeSeconds": 0.8,
+          "bunSeconds": 0.5,
+          "checks": 13
+        }
+      ],
+      "claim": "machine time only; excludes a person reading the README and writing a configuration",
+      "reproducibleCredentialFree": "needs the npm registry"
+    }
+  ]
+}

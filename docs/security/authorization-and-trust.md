@@ -20,7 +20,7 @@ Boundaries the code enforces:
   approves or changes a specification.
 - Advisory reviews are comments; Comforge never approves, merges or deploys.
 - Release authorization for this repository's own packages is a separate, owner-signed authority
-  ([release governance](release-governance.md)).
+  ([release governance](../contributing/release-governance.md)).
 
 What it does not protect against: anyone with write access using other tools. Use branch
-rulesets for enforcement ([known limitations](known-limitations.md)).
+rulesets for enforcement ([known limitations](../troubleshooting/known-limitations.md)).

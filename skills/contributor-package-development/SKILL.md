@@ -47,5 +47,5 @@ bun test --isolate packages/<id>/test tests/<id> && bun run release:plan
 
 ## References
 
-- [docs/contributing.md](../../docs/contributing.md)
-- [docs/release-governance.md](../../docs/release-governance.md)
+- [docs/contributing/contributing.md](../../docs/contributing/contributing.md)
+- [docs/contributing/release-governance.md](../../docs/contributing/release-governance.md)

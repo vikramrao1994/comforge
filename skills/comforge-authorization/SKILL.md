@@ -50,5 +50,6 @@ npx comforge doctor --json   # reports the active authorization mode
 
 ## References
 
-- [docs/authorization-and-trust.md](../../docs/authorization-and-trust.md)
+- [docs/security/authorization-and-trust.md](../../docs/security/authorization-and-trust.md)
 - [packages/cli/README.md#authorization](../../packages/cli/README.md#authorization)
+- [docs/recipes/05-owner-grants.md](../../docs/recipes/05-owner-grants.md)

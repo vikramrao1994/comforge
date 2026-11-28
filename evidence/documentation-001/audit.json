@@ -1,0 +1,306 @@
+{
+  "schema": "comforge-documentation-audit/v1",
+  "initiative": "documentation-001",
+  "reviewedRevision": "ea51507e0a3381f39db830b83fb9d90861fe9755",
+  "method": "Authoritative contracts read from source by tooling/docs/contracts.ts (CLI command table, the argument parser's per-command flag allowlist (KNOWN_FLAGS) and global flags, CLI and MCP error codes, MCP tool contracts, profiles and launch flags, configuration JSON Schema, runtime exports of every published subpath); coverage = the name or flag appears in README.md, docs/** or a package README.",
+  "coverageBefore": {
+    "cliCommands": {
+      "total": 21,
+      "documented": 21,
+      "missing": []
+    },
+    "cliCommandFlags": {
+      "total": 50,
+      "documented": 50,
+      "missing": [],
+      "note": "authority is the parser allowlist KNOWN_FLAGS; the usage lines alone list 46"
+    },
+    "cliGlobalFlags": {
+      "total": 6,
+      "documented": 4,
+      "missing": [
+        "--cwd",
+        "--help"
+      ]
+    },
+    "cliErrorCodes": {
+      "total": 25,
+      "documented": 25,
+      "missing": []
+    },
+    "mcpTools": {
+      "total": 18,
+      "documented": 18,
+      "missing": []
+    },
+    "mcpLaunchFlags": {
+      "total": 4,
+      "documented": 4,
+      "missing": []
+    },
+    "mcpErrorCodes": {
+      "total": 11,
+      "documented": 7,
+      "missing": [
+        "unknown-repository",
+        "profile-denied",
+        "execution-unavailable",
+        "result-too-large"
+      ]
+    },
+    "configSectionsAndKeys": {
+      "total": 72,
+      "documented": 71,
+      "missing": [
+        "repository.webOrigin"
+      ]
+    },
+    "runtimeExports": {
+      "total": 238,
+      "documented": 142,
+      "missing": [
+        "@comforge/github#DEFAULT_FILE_LIMITS",
+        "@comforge/github#DEFAULT_WRITER_LIMITS",
+        "@comforge/github#GITHUB_ERROR_CODES",
+        "@comforge/ledger#INITIAL_VERSION",
+        "@comforge/ledger#MAX_OPERATION_ID_LENGTH",
+        "@comforge/ledger#assertOperationId",
+        "@comforge/ledger#assertReplacement",
+        "@comforge/ledger#assertStorable",
+        "@comforge/ledger#assertStored",
+        "@comforge/ledger#createMemoryLedger",
+        "@comforge/ledger#isLedgerError",
+        "@comforge/ledger/conformance#ConformanceFailure",
+        "@comforge/cli#CLI_CAPABILITIES",
+        "@comforge/cli#CONFIG_FILE",
+        "@comforge/cli#CONFIG_SCHEMA",
+        "@comforge/cli#CliError",
+        "@comforge/cli#ConfigSchema",
+        "@comforge/cli#ERROR_CODES",
+        "@comforge/cli#EXIT",
+        "@comforge/cli#HOST_CAPABILITIES",
+        "@comforge/cli#INITIATIVE_SCHEMA",
+        "@comforge/cli#LEGACY_FORMAT",
+        "@comforge/cli#PACKAGE_VERSION",
+        "@comforge/cli#PROVISION_RESULT_SCHEMA",
+        "@comforge/cli#SECTION_DEFAULTS",
+        "@comforge/cli#TRUSTED_ASSOCIATIONS",
+        "@comforge/cli#TRUSTED_SECTIONS",
+        "@comforge/cli#artifactReadable",
+        "@comforge/cli#assertCompletionLinkUnambiguous",
+        "@comforge/cli#checkManifest",
+        "@comforge/cli#completionLinkBlock",
+        "@comforge/cli#configJsonSchema",
+        "@comforge/cli#currentResults",
+        "@comforge/cli#defaultRuntime",
+        "@comforge/cli#issueComments",
+        "@comforge/cli#openContext",
+        "@comforge/cli#parseArgs",
+        "@comforge/cli#parseConfig",
+        "@comforge/cli#publishReview",
+        "@comforge/cli#publishSpecification",
+        "@comforge/cli#renderHuman",
+        "@comforge/cli#resolveHost",
+        "@comforge/cli#routeTask",
+        "@comforge/cli#runCommand",
+        "@comforge/cli#spawnRun",
+        "@comforge/cli#stableJson",
+        "@comforge/cli#stateStoreOn",
+        "@comforge/cli#toServiceError",
+        "@comforge/cli#trustedChanges",
+        "@comforge/cli#withCompletionLink",
+        "@comforge/cli/config#CLI_CAPABILITIES",
+        "@comforge/cli/config#CONFIG_FILE",
+        "@comforge/cli/config#CONFIG_SCHEMA",
+        "@comforge/cli/config#ConfigSchema",
+        "@comforge/cli/config#GOVERNANCE_CAPABILITIES",
+        "@comforge/cli/config#HOST_CAPABILITIES",
+        "@comforge/cli/config#SECTION_DEFAULTS",
+        "@comforge/cli/config#TRUSTED_SECTIONS",
+        "@comforge/cli/config#configJsonSchema",
+        "@comforge/cli/config#isCanonicalRepoPath",
+        "@comforge/cli/config#parseConfig",
+        "@comforge/cli/config#readWorkingConfig",
+        "@comforge/cli/config#readableArtifacts",
+        "@comforge/cli/config#trustedChanges",
+        "@comforge/cli/config#trustedPart",
+        "@comforge/cli/routing#RoutingCategorySchema",
+        "@comforge/cli/routing#RoutingManifestSchema",
+        "@comforge/cli/routing#checkManifest",
+        "@comforge/cli/routing#routeTask",
+        "@comforge/cli/protocols#COMPLETION_VOCABULARY",
+        "@comforge/cli/protocols#REVIEW_VOCABULARY",
+        "@comforge/cli/protocols#canonicalText",
+        "@comforge/cli/protocols#reviewTrust",
+        "@comforge/cli/authority#AUTHORITY_LIMITS",
+        "@comforge/cli/authority#AUTHORITY_VOCABULARY",
+        "@comforge/cli/authority#GrantEnvelopeSchema",
+        "@comforge/mcp#CAPABILITIES_SCHEMA",
+        "@comforge/mcp#DEFAULT_HTTP_LIMITS",
+        "@comforge/mcp#ERROR_SCHEMA",
+        "@comforge/mcp#GrantEnvelope",
+        "@comforge/mcp#INPUTS",
+        "@comforge/mcp#MCP_CODES",
+        "@comforge/mcp#PROFILES",
+        "@comforge/mcp#PrincipalSchema",
+        "@comforge/mcp#RESULT_SCHEMA",
+        "@comforge/mcp#SERVER_NAME",
+        "@comforge/mcp#SERVER_VERSION",
+        "@comforge/mcp#TOOL_NAMES",
+        "@comforge/mcp#assertBindings",
+        "@comforge/mcp#discoverableTools",
+        "@comforge/mcp#permitted",
+        "@comforge/mcp/host#HOST_SERVICES_SCHEMA",
+        "@comforge/mcp/host#fetchTransport",
+        "@comforge/mcp/host#isFinished",
+        "@comforge/mcp/host#minimizeFinished",
+        "@comforge/mcp/host#retentionClass"
+      ]
+    }
+  },
+  "inventory": [
+    {
+      "item": "README.md (25 lines)",
+      "decision": "improve",
+      "reason": "package table and two commands; no positioning, when-not-to-use, first workflow, trust model, compatibility, roadmap"
+    },
+    {
+      "item": "packages/*/README.md (5, 1,468 lines)",
+      "decision": "retain",
+      "reason": "shipped in each tarball; authoritative per-package detail; docs link to them, never copy"
+    },
+    {
+      "item": "docs/getting-started/overview.md",
+      "decision": "improve \u2192 getting-started/overview.md",
+      "reason": "keep; add the not-an-agent / not-a-token-compressor positioning"
+    },
+    {
+      "item": "docs/getting-started/quickstart-cli.md, quickstart-mcp.md",
+      "decision": "retain \u2192 getting-started/",
+      "reason": "accurate; now backed by executed recipes"
+    },
+    {
+      "item": "docs/concepts/architecture.md, host-services.md, persistence-and-reconciliation.md, protocols-and-authority.md",
+      "decision": "retain \u2192 concepts/",
+      "reason": "concept pages"
+    },
+    {
+      "item": "docs/security/authorization-and-trust.md",
+      "decision": "retain \u2192 security/",
+      "reason": "security section"
+    },
+    {
+      "item": "docs/reference/tool-selection.md",
+      "decision": "consolidate \u2192 reference/tool-selection.md",
+      "reason": "duplicated the CLI and MCP tables; becomes the agent tool-selection guide over generated inventories"
+    },
+    {
+      "item": "docs/reference/configuration.md",
+      "decision": "improve \u2192 reference/configuration.md",
+      "reason": "handwritten; missed repository.webOrigin; add a generated section/key inventory from the schema"
+    },
+    {
+      "item": "docs/reference/compatibility.md",
+      "decision": "consolidate \u2192 reference/compatibility.md",
+      "reason": "one compatibility matrix"
+    },
+    {
+      "item": "docs/recipes/README.md",
+      "decision": "consolidate \u2192 recipes/README.md",
+      "reason": "examples are listed with the recipes"
+    },
+    {
+      "item": "docs/troubleshooting/migration-and-recovery.md, known-limitations.md",
+      "decision": "retain \u2192 troubleshooting/",
+      "reason": "plus a new troubleshooting page keyed by error code"
+    },
+    {
+      "item": "docs/contributing/contributing.md, release-governance.md, release-transition.md",
+      "decision": "retain \u2192 contributing/",
+      "reason": "contributor section"
+    },
+    {
+      "item": "docs/decisions/0001\u20130005",
+      "decision": "retain",
+      "reason": "decision records"
+    },
+    {
+      "item": "examples/* (5)",
+      "decision": "retain",
+      "reason": "packed-tarball consumers in CI; recipes reference them"
+    },
+    {
+      "item": "skills/* (9 consumer, 8 contributor)",
+      "decision": "improve (links only)",
+      "reason": "content current; paths move with the reorganization"
+    },
+    {
+      "item": "context/routing.json (18 categories)",
+      "decision": "improve (paths)",
+      "reason": "29 references to moved docs"
+    },
+    {
+      "item": "CLAUDE.md, AGENTS.md, llms.txt",
+      "decision": "improve (paths, integrations, recipes)",
+      "reason": "no duplication; llms.txt gains recipes, reference, integrations, benchmarks"
+    },
+    {
+      "item": "benchmarks/ (reusable library, self-check)",
+      "decision": "retain",
+      "reason": "generic infrastructure; no published measurements yet"
+    },
+    {
+      "item": "public benchmark results",
+      "decision": "generate",
+      "reason": "none published in this repository; historical figures exist only in the previous repository's private evidence"
+    },
+    {
+      "item": "CLI/MCP/config/API reference",
+      "decision": "generate",
+      "reason": "no complete inventory; 96 of 238 runtime exports undocumented anywhere"
+    },
+    {
+      "item": "recipes",
+      "decision": "generate",
+      "reason": "none exist; quickstarts are not executed in CI"
+    },
+    {
+      "item": "agent integration guides",
+      "decision": "generate",
+      "reason": "none exist"
+    }
+  ],
+  "findings": {
+    "brokenLinks": [],
+    "undocumented": [
+      "CLI global flags --cwd and --help are absent from every document",
+      "MCP error codes unknown-repository, profile-denied, execution-unavailable, result-too-large are undocumented",
+      "configuration key repository.webOrigin is undocumented",
+      "96 of 238 runtime exports are named in no document (mostly constants and schemas of @comforge/core, @comforge/github and the MCP contract surface)"
+    ],
+    "staleCommands": [],
+    "unsupportedClaims": [
+      "none found in the reviewed documents; README's 'verifiable software factory' wording is replaced by the spec's deterministic-infrastructure positioning"
+    ],
+    "onboardingGaps": [
+      "no tested first workflow end to end (quickstarts are not executed)",
+      "no guidance on CLI vs MCP vs embedded choice",
+      "no per-client setup for Claude Code, Codex or Cursor",
+      "no troubleshooting by error code",
+      "no benchmark numbers or their limits"
+    ],
+    "contractGaps": [
+      "the CLI command table's usage lines omit four accepted flags: start --reopen, publish --closes, deliver --closes, grant --command (documented in the CLI README; a fix to the usage strings is a package change, left for the next CLI release)"
+    ]
+  },
+  "agentClientsAvailableHere": {
+    "claude": "2.1.276 (Claude Code)",
+    "codex": "codex-cli 0.144.6",
+    "cursor": "not installed"
+  },
+  "runtimeHere": {
+    "node": "26.3.0",
+    "bun": "1.4.1",
+    "os": "macOS"
+  }
+}

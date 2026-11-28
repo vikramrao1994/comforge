@@ -48,5 +48,8 @@ Call comforge_capabilities: the listed profiles and tools match what you configu
 
 ## References
 
-- [docs/quickstart-mcp.md](../../docs/quickstart-mcp.md)
+- [docs/getting-started/quickstart-mcp.md](../../docs/getting-started/quickstart-mcp.md)
 - [packages/mcp/README.md#tools](../../packages/mcp/README.md#tools)
+- [docs/recipes/02-mcp-for-coding-agents.md](../../docs/recipes/02-mcp-for-coding-agents.md)
+- [docs/integrations/README.md](../../docs/integrations/README.md)
+- [docs/reference/mcp.md](../../docs/reference/mcp.md)

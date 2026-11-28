@@ -18,7 +18,7 @@
  * owner's signed approval of exactly that candidate (releaseAuthorization.ts), checked against
  * the trust file and workflow at the source commit immediately before the push.
  *
- * Setup, the owner's gates and recovery: docs/release-governance.md.
+ * Setup, the owner's gates and recovery: docs/contributing/release-governance.md.
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -312,7 +312,7 @@ async function main(): Promise<number> {
       unchanged: plan.unchanged.length,
     },
     // Changes to the npm Trusted Publisher's workflow: a separate owner approval, and a
-    // credential with Workflows: write (docs/release-governance.md).
+    // credential with Workflows: write (docs/contributing/release-governance.md).
     workflowChanges: workflows,
     workflowApproval: workflows.length > 0 ? workflowApproval(workflows) : null,
     operations:
