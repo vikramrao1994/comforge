@@ -24,7 +24,7 @@
     "./package.json": "./package.json"
   },
   "dependencies": {
-    "@comforge/cli": "0.6.0",
+    "@comforge/cli": "0.7.0",
     "@comforge/core": "0.2.0",
     "@comforge/github": "0.6.0",
     "@comforge/ledger": "0.1.0",

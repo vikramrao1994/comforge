@@ -21,7 +21,7 @@
     },
     "packages/cli": {
       "name": "@comforge/cli",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "bin": {
         "comforge": "./src/cli.ts",
       },
