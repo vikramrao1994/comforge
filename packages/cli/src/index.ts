@@ -17,7 +17,10 @@ export {
   advisoryReviews,
   artifact,
   artifactReadable,
+  type GovernanceContext,
+  governanceCommands,
   issueComments,
+  publishComment,
   publishReview,
   publishSpecification,
   pullRequests,
@@ -57,13 +60,24 @@ export { stableJson } from "./json.ts";
 export {
   completionProtocol,
   currentResults,
+  DISCUSSION_LIMITS,
+  DISCUSSION_NOTICE,
+  type DiscussionProtocol,
   detectSecrets,
+  discussionProtocol,
   REVIEW_LIMITS,
   reviewProtocol,
   specificationProtocol,
   TRUSTED_ASSOCIATIONS,
 } from "./protocols.ts";
 export { PROVISION_RESULT_SCHEMA } from "./provision.ts";
+export {
+  createRemoteGovernance,
+  type RemoteAuthorizationDecision,
+  type RemoteAuthorizationRequest,
+  type RemoteGovernance,
+  type RemoteGovernanceOptions,
+} from "./remoteGovernance.ts";
 export type { Repository } from "./repository.ts";
 export { checkManifest, routeTask } from "./routing.ts";
 export {

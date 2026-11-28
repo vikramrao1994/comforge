@@ -192,6 +192,8 @@ Every runtime export of every published subpath. Types are exported alongside an
 | `CONFIG_SCHEMA` | constant | — |
 | `CliError` | class | — |
 | `ConfigSchema` | schema | — |
+| `DISCUSSION_LIMITS` | constant | Bounds of a discussion comment; part of no digest. |
+| `DISCUSSION_NOTICE` | constant | — |
 | `ERROR_CODES` | constant | Every error code and its exit status. |
 | `EXIT` | constant | Exit statuses. |
 | `HOST_CAPABILITIES` | constant | Writes outside the SDK, each through one audited host adapter; never granted by default. |
@@ -216,11 +218,14 @@ Every runtime export of every published subpath. Types are exported alongside an
 | `configJsonSchema` | function | The JSON Schema of the configuration, for editors and agents (`comforge schema config`). |
 | `context` | function | — |
 | `createLifecycleServices` | function | — |
+| `createRemoteGovernance` | function | — |
 | `currentResults` | function | The current completion result per ticket on one issue: the newest verified record by a repository owner, member or collaborator. |
 | `defaultRuntime` | function | — |
 | `deliver` | function | — |
 | `detectSecrets` | function | — |
+| `discussionProtocol` | function | The discussion-comment wire format, bound to the trusted configuration. |
 | `doctor` | function | — |
+| `governanceCommands` | constant | The same commands over a supplied governance context (a checkout-free host). |
 | `init` | function | — |
 | `issueComments` | function | — |
 | `main` | function | Runs one invocation; returns the exit status. |
@@ -229,6 +234,7 @@ Every runtime export of every published subpath. Types are exported alongside an
 | `parseArgs` | function | — |
 | `parseConfig` | function | — |
 | `publish` | function | — |
+| `publishComment` | function | — |
 | `publishReview` | function | — |
 | `publishSpecification` | function | — |
 | `pullRequests` | function | — |
@@ -320,17 +326,20 @@ Every runtime export of every published subpath. Types are exported alongside an
 | `MCP_CODES` | constant | Codes this server adds; every other code is @comforge/cli's. |
 | `PROFILES` | constant | — |
 | `PrincipalSchema` | schema | — |
+| `REMOTE_GOVERNANCE_TOOLS` | constant | The governed publications a checkout-free repository serves when its host supplies governance (0.4.0): no command runs, no lifecycle state is read; every wri… |
 | `REMOTE_READ_TOOLS` | constant | The tools a checkout-free repository serves: GitHub evidence reads under a host-supplied trusted configuration. |
 | `RESULT_SCHEMA` | constant | — |
+| `SERVER_INSTRUCTIONS` | constant | — |
 | `SERVER_NAME` | constant | — |
 | `SERVER_VERSION` | constant | Reported as `serverInfo.version`. |
 | `TOOLS` | constant | Descriptions are deliberately short: they are paid for on every discovery. |
 | `TOOL_NAMES` | constant | — |
 | `assertBindings` | function | Refuses an allowlist with duplicate or malformed ids, or relative paths. |
-| `createComforgeMcpServer` | function | — |
+| `createComforgeMcpServer` | function | The comforge server: a new McpServer with exactly the native tools (`registerComforgeTools`). |
 | `createHttpHandler` | function | — |
 | `discoverableTools` | function | The tools a principal discovers on a transport. |
 | `permitted` | function | — |
+| `registerComforgeTools` | function | Composition (0.4.0): registers the native comforge tools onto an existing McpServer, next to an application's own tools, with the same schemas, handlers, pro… |
 | `serveStdio` | function | — |
 | `trustedConfig` | function | The configuration at the base branch's remote-tracking ref: what @comforge/cli trusts. |
 

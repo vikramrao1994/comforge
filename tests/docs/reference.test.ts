@@ -33,7 +33,7 @@ describe("contracts", () => {
   });
   test("MCP tools, profiles and launch flags are read from the server's own sources", async () => {
     const mcp = await mcpContracts();
-    expect(mcp.tools.length).toBe(18);
+    expect(mcp.tools.length).toBe(19);
     expect(mcp.profiles).toEqual(["read-only", "reviewer", "executor", "publisher"]);
     expect(mcp.binFlags).toEqual(["--compact-discovery", "--profile", "--repository", "--summary-text"]);
   });

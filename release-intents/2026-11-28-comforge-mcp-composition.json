@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "registerComforgeTools composes the native tools into an existing McpServer (collisions refused before anything is registered). RemoteHost.governance serves publish_specification, publish_review and the new publish_comment without a checkout. Needs the next @comforge/cli minor.",
+  "breaking": null,
+  "covers": []
+}

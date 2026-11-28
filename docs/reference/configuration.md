@@ -24,6 +24,7 @@ and unknown schema versions are refused. Commands are argument vectors, never sh
 | `publication` | — | `checks` before a push, `bodyCommand`, `marker`, `draftFirst`, `linkMarkerNamespace`, `reportPullRequestReason` |
 | `cleanup` | — | `deleteRemoteBranch`, `deleteLocalBranch`, `fastForwardPrimary`, `after` commands |
 | `review` | — | the advisory-review protocol: `reviewScheme`, `markerNamespace`, `publisherName`, `publishToolName`, `trustedAuthors` |
+| `discussion` | — | discussion comments on published specification issues: `scheme`, `markerNamespace`, `publisherName`, `publishToolName` (marker `<namespace>:issue-comment v1`; unreleased) |
 | `artifacts` | — | `readable` path prefixes `comforge artifact` may read at a commit |
 | `security` | — | `capabilities`, `authorization` (`operator` or `owner-grant`), `credentials`, `delivery` (assignee), `ledgerNamespace`, `markerNamespace` |
 

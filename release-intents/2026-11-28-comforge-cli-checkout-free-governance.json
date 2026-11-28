@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/cli",
+  "bump": "minor",
+  "summary": "Governance without a checkout: createRemoteGovernance publishes specifications, advisory reviews and discussion comments for a host that supplies the verified configuration, write credential, ledger and policy (operator mode only). New discussion section and publishComment; createGitHubAccess.",
+  "breaking": null,
+  "covers": []
+}

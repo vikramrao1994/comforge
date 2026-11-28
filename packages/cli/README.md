@@ -62,6 +62,7 @@ Programmatic entry points:
 | Export | Subpath | Use |
 |---|---|---|
 | `createLifecycleServices` | `@comforge/cli` | Every lifecycle, governance and read command as a function returning `{ ok, value }` or `{ ok: false, error }` |
+| `createRemoteGovernance` | `@comforge/cli` | Specification, advisory-review and discussion-comment publication without a checkout, under a host-supplied verified configuration, credential, ledger and policy (unreleased) |
 | `defaultRuntime` | `@comforge/cli` | The process-backed runtime the executable uses |
 | `parseConfig`, `configJsonSchema` | `@comforge/cli/config` | Read and validate `comforge.config.json` |
 | `routeTask`, `checkManifest` | `@comforge/cli/routing` | Context routing over a manifest |
