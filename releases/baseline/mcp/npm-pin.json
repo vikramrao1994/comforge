@@ -1,26 +1,26 @@
 {
   "schema": "comforge-npm-pin/v1",
   "package": "@comforge/mcp",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "registry": "https://registry.npmjs.org",
-  "integrity": "sha512-E4h0L0K1pREI1dNj6Ni8ahWNimUptoEFa9k/poIxbUPWloYp/e/A3ARaqfWakOEXRuQkZ4T7qEyHAkwd9G2ZGw==",
+  "integrity": "sha512-9vj8ttU0S7CkuqE5PJ3lfvVL0WyxFSWBFbsG7jq+v/1H+MK+NzYNk0dQHQ8iLfiVDBpWcEPj0PZ3FJZ/JPUcrA==",
   "provenance": "verified",
   "gitRelease": {
     "repository": "vikramrao1994/comforge",
-    "commit": "23aa871045fe8620235526c407375892c70ca0f7",
-    "tag": "mcp/v0.4.0",
-    "releaseRecordSha256": "9b11fb88771f928fc9fe06a9848a5b9c077fffa09bcdf81fac7f9ba9761f9894",
+    "commit": "62adb0aeaef36d55213ceb3ff551e30857dfc6c4",
+    "tag": "mcp/v0.5.0",
+    "releaseRecordSha256": "bac6ef338c742e0941ffd41c70c3c35c6c2e88bff40bc16c32d6f0f5ec7b61fb",
     "source": {
-      "commit": "f54253300068e9bbbcf6b2a63cae67df1c26c00b",
-      "packageTree": "b818c0047570d626ccfeaabf5a1873ced31683f2",
-      "exampleTree": "be3580882a87b6b477c0c2b9d7a762ae13d2a779"
+      "commit": "27d2c03e6939546a90c82f0b3511632de77ce07c",
+      "packageTree": "12cf851423c05ac54b1c10150f8220c5ab6898c2",
+      "exampleTree": "ff16d1ea3dc9737de0b872a0041039020d9f9c60"
     }
   },
   "manifest": {
     "transforms": [
       "remove private"
     ],
-    "sha256": "8ac859051bbcf34470afac40d0a77bc2efa229e224ce903595431d08dd6820f8"
+    "sha256": "31c6e6c151551e5779c8726d66d034713877c358d47bac51e609edf0ae502d9b"
   },
   "files": {
     "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
@@ -31,7 +31,7 @@
     "dist/contracts.js": "6f6240faf3b27042ac4d51f6190af4ba5e9f28ba2a19a9d81e5bf0e67473e29c",
     "dist/grants.d.ts": "5894731538b51646ea8993b99664b9552d3ad3afec505b3e7faf66f2f1df98e6",
     "dist/grants.js": "43c5faec7664be1e6e56652f08fb66b7af4c5a239484514740f516e27c77720b",
-    "dist/host.d.ts": "88614d9697dae1ae9dd3e2637bcdd8b1c0c52d80149d53e2d1d8c609386d531a",
+    "dist/host.d.ts": "7c993c4b59416faf9515b6c4beabdd3b607b7cdf376aca607440c4497f87d001",
     "dist/host.js": "1d498f4f90f8f2a88e0907d2ba3e8e7bb890e00510b5e747eaa3594522411e81",
     "dist/hostServices.d.ts": "943490c542ec660a5118873b1c2353a15d518d9ab1277eebe6522a53e798a44f",
     "dist/hostServices.js": "2a1029cdbf315eb03b644ece9085e1c6d33407a89e9e45d8082739fd76be71b4",
@@ -45,9 +45,9 @@
     "dist/server.js": "b5280e800c128809416e7a38437ffe4e29c25511ee8371caef6aa2c0844cb692",
     "dist/stdio.d.ts": "e60c8817bf5e12bdf9321689cfd3918cc9940036be0f9f105b486195aa6d6af3",
     "dist/stdio.js": "ef53cc77976966a2cec252d88c6884f42d1c550c14cd3ad183a715d630d6bbf4",
-    "dist/tools.d.ts": "aa59e63f0401effb2f00b0b892ed3b109b58c8d1020e1b6445ea3b059e037dd0",
-    "dist/tools.js": "64a64c3b91f07fd2b8be1e5638dda979bd060f2cac14f66ec911b128141556e9",
+    "dist/tools.d.ts": "618dd1f0c6b00665fdff86d49e6b559f1277e624621af1312bb2ea157db743be",
+    "dist/tools.js": "15a9dd1889110ddd0048153451555851a5bcfe44de9646f1c51752d682be5d2c",
     "llms.txt": "cd9c1833865030fc985416d7551d6948ba39373c605b8dc487ac9b5094620022",
-    "package.json": "8ac859051bbcf34470afac40d0a77bc2efa229e224ce903595431d08dd6820f8"
+    "package.json": "31c6e6c151551e5779c8726d66d034713877c358d47bac51e609edf0ae502d9b"
   }
 }

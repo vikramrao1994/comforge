@@ -7,7 +7,7 @@ A delivery is cut off after GitHub applied a write but before its answer arrived
 ![Interrupted-agent recovery: terminal recording](../assets/demos/interrupted-recovery.svg)
 
 **What this is.** The real output of an executable scenario, recorded with the published
-`@comforge/cli` 0.6.0, `@comforge/mcp` 0.4.0 against a **local synthetic GitHub** (127.0.0.1, repository `acme/widgets`):
+`@comforge/cli` 0.7.0, `@comforge/mcp` 0.5.0 against a **local synthetic GitHub** (127.0.0.1, repository `acme/widgets`):
 nothing reaches github.com, and the credential is synthetic. Setup steps that are not shown
 (writing the configuration and completion result) follow
 [the recipe](../recipes/04-interrupted-handover-and-recovery.md). Normalized: the temporary directory is shown as `~`,
