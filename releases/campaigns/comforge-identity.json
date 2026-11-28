@@ -1,0 +1,15 @@
+{
+  "schema": "comforge-release-campaign/v1",
+  "id": "comforge-identity-interfaces",
+  "issue": 116,
+  "packages": [
+    { "package": "@comforge/cli", "version": "0.7.0" },
+    { "package": "@comforge/mcp", "version": "0.5.0" }
+  ],
+  "hold": [
+    { "package": "@comforge/core", "version": "0.2.0" },
+    { "package": "@comforge/github", "version": "0.6.0" },
+    { "package": "@comforge/ledger", "version": "0.1.0" }
+  ],
+  "adopt": [["@comforge/cli", "@comforge/mcp"]]
+}
