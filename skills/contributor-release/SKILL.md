@@ -14,14 +14,14 @@ Plan, prepare and publish a package release under owner authorization.
 
 ## Prerequisites
 
-- Merged changes with release intents; the owner available for signing and npm stage approval.
+- Merged changes with release intents; the owner available to approve the release run's `comforge-release` environment.
 
 ## Examples
 
 ```sh
 bun run release:plan
 bun run release:version-pr                 # opens nothing without --open
-# owner: bun run release:approve --package <id>   (signs the CI-built candidate, dispatches)
+# owner: merge the version PR, then Approve the release run's comforge-release environment
 bun run release:npm-readback --package @comforge/<id>
 bun run release:record --package <id>
 ```
@@ -34,7 +34,7 @@ bun run release:record --package <id>
 
 ## Security boundaries
 
-- Only the owner signs release authorizations and approves npm stages; an agent never holds those keys or tokens.
+- Only the owner approves a release run's `comforge-release` environment; an agent never approves it, and never holds its credentials.
 - Only one publisher is active (`COMFORGE_PUBLISHER`, and `COMFORGE_PREVIOUS_PUBLISHER_RETIRED` in `comforge-release`); the switch-over is owner-only and follows `docs/contributing/release-transition.md` in order.
 
 ## Validation

@@ -1,27 +1,16 @@
 import { expect, test } from "bun:test";
-import type { ReleaseCandidate } from "../../tooling/release/candidate";
-import { fakeRegistry, rehearseAuthorization } from "../../tooling/release/rehearse";
+import { fakeRegistry, rehearseApproval } from "../../tooling/release/rehearse";
 
-// Only the fields the authorization binds; the full pipeline runs in CI (`release:rehearse`).
-const candidate = {
-  package: "@comforge/ledger",
-  version: "0.1.1",
-  tag: "ledger/v0.1.1",
-  sourceCommit: "a".repeat(40),
-  digest: `sha256:${"b".repeat(64)}`,
-  releaseRecordSha256: "c".repeat(64),
-  plan: { digest: `sha256:${"d".repeat(64)}` },
-  workflowApproval: null,
-} as unknown as ReleaseCandidate;
-
-test("the rehearsed authorization accepts only the trusted, intact, current record for this candidate", () => {
-  const steps = rehearseAuthorization(candidate, "e".repeat(64), "owner/repo");
+// The full pipeline runs in CI (`release:rehearse`); this is its approval step alone.
+test("the rehearsed approval accepts only the owner's approval of this run's release environment", async () => {
+  const steps = await rehearseApproval("owner/repo");
   expect(steps.map((s) => s.detail)).toEqual([
     "accepted",
-    "refused: authorization-signature",
-    "refused: authorization-untrusted",
-    "refused: authorization-expired",
-    "refused: authorization-mismatch",
+    "refused: approval-missing",
+    "refused: approval-rejected",
+    "refused: approval-not-owner",
+    "refused: approval-missing",
+    "refused: approval-unreadable",
   ]);
   expect(steps.every((s) => s.pass)).toBe(true);
 });

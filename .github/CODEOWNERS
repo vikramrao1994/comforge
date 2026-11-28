@@ -2,6 +2,6 @@
 # ruleset requires code-owner review; see docs/contributing/release-governance.md).
 /.github/ @vikramrao1994
 /tooling/release/ @vikramrao1994
-/release-trust.json @vikramrao1994
+/tooling/release/environmentApproval.ts @vikramrao1994
 /harness/ @vikramrao1994
 /releases/ @vikramrao1994

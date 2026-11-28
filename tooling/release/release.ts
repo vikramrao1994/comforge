@@ -1,5 +1,5 @@
 /**
- * `bun run release:build --dest <mirror-checkout> [--out DIR] [--ci-proof] [--publish (--candidate FILE --authorization FILE | --approve VERSION@SOURCE_SHA) [--approve-workflows PATH@SHA256,...]]`
+ * `bun run release:build --dest <mirror-checkout> [--out DIR] [--ci-proof] [--publish (--candidate FILE | --approve VERSION@SOURCE_SHA [--approve-workflows PATH@SHA256,...])]`
  *
  * Builds the `@comforge/core` release candidate from the committed HEAD of this repository
  * (twice, and refuses unless both builds are byte-identical), scans it for disclosure,
@@ -14,9 +14,9 @@
  * candidate (tooling/release/candidate.ts) with the release planner's verdict, the CI
  * proof (--ci-proof) and a digest. `--publish --candidate FILE` derives the approval from that
  * record after checking this rebuild matches it, so the owner never copies a SHA; the release
- * planner must be release-ready for exactly this version, and --authorization must be the
- * owner's signed approval of exactly that candidate (releaseAuthorization.ts), checked against
- * the trust file and workflow at the source commit immediately before the push.
+ * planner must be release-ready for exactly this version, and the run must carry the owner's
+ * approval of its release environment (environmentApproval.ts), read from GitHub immediately
+ * before the push; the workflow change it may make is the one that candidate showed.
  *
  * Setup, the owner's gates and recovery: docs/contributing/release-governance.md.
  */
@@ -34,6 +34,7 @@ import {
   type ReleaseCandidate,
   renderCandidate,
 } from "./candidate";
+import { ApprovalRefusal, verifyCurrentRun } from "./environmentApproval";
 import {
   assertReproducible,
   brokenRelativeLinks,
@@ -53,13 +54,6 @@ import {
   workflowChanges,
 } from "./mirror";
 import { profileOf, sourceInputs } from "./packages";
-import {
-  AuthorizationRefusal,
-  expectedRepository,
-  trustAt,
-  verifyReleaseAuthorization,
-  workflowDigestAt,
-} from "./releaseAuthorization";
 import { collectPlanInput, evaluatePlan, PlanRefusal, type ReleasePlan } from "./releasePlan";
 
 const REPO = path.resolve(import.meta.dir, "..", "..");
@@ -73,7 +67,7 @@ async function main(): Promise<number> {
   const dest = arg("--dest");
   if (!dest) {
     console.error(
-      "usage: bun run release:build --dest <mirror-checkout> [--out DIR] [--publish (--candidate FILE --authorization FILE | --approve VERSION@SOURCE_SHA)]",
+      "usage: bun run release:build --dest <mirror-checkout> [--out DIR] [--publish (--candidate FILE | --approve VERSION@SOURCE_SHA)]",
     );
     return 2;
   }
@@ -239,39 +233,33 @@ async function main(): Promise<number> {
   if (publish) {
     if (blockers.length > 0) throw new ReleaseRefusal("publication-blocked", blockers.join("; "));
     const candidateFile = arg("--candidate");
-    // In Actions the only approval is the owner's signed one; a typed VERSION@SHA is for the
-    // owner's own machine, where the mirror credential is theirs.
+    // In Actions the only approval is the owner's approval of this run's release environment,
+    // for the candidate this run built; a typed VERSION@SHA is for the owner's own machine,
+    // where the mirror credential is theirs.
     if (process.env.GITHUB_ACTIONS === "true" && !candidateFile)
-      throw new AuthorizationRefusal(
-        "authorization-missing",
-        "a workflow publishes only a --candidate with the owner's signed --authorization",
+      throw new ApprovalRefusal(
+        "approval-missing",
+        "a workflow publishes only this run's --candidate, approved in its release environment",
       );
     let approval = arg("--approve");
+    let workflowsApproved = arg("--approve-workflows");
     if (candidateFile) {
       if (!releasePlan)
         throw new ReleaseRefusal("publication-blocked", planRefusal ?? "no release plan");
-      const approved = JSON.parse(readFileSync(candidateFile, "utf8")) as ReleaseCandidate;
-      approval = approvalFromCandidate(approved, { ...candidateInput, plan: releasePlan });
-      const authorizationFile = arg("--authorization");
-      if (!authorizationFile)
-        throw new AuthorizationRefusal(
-          "authorization-missing",
-          "--candidate publishes only with the owner's signed --authorization",
+      const approvedCandidate = JSON.parse(readFileSync(candidateFile, "utf8")) as ReleaseCandidate;
+      approval = approvalFromCandidate(approvedCandidate, { ...candidateInput, plan: releasePlan });
+      // The approval is read from GitHub for this run; the approver saw this candidate's digest,
+      // version, source commit and workflow change in the run summary before approving it.
+      const approved = await verifyCurrentRun();
+      // Exactly the workflow change the approved candidate showed, never a wider one.
+      workflowsApproved = candidate?.workflowApproval ?? undefined;
+      if ((candidate?.workflowApproval ?? null) !== (approvedCandidate.workflowApproval ?? null))
+        throw new ReleaseRefusal(
+          "publication-blocked",
+          "the rebuild's workflow change differs from the approved candidate's",
         );
-      const authorization = verifyReleaseAuthorization(
-        JSON.parse(readFileSync(authorizationFile, "utf8")),
-        {
-          trust: trustAt(REPO, sourceCommit),
-          repository: expectedRepository(),
-          candidate: approved,
-          workflowSha256: workflowDigestAt(REPO, sourceCommit),
-          triggeringActor: process.env.GITHUB_TRIGGERING_ACTOR,
-          approveWorkflows: arg("--approve-workflows") ?? "",
-          now: new Date(),
-        },
-      );
       console.log(
-        `authorization ${authorization.authorizationId} by ${authorization.issuer} matches the rebuild`,
+        `release environment approved by ${approved.approver} for run ${approved.runId}; the rebuild matches the candidate`,
       );
     }
     checkoutReleaseBranch(destDir, profile);
@@ -282,7 +270,7 @@ async function main(): Promise<number> {
       release: a.release,
       trustedOrigin: `https://github.com/${MIRROR_REPOSITORY}.git`,
       approval,
-      workflowApproval: arg("--approve-workflows"),
+      workflowApproval: workflowsApproved,
     });
   }
 
@@ -378,6 +366,6 @@ main()
       error instanceof ReleaseRefusal ||
       error instanceof PlanRefusal ||
       error instanceof CandidateRefusal ||
-      error instanceof AuthorizationRefusal;
+      error instanceof ApprovalRefusal;
     process.exit(refused ? 1 : 2);
   });

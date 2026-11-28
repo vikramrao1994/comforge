@@ -797,7 +797,10 @@ export function renderPlan(plan: ReleasePlan): string {
   const flag = plan.package === "@comforge/core" ? "" : ` --package ${plan.package}`;
   if (plan.status === "version-pr-due")
     lines.push(`  next: bun run release:version-pr --open${flag}`);
-  if (plan.status === "release-ready") lines.push(`  next: bun run release:approve --build${flag}`);
+  if (plan.status === "release-ready")
+    lines.push(
+      "  next: on main, release.yml starts once CI is green; approve its comforge-release environment",
+    );
   return lines.join("\n");
 }
 

@@ -152,21 +152,25 @@ describe("release.yml", () => {
     >;
   };
 
-  test("no SHA is typed: every input is set by release:approve", () => {
-    expect(Object.keys(wf.on.workflow_dispatch.inputs).sort()).toEqual(["approve_workflows", "authorization", "authorization_id", "package", "publish"]);
+  test("nothing is typed, signed or copied: a dispatch names only the package", () => {
+    expect(Object.keys(wf.on.workflow_dispatch.inputs)).toEqual(["package"]);
   });
 
-  test("the candidate and authorize jobs hold no secret; the release job verifies before its credential", () => {
+  test("select and candidate hold no secret; the release job reads the owner's approval before its credential", () => {
+    expect(JSON.stringify(wf.jobs.select)).not.toMatch(/secrets\./);
     expect(JSON.stringify(wf.jobs.candidate)).not.toMatch(/secrets\./);
-    expect(JSON.stringify(wf.jobs.authorize)).not.toMatch(/secrets\./);
+    expect(wf.jobs.authorize).toBeUndefined();
     const release = wf.jobs.release!;
-    expect(release.needs).toEqual(["candidate", "authorize"]);
+    expect(release.needs).toEqual(["select", "candidate"]);
     expect(release.environment).toBe("comforge-release");
-    expect(release.if).toContain("inputs.publish == true");
     const names = release.steps.map((s) => s.name ?? "");
     const firstSecret = release.steps.findIndex((s) => JSON.stringify(s).includes("secrets."));
-    expect(names.indexOf("Verify the authorization")).toBeGreaterThan(-1);
-    expect(names.indexOf("Verify the authorization")).toBeLessThan(firstSecret);
-    expect(release.steps.at(-2)?.run).toContain("--candidate approved/candidate.json --authorization approved/authorization.json");
+    const approval = names.indexOf("Verify the owner's approval of this run");
+    expect(approval).toBeGreaterThan(-1);
+    expect(approval).toBeLessThan(firstSecret);
+    expect(release.steps[approval]?.run).toBe("bun tooling/release/environmentApproval.ts verify");
+    // It publishes only this run's candidate; nothing names an authorization any more.
+    expect(release.steps.at(-2)?.run).toContain("--publish --candidate ../approved/candidate.json");
+    expect(JSON.stringify(wf)).not.toContain("authorization");
   });
 });

@@ -83,7 +83,7 @@ excerpted unless a reviewer asks for detail. Error codes: [errors](errors.md).
 | `createHttpHandler(options)` | Streamable HTTP handler (`authenticate`, `allowedHosts`, `allowedOrigins`, limits, optional `remoteRepositories` + `remote` for checkout-free reads) |
 | `@comforge/mcp/host` `createEngineeringHost(options)` | the same engineering services for your own server ([recipe 7](../recipes/07-embedded-host-services.md)) |
 
-Every runtime export: [API inventory](inventory/api.md#comforgemcp-030).
+Every runtime export: [API inventory](inventory/api.md#comforgemcp-040).
 
 ## Security model
 

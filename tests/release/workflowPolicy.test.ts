@@ -19,8 +19,10 @@ const load = (f: string) =>
 
 describe("release.yml", () => {
   const wf = load("release.yml");
-  test("is manual only, read-only by default, one run at a time", () => {
-    expect(Object.keys(wf.on as object)).toEqual(["workflow_dispatch"]);
+  test("starts only after green CI on main or by dispatch, read-only by default, one run at a time", () => {
+    expect(Object.keys(wf.on as object).sort()).toEqual(["workflow_dispatch", "workflow_run"]);
+    const run = (wf.on as { workflow_run: { workflows: string[]; types: string[]; branches: string[] } }).workflow_run;
+    expect(run).toEqual({ workflows: ["CI"], types: ["completed"], branches: ["main"] });
     expect(wf.permissions).toEqual({ contents: "read" });
   });
   test("only the release job sees a credential, through the main-restricted environment", () => {
@@ -30,9 +32,10 @@ describe("release.yml", () => {
     }
     expect(wf.jobs.release?.environment).toBe("comforge-release");
   });
-  test("authorize and release run only when this repository is the active publisher", () => {
-    for (const name of ["authorize", "release"]) expect(wf.jobs[name]?.if).toContain("vars.COMFORGE_PUBLISHER == 'comforge'");
-    expect(wf.jobs.candidate?.if).not.toContain("COMFORGE_PUBLISHER");
+  test("only the release job publishes, only when this repository is the active publisher", () => {
+    expect(wf.jobs.release?.if).toContain("vars.COMFORGE_PUBLISHER == 'comforge'");
+    expect(wf.jobs.candidate?.if ?? "").not.toContain("COMFORGE_PUBLISHER");
+    expect(wf.jobs.authorize).toBeUndefined();
   });
   test("the exact branch is checked before any step that receives a secret", () => {
     const steps = wf.jobs.release?.steps ?? [];

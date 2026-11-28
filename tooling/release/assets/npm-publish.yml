@@ -3,15 +3,15 @@
 # A `core/vX.Y.Z` tag pushed by the release publisher starts it. The first job plans and
 # verifies the npm tarball with read-only permissions: the tag must name a commit on
 # releases/core whose RELEASE.json, files, licence and changelog agree, and the version must be
-# new on the registry. The second job runs only after the `npm` environment's required
-# reviewer approves, receives the short-lived npm credential through OIDC (Trusted Publishing:
+# new on the registry. The second job runs in the `npm` environment, receives the short-lived
+# npm credential through OIDC (Trusted Publishing:
 # this repository, this workflow file, environment `npm`), re-verifies the planned bytes and
-# stages them. Staging publishes nothing: an npm maintainer approves the staged version with
-# 2FA before it goes live. npm attaches provenance that names this repository, this workflow,
-# the tag and the release commit; the owner checks it with `factory-core:npm-readback
-# --commit <release commit> --expect-provenance`.
+# publishes them directly: the owner's gate is the approval of the release run that pushed
+# the tag (release.yml, environment comforge-release). npm attaches provenance that names this repository, this workflow,
+# the tag and the release commit; the owner checks it with `release:npm-readback
+# --commit <release commit>`.
 #
-# There is no token fallback: without a matching Trusted Publisher on npm the stage step
+# There is no token fallback: without a matching Trusted Publisher on npm the publish step
 # fails. The first version of a package cannot be published here: npm can attach a Trusted
 # Publisher only to a package that already exists.
 name: npm-publish
@@ -46,7 +46,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24"
-      - name: Pin npm (staged publishing needs >= 11.15)
+      - name: Pin npm
         run: npm install --global --ignore-scripts npm@11.16.0
       - name: Plan and verify the npm tarball
         run: |
@@ -93,18 +93,16 @@ jobs:
       - name: Require the OIDC credential
         run: |
           [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || { echo "::error::no OIDC token endpoint: id-token: write is missing"; exit 1; }
-      - name: Re-verify the planned tarball and stage it
+      - name: Re-verify the planned tarball and publish it
         run: |
           plan="$RUNNER_TEMP/npm-release/npm-plan.json"
           tarball="$RUNNER_TEMP/npm-release/$(node -p "require('$plan').tarball.file")"
           node .github/comforge/npm-release.mjs verify-tarball --plan "$plan" --tarball "$tarball"
-          npm stage publish "$tarball" --access public --provenance --ignore-scripts
+          npm publish "$tarball" --access public --provenance --ignore-scripts
       - name: Next steps
         run: |
           version="${GITHUB_REF#refs/tags/core/v}"
           {
-            echo "### @comforge/core@$version staged (not public)"
-            echo "1. Review it: \`npm stage list @comforge/core\` or npmjs.com → Staged Packages."
-            echo "2. Approve it with 2FA: \`npm stage approve <stage-id>\` or **Approve** on npmjs.com."
-            echo "3. In the portfolio: \`bun run factory-core:npm-readback --commit $GITHUB_SHA --expect-provenance\`."
+            echo "### @comforge/core@$version published"
+            echo "Next, in the Comforge repository: \`bun run release:npm-readback --package @comforge/core --commit $GITHUB_SHA\`, then \`bun run release:record\`."
           } >> "$GITHUB_STEP_SUMMARY"

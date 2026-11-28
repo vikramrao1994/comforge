@@ -24,15 +24,6 @@ import {
   scanForDisclosure,
 } from "../../tooling/release/mirror";
 import { allTests, assertRegistry, CORE, dependentsOf, PACKAGES, type PackageProfile, profileOf, sourceInputs } from "../../tooling/release/packages";
-import {
-  AuthorizationRefusal,
-  buildAuthorization,
-  parseTrust,
-  signAuthorization,
-  TRUST_SCHEMA,
-  verifyDispatch,
-  verifyReleaseAuthorization,
-} from "../../tooling/release/releaseAuthorization";
 import { INTENT_SCHEMA, parseIntent, ReleaseIntentSchema } from "../../tooling/release/releaseIntent";
 import { applyBump, evaluatePlan, type PlanInput, satisfiesRange, UNRELEASED } from "../../tooling/release/releasePlan";
 import { RELEASE_REPOSITORY_SLUG as ENGINEERING_REPOSITORY_SLUG } from "../../tooling/release/repository";
@@ -565,10 +556,13 @@ test("every package's shipped release assets pass the disclosure scan, as they a
 
 describe("the mirror workflows", () => {
   const read = (file: string) => readFileSync(path.join(REPO, "tooling/release/assets", file), "utf8");
-  test("core's npm workflow is byte for byte the one already released (no workflow change for core)", () => {
-    const pinned = JSON.parse(readFileSync(path.join(REPO, CORE.pinDir, "RELEASE.json"), "utf8")) as { files: Record<string, string> };
-    const digest = new Bun.CryptoHasher("sha256").update(read("npm-publish.yml")).digest("hex");
-    expect(digest).toBe(pinned.files[CORE.npmWorkflow] as string);
+  test("every npm workflow publishes directly, after re-verifying the planned tarball", () => {
+    for (const file of ["npm-publish.yml", "npm-publish-github.yml", "npm-publish-ledger.yml", "npm-publish-cli.yml", "npm-publish-mcp.yml"]) {
+      const text = read(file);
+      expect(text).toContain('npm publish "$tarball" --access public --provenance --ignore-scripts');
+      expect(text).not.toContain("npm stage");
+      expect(text.indexOf("verify-tarball")).toBeLessThan(text.indexOf('npm publish "$tarball"'));
+    }
   });
 
   test("github's npm workflow triggers only on github tags, binds the package and refuses a bootstrap", () => {
@@ -593,99 +587,6 @@ describe("consumer update", () => {
     expect(() => decide("0.1.1")).toThrow("not-published");
     expect(() => decide("0.0.0-stage")).toThrow("malformed-version");
     expect(GITHUB.consumedDownstream).toBe(true);
-  });
-});
-
-// ── Owner authorization cannot cross packages ────────────────────────────────
-
-describe("signed approval is bound to one package", () => {
-  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
-  const pem = publicKey.export({ type: "spki", format: "pem" }).toString();
-  const trust = parseTrust({ schema: TRUST_SCHEMA, keys: [{ keyId: keyIdFor(pem), publicKeyPem: pem, login: "owner", label: "o" }], revoked: [] });
-  const SOURCE = SHA("a");
-  const plan = (pkg: "@comforge/core" | "@comforge/github") =>
-    evaluatePlan(
-      input({
-        package: pkg,
-        head: SOURCE,
-        baseline: { version: "0.1.2", sourceCommit: SHA("0"), files: { "src/index.ts": "0" } },
-        headVersion: "0.1.3",
-        changelog: "",
-        candidateFiles: { "src/index.ts": "1" },
-        manifestChanged: false,
-        exports: { before: ["a"], after: ["a"] },
-        ...declared("release-intents/x.json", pkg, "patch"),
-      }),
-    );
-  // Deliberately misleading: same source commit, same version, same release-record digest.
-  const candidateOf = (pkg: "@comforge/core" | "@comforge/github"): ReturnType<typeof buildCandidateRecord> => {
-    const p = profileOf(pkg);
-    const rebuilt: CandidateInput = {
-      package: pkg,
-      version: "0.1.3",
-      tag: `${p.tagPrefix}0.1.3`,
-      sourceCommit: SOURCE,
-      releaseRecordSha256: "e".repeat(64),
-      tarball: { sha256: "f".repeat(64), integrity: "sha512-x" },
-      fileCount: 40,
-      workflowChanges: [],
-      workflowApproval: null,
-      plan: plan(pkg),
-      ci: { ok: true, checks: [{ name: "Validate (test:verify)", conclusion: "success" }] },
-    };
-    return buildCandidateRecord(rebuilt);
-  };
-  const core = candidateOf("@comforge/core");
-  const github = candidateOf("@comforge/github");
-  const NOW = new Date();
-  const sign = (candidate: typeof core) =>
-    signAuthorization(
-      buildAuthorization({
-        candidate,
-        workflowSha256: "9".repeat(64),
-        repository: ENGINEERING_REPOSITORY_SLUG,
-        issuer: "owner",
-        authorizationId: randomUUID(),
-        nonce: randomBytes(16).toString("hex"),
-        candidateRun: 1,
-        now: NOW,
-      }),
-      privateKey,
-    );
-  const verify = (envelope: unknown, candidate: typeof core) => {
-    try {
-      verifyReleaseAuthorization(envelope, {
-        trust,
-        repository: ENGINEERING_REPOSITORY_SLUG,
-        candidate,
-        workflowSha256: "9".repeat(64),
-        triggeringActor: "owner",
-        approveWorkflows: "",
-        now: NOW,
-      });
-      return "authorized";
-    } catch (error) {
-      if (error instanceof AuthorizationRefusal) return `${error.code}: ${error.message}`;
-      throw error;
-    }
-  };
-
-  test("each package's approval verifies for that package only", () => {
-    expect(verify(sign(core), core)).toBe("authorized");
-    expect(verify(sign(github), github)).toBe("authorized");
-    const crossed = verify(sign(core), github);
-    expect(crossed).toStartWith("authorization-mismatch");
-    for (const field of ["package", "tag", "candidateDigest"]) expect(crossed).toContain(field);
-    expect(verify(sign(github), core)).toStartWith("authorization-mismatch");
-  });
-
-  test("a dispatch for one package cannot carry the other's approval", () => {
-    const a = sign(core).authorization;
-    const base = { authorization: a, authorizationIdInput: a.authorizationId, runAttempt: "1", sha: SOURCE, workflowSha: SOURCE };
-    expect(() => verifyDispatch({ ...base, packageInput: "core" })).not.toThrow();
-    expect(() => verifyDispatch({ ...base, packageInput: "github" })).toThrow(/publishes @comforge\/github; the owner authorized @comforge\/core/);
-    expect(() => verifyDispatch({ ...base, packageInput: "agents" })).toThrow(/not a registry package/);
-    expect(() => verifyDispatch({ ...base, packageInput: undefined })).toThrow(/not a registry package/);
   });
 });
 

@@ -311,7 +311,7 @@ Every runtime export of every published subpath. Types are exported alongside an
 | `ed25519Signer` | function | A signer over a PEM private key held in this process: for the owner's or controller's side. |
 | `keyIdFor` | function | — |
 
-## `@comforge/mcp` 0.3.0
+## `@comforge/mcp` 0.4.0
 
 ### `@comforge/mcp`
 

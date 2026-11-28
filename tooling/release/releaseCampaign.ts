@@ -15,11 +15,11 @@
  *  `--execute` it only prints that step. At most one step runs per invocation.
  * - `unlock` removes a lock whose holder process is gone.
  *
- * Publication, signing and merging are never campaign steps. Approving a candidate, the
- * npm environment, `npm stage approve`, the first-release bootstrap and every merge stop
- * the campaign with the owner's exact next action and the resume command. A campaign is
- * not a blanket approval. Each package keeps its own signed authorization, bound to its
- * own candidate.
+ * Publication, approval and merging are never campaign steps. Approving a release run's
+ * comforge-release environment, the first-release bootstrap and every merge stop the campaign
+ * with the owner's exact next action and the resume command. A campaign is not a blanket
+ * approval: each package is published only by a run that built its own candidate and that the
+ * owner approved.
  *
  * Trust: the state comes from the authoritative sources on every run: origin/main, the
  * public mirror's tags, the npm registry and the GitHub runs and PRs. The checkpoint never
@@ -591,8 +591,8 @@ export function derivePackage(input: {
       by: "owner",
       action: "approve-npm-publication",
       detail: obs.npmRunInFlight
-        ? `approve the waiting ${profile.npmWorkflow.split("/").pop()} run (environment npm-${profile.id}) in ${MIRROR_REPOSITORY}, then \`npm stage approve\` with 2FA`
-        : `the tag exists but no npm run is in flight and the version is not public: check the ${profile.npmWorkflow.split("/").pop()} run for ${profile.tagPrefix}${target.version} and the staged list. The tag is immutable, so never dispatch the release workflow again for this version`,
+        ? `the ${profile.npmWorkflow.split("/").pop()} run (environment npm-${profile.id}) in ${MIRROR_REPOSITORY} is publishing; approve it if its environment still asks for a reviewer`
+        : `the tag exists but no npm run is in flight and the version is not public: check the ${profile.npmWorkflow.split("/").pop()} run for ${profile.tagPrefix}${target.version}. The tag is immutable, so never dispatch the release workflow again for this version`,
     });
   }
 
@@ -702,8 +702,8 @@ export function derivePackage(input: {
   return state("approval", built ? "built" : "planned", {
     by: "owner",
     action: "approve-release",
-    detail: `in a terminal: build the candidate, review it, type ${target.version}${target.firstRelease ? " and `approve workflow change`" : ""}, enter the key passphrase. It signs and dispatches one publish run`,
-    command: `bun run release:approve --build ${flag}`,
+    detail: `approve the comforge-release environment of the release run for ${target.version} after reviewing its candidate summary; a first release also changes the npm workflow, shown there`,
+    command: `bun run release:dispatch package=${profileOf(target.package).id}`,
   });
 }
 
