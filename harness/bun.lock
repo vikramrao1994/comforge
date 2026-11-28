@@ -5,13 +5,13 @@
     "": {
       "name": "comforge-harness",
       "dependencies": {
-        "@comforge/cli": "0.5.0",
-        "@comforge/mcp": "0.3.0",
+        "@comforge/cli": "0.6.0",
+        "@comforge/mcp": "0.4.0",
       },
     },
   },
   "packages": {
-    "@comforge/cli": ["@comforge/cli@0.5.0", "", { "dependencies": { "@comforge/core": "0.2.0", "@comforge/github": "0.6.0", "@comforge/ledger": "0.1.0", "zod": "^4.6.6" }, "bin": { "comforge": "dist/cli.js" } }, "sha512-XjZuvw8sDf0XNk9aXyxqCPfUnRk7btaElILzQog+myxPNCzwhymmFpWwAAOOwW33dndllMvdGGV81oJaQpkFtg=="],
+    "@comforge/cli": ["@comforge/cli@0.6.0", "", { "dependencies": { "@comforge/core": "0.2.0", "@comforge/github": "0.6.0", "@comforge/ledger": "0.1.0", "zod": "^4.6.6" }, "bin": { "comforge": "dist/cli.js" } }, "sha512-SvCcPGkVmyutN6stJF8zi1HsP6p6zYg1NOwt5847EUOYWmrEMuKLEMhYbKMeHCyZcqnCSn+PvM4uuSyi4IDOTA=="],
 
     "@comforge/core": ["@comforge/core@0.2.0", "", { "dependencies": { "zod": "^4.6.6" } }, "sha512-F/L87vBqtQlnVX9VK2Pb/3iLH+sTTGnVnpLcuNhsQWSFLuVEUs4KlQwkua5nMsL2u+qFOUAtaEVeh+dxBaIitQ=="],
 
@@ -19,7 +19,7 @@
 
     "@comforge/ledger": ["@comforge/ledger@0.1.0", "", {}, "sha512-8yegKRtFx8fq5+SbDuRkfaghkrY7zzHvAVm4I4rjTbH29HqgwDh2P0TuMp9b6HzSq5UU6/bkuuVxGY9sXeasBw=="],
 
-    "@comforge/mcp": ["@comforge/mcp@0.3.0", "", { "dependencies": { "@comforge/cli": "0.5.0", "@comforge/core": "0.2.0", "@comforge/github": "0.6.0", "@comforge/ledger": "0.1.0", "@modelcontextprotocol/sdk": "1.32.2", "zod": "^4.6.6" }, "bin": { "comforge-mcp": "dist/bin.js" } }, "sha512-OUR3OBpXvTXmytMeJqutayvfMCXJNOsuEdjAvr6emOjKhZc6Bd56+pv69pXyugOyNBhYiQhePxMAKAOBsNbvpg=="],
+    "@comforge/mcp": ["@comforge/mcp@0.4.0", "", { "dependencies": { "@comforge/cli": "0.6.0", "@comforge/core": "0.2.0", "@comforge/github": "0.6.0", "@comforge/ledger": "0.1.0", "@modelcontextprotocol/sdk": "1.32.2", "zod": "^4.6.6" }, "bin": { "comforge-mcp": "dist/bin.js" } }, "sha512-E4h0L0K1pREI1dNj6Ni8ahWNimUptoEFa9k/poIxbUPWloYp/e/A3ARaqfWakOEXRuQkZ4T7qEyHAkwd9G2ZGw=="],
 
     "@hono/node-server": ["@hono/node-server@2.1.11", "", { "peerDependencies": { "hono": "^4 || ^5.0.0-0" } }, "sha512-KzKz9vl4vvr1vgLHamj+g5uonbrj5NwAdO3yzOS6cd2HjALVeOgTgeZOyAzNxejbkfOOPIcvuf/Tg8l1pEFLog=="],
 
