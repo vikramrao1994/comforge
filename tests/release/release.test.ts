@@ -666,35 +666,38 @@ describe("public release gates", () => {
     expect(git(elsewhere, ["for-each-ref"])).toBe("");
   });
 
-  test("the workflow mints and uses the write credential only for an authorized publish run", () => {
-    // the credential lives only in job `release`, which needs the
-    // credential-free `authorize` job and verifies the owner's signed authorization again
-    // before the credential step; the candidate job reads anonymously.
+  test("the workflow mints and uses the write credential only for an owner-approved run", () => {
+    // The credential lives only in job `release`, which waits in the comforge-release
+    // environment and reads the owner's approval of this run back from GitHub before the
+    // credential step; the select and candidate jobs read anonymously.
     const workflow = Bun.YAML.parse(readFileSync(path.join(REPO, ".github", "workflows", "release.yml"), "utf8")) as {
       "run-name": string;
+      on: Record<string, unknown>;
       jobs: Record<string, { if?: string; environment?: string; needs?: string | string[]; steps: { name?: string; run?: string }[] }>;
     };
     const text = (job: string) => JSON.stringify(workflow.jobs[job]);
+    expect(text("select")).not.toContain("secrets.");
     expect(text("candidate")).not.toContain("secrets.");
-    expect(text("authorize")).not.toContain("secrets.");
-    expect(workflow.jobs.authorize?.environment).toBeUndefined();
     // The anonymous read goes through git (prepareMirrorCheckout.sh), not the REST API.
     expect(text("candidate")).toContain('tooling/release/prepareMirrorCheckout.sh \\"https://github.com/$MIRROR_REPOSITORY.git\\" mirror-repo');
     // The repository-level secret is readable by a workflow on any branch; only the
     // environment secret is restricted to main.
     expect(text("release")).toContain("secrets.COMFORGE_RELEASE_TOKEN");
     expect(text("release")).not.toContain("COMFORGE_REPO_TOKEN");
-    expect(text("release")).not.toContain("required_reviewers");
-    expect(workflow.jobs.release?.needs).toEqual(["candidate", "authorize"]);
-    for (const job of ["authorize", "release"]) expect(workflow.jobs[job]?.if).toContain("inputs.publish == true");
+    expect(workflow.jobs.release?.needs).toEqual(["select", "candidate"]);
     expect(workflow.jobs.release?.environment).toBe("comforge-release");
+    // Only after CI proved the commit on main, or a manual dispatch by the owner.
+    expect(Object.keys(workflow.on).sort()).toEqual(["workflow_dispatch", "workflow_run"]);
+    expect(workflow.jobs.select?.if).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(workflow.jobs.select?.if).toContain("github.event.workflow_run.event == 'push'");
+    for (const job of ["select", "release"]) expect(workflow.jobs[job]?.if).toContain("github.actor == github.repository_owner");
     const steps = workflow.jobs.release?.steps ?? [];
-    const verify = steps.findIndex((s) => s.run?.includes("releaseAuthorization.ts verify"));
+    const verify = steps.findIndex((s) => s.run?.includes("environmentApproval.ts verify"));
     const credential = steps.findIndex((s) => JSON.stringify(s).includes("secrets."));
     expect(verify).toBeGreaterThan(0);
     expect(verify).toBeLessThan(credential);
-    expect(text("release")).toContain("--authorization approved/authorization.json");
-    expect(workflow["run-name"]).toContain("Comforge release {0}");
+    expect(text("release")).toContain("--publish --candidate ../approved/candidate.json");
+    expect(workflow["run-name"]).toContain("Comforge release ({0})");
   });
 });
 

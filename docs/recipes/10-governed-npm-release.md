@@ -7,7 +7,7 @@ is this repository's own tooling**, not a public API of the five packages:
 
 | Piece | Kind |
 |---|---|
-| `release-intents/`, `bun run release:plan`, `release:version-pr`, `release:rehearse`, `release:approve`, `release.yml`, `release-trust.json` | **this repository's tooling** (not published; reuse by copying, under Apache-2.0) |
+| `release-intents/`, `bun run release:plan`, `release:version-pr`, `release:rehearse`, `release:dispatch`, `release.yml` | **this repository's tooling** (not published; reuse by copying, under Apache-2.0) |
 | npm Trusted Publishing with provenance (GitHub OIDC) | npm and GitHub, generic |
 | owner-signed authorization (Ed25519 over a canonical JSON digest) | built on the generic grant pattern of `@comforge/core`; the release format itself is repository tooling |
 | `createGitHubWriter`, `@comforge/ledger` | published APIs the tooling uses, available to your own release tooling |
@@ -43,13 +43,13 @@ builds are byte-identical, verifies a signed authorization with a synthetic key 
 refused when tampered, signed by another key, expired or bound to another candidate), prepares
 the npm package and reads it back from a fake registry. It pushes and publishes nothing.
 
-## 3. Authorize and publish (owner only)
+## 3. Approve and publish (owner only)
 
 | Step | Who | Command |
 |---|---|---|
-| sign the exact candidate digest and dispatch `release.yml` | owner, on the owner's machine | `bun run release:approve --package <id>` |
-| approve the `npm-<id>` environment | owner, on GitHub | — |
-| publish with provenance | `npm-publish-<id>.yml` (Trusted Publishing) | — |
+| merge the version PR; `release.yml` starts when CI is green and builds the candidate | owner, on GitHub | — (or `bun run release:dispatch package=<id>`) |
+| review the candidate summary and **Approve** the run's `comforge-release` environment | owner, on GitHub | — |
+| publish directly with provenance | `npm-publish-<id>.yml` (Trusted Publishing) | — |
 | read back the published tarball and its provenance | anyone | `bun run release:npm-readback --package <id> --commit <sha> --expect-provenance` |
 
 `release.yml` refuses to publish unless the repository variable `COMFORGE_PUBLISHER=comforge`

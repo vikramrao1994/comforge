@@ -19,7 +19,7 @@ Change authorization, trust boundaries, credentials handling or disclosure rules
 ## Examples
 
 ```sh
-bun test --isolate packages/cli/test/authorization.test.ts packages/mcp/test/adversarial.test.ts tests/release/releaseAuthorization.test.ts
+bun test --isolate packages/cli/test/authorization.test.ts packages/mcp/test/adversarial.test.ts tests/release/environmentApproval.test.ts
 ```
 
 ## Decision rules

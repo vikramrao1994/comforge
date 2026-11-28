@@ -170,7 +170,7 @@
         "docs/security/authorization-and-trust.md"
       ],
       "validation": [
-        "bun test --isolate packages/cli/test/authorization.test.ts packages/mcp/test/adversarial.test.ts tests/release/releaseAuthorization.test.ts",
+        "bun test --isolate packages/cli/test/authorization.test.ts packages/mcp/test/adversarial.test.ts tests/release/environmentApproval.test.ts",
         "bun run disclosure"
       ]
     },
@@ -194,8 +194,7 @@
         "tooling/release",
         "release-intents",
         "releases",
-        ".github/workflows/release.yml",
-        "release-trust.json"
+        ".github/workflows/release.yml"
       ],
       "skills": [
         "contributor-release"

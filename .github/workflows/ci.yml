@@ -39,7 +39,7 @@ jobs:
       - name: Repository validators (routing, skills, docs, boundaries, harness, disclosure, reference drift, invented flags, versions, recipes, benchmarks and charts, links, README excerpts, brand assets, recorded demos)
         run: bun run validate
       - name: Security regression suites
-        run: bun test --isolate --timeout 30000 packages/cli/test/authorization.test.ts packages/cli/test/hostPolicy.test.ts packages/mcp/test/adversarial.test.ts packages/core/test/authorization.test.ts tests/release/releaseAuthorization.test.ts tests/repository
+        run: bun test --isolate --timeout 30000 packages/cli/test/authorization.test.ts packages/cli/test/hostPolicy.test.ts packages/mcp/test/adversarial.test.ts packages/core/test/authorization.test.ts tests/release/environmentApproval.test.ts tests/repository
       - name: Public API and release plan (every shipped change has a reviewed intent)
         run: bun test --isolate --timeout 30000 tests/cli/contracts.test.ts packages/core/test/surface.test.ts tests/release/releasePlan.test.ts && bun run release:plan
 

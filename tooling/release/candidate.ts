@@ -218,7 +218,9 @@ export function renderCandidate(c: ReleaseCandidate): string {
     `- Plan: ${c.plan.status}, ${c.plan.bump} from ${c.plan.baseline.version} (\`${c.plan.digest}\`)`,
     `- CI: ${c.ci ? c.ci.checks.map((x) => `${x.name} ${x.conclusion ?? "missing"}`).join(", ") : "not checked"}`,
     ...(c.workflowApproval
-      ? [`- Workflow change (needs \`approve_workflows\`): \`${c.workflowApproval}\``]
+      ? [
+          `- Workflow change (published with this candidate when approved): \`${c.workflowApproval}\``,
+        ]
       : []),
     "",
     "Risk:",

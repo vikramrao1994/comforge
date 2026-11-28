@@ -1,57 +1,45 @@
 name: Release a Comforge package
 
-# Builds the release candidate of one Comforge package (`package`: core, github, ledger, cli,
-# mcp; registry: tooling/release/packages.ts) from this repository's main and, only when the
-# owner explicitly authorized exactly that candidate, pushes a new immutable version to that
-# package's own release branch and tag in this repository (releases/<id> + <id>/vX.Y.Z). It
-# never writes main. The tag push starts the package's npm workflow (npm-publish.yml for core,
-# npm-publish-<id>.yml for each other package), which npm Trusted Publishing trusts.
-# Governance, owner gates and recovery: docs/contributing/release-governance.md.
+# Releases every Comforge package (core, github, ledger, cli, mcp; registry:
+# tooling/release/packages.ts) that the release planner reports release-ready on main. It starts
+# when CI finishes green for a push to main (a merged version PR) and builds exactly that commit;
+# a manual dispatch releases one package from main's head. For each package it pushes
+# a new immutable version to that package's own release branch and tag in this repository
+# (releases/<id> + <id>/vX.Y.Z), never main. The tag push starts the package's npm workflow
+# (npm-publish.yml for core, npm-publish-<id>.yml for each other package), which publishes
+# directly through npm Trusted Publishing with provenance.
+# Governance, the owner's gate and recovery: docs/contributing/release-governance.md.
 #
-# Single publisher. Until the owner moves publication here, releases are still published by
-# the previous publisher, and this workflow only rehearses: jobs `authorize` and `release`
-# run only when the repository variable COMFORGE_PUBLISHER is exactly "comforge", and job
-# `release` refuses before any credential exists unless the comforge-release environment
-# records the date the previous publisher was retired (COMFORGE_PREVIOUS_PUBLISHER_RETIRED).
-# The ordered, fail-closed switch-over and its recovery: docs/contributing/release-transition.md.
+# Single publisher: jobs that can publish run only when the repository variable
+# COMFORGE_PUBLISHER is exactly "comforge", and job `release` refuses before any credential
+# exists unless the comforge-release environment records the date the previous publisher was
+# retired (COMFORGE_PREVIOUS_PUBLISHER_RETIRED; docs/contributing/release-transition.md).
 #
-# Manual only. Job `candidate` holds no credential: it builds twice, checks reproducibility,
-# the disclosure scan and the Node import, runs the release planner, proves CI for the commit,
-# rehearses the sync in a throwaway copy of the release branches and shows the immutable
-# candidate (digest, version, source commit, risk) in the run summary. A publish run needs the
-# owner's signed release authorization for exactly that candidate, created and dispatched by
-# `bun run release:approve`: job `authorize`, still without a credential, verifies it against
-# release-trust.json and this workflow at the source commit and refuses an expired, revoked,
-# replayed or mismatched one; job `release` verifies it again, mints the credential, rebuilds,
-# and publishes only if the rebuild matches the authorized candidate. Nothing is typed by hand.
+# The owner's gate is one approval. Jobs `select` and `candidate` hold no credential: the
+# candidate is built twice, checked for reproducibility, disclosure and the Node import,
+# planned, proven green in CI for its commit, rehearsed in a throwaway copy of the release
+# branches and shown in the run summary (digest, version, source commit, workflow change). Job
+# `release` waits in the comforge-release environment, whose required reviewer is the owner;
+# after the approval it reads that approval of this run back from GitHub
+# (tooling/release/environmentApproval.ts), mints the credential, rebuilds, and publishes only a
+# rebuild byte-identical to the candidate this run built. Nothing is typed, signed or copied.
 #
-# Who can still publish: anyone who can change this workflow or the trust file on main. Keep
-# workflow and trust changes owner-reviewed (CODEOWNERS, required review on main).
-run-name: ${{ inputs.publish && format('Comforge release {0}', inputs.authorization_id) || format('Comforge {0} candidate', inputs.package) }}
+# Who can publish: whoever can approve the comforge-release environment and merge to main. Keep
+# the environment's required reviewer, this workflow and the release tooling owner-reviewed.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Comforge {0} release', inputs.package) || format('Comforge release ({0})', github.event.workflow_run.head_sha) }}
 on:
+  # Only after CI proved the commit: the candidate's CI proof needs its checks green.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       package:
-        description: "Package to release (set by release:approve)"
+        description: "Package to release (it must be release-ready on main)"
         type: choice
         options: [core, github, ledger, cli, mcp]
         default: core
-      publish:
-        description: "Publish (set by release:approve; unticked = dry run that builds a candidate)"
-        type: boolean
-        default: false
-      authorization:
-        description: "Owner-signed release authorization (set by release:approve; never typed)"
-        type: string
-        default: ""
-      authorization_id:
-        description: "Its id (set by release:approve)"
-        type: string
-        default: ""
-      approve_workflows:
-        description: "Mirror workflow change, as signed in the authorization (set by release:approve)"
-        type: string
-        default: ""
 
 permissions:
   contents: read
@@ -63,37 +51,74 @@ concurrency:
 
 env:
   MIRROR_REPOSITORY: ${{ github.repository }}
-  PUBLISH: ${{ inputs.publish == true }}
-  PACKAGE: ${{ inputs.package }}
+  # The commit CI proved (workflow_run), or main's head (dispatch).
+  SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  candidate:
-    name: Build the release candidate
+  select:
+    name: Select the release-ready packages
     runs-on: ubuntu-latest
     if: >-
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_dispatch' &&
       github.actor == github.repository_owner &&
-      github.triggering_actor == github.repository_owner
+      github.triggering_actor == github.repository_owner &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'))
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      packages: ${{ steps.select.outputs.packages }}
+    steps:
+      - name: Verify exact branch ref (case-sensitive)
+        run: test "$GITHUB_REF" = "refs/heads/main"
+      - name: Checkout the commit CI proved
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.1
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      # In dependency order (the registry's); --registry: a version already on npm is never
+      # selected again, whether or not its release record is committed yet.
+      - name: Ask the planner
+        id: select
+        env:
+          REQUESTED: ${{ inputs.package }}
+        run: bun tooling/release/releaseSelect.ts --registry ${REQUESTED:+--package "$REQUESTED"} >> "$GITHUB_OUTPUT"
+
+  candidate:
+    name: Build the release candidate
+    runs-on: ubuntu-latest
+    needs: select
+    if: needs.select.outputs.packages != '[]'
+    strategy:
+      fail-fast: false
+      # Dependency order: a dependent's candidate follows its sibling.
+      max-parallel: 1
+      matrix:
+        package: ${{ fromJSON(needs.select.outputs.packages) }}
     timeout-minutes: 15
     permissions:
       contents: read
       checks: read
-    outputs:
-      source: ${{ steps.source.outputs.sha }}
-      version: ${{ steps.release.outputs.version }}
-      changed: ${{ steps.release.outputs.changed }}
+    env:
+      PACKAGE: ${{ matrix.package }}
     steps:
       - name: Verify exact branch ref (case-sensitive)
         run: test "$GITHUB_REF" = "refs/heads/main"
-      - name: Checkout
+      - name: Checkout the commit CI proved
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ env.SOURCE_SHA }}
           # The publisher verifies the source commit is on origin/main; the planner reads history.
           fetch-depth: 0
-      - name: Record source commit
-        id: source
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -127,7 +152,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: bun run release:build --package "$PACKAGE" --dest mirror-repo --out generated/factory-core-release --ci-proof
       - name: Refuse to publish a candidate that is not release-ready
-        if: env.PUBLISH == 'true'
         run: |
           bun -e '
             const fs = require("fs");
@@ -145,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: comforge-candidate
+          name: comforge-candidate-${{ matrix.package }}
           path: |
             generated/factory-core-release/candidate.json
             generated/factory-core-release/plan.json
@@ -154,79 +178,38 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-  authorize:
-    name: Verify the owner's authorization (no credential)
-    needs: candidate
-    runs-on: ubuntu-latest
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_dispatch' &&
-      github.actor == github.repository_owner &&
-      github.triggering_actor == github.repository_owner &&
-      vars.COMFORGE_PUBLISHER == 'comforge' &&
-      inputs.publish == true
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - name: Verify exact branch ref (case-sensitive)
-        run: test "$GITHUB_REF" = "refs/heads/main"
-      - name: Checkout the candidate's source commit
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          ref: ${{ needs.candidate.outputs.source }}
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.1
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: Download the candidate
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: comforge-candidate
-          path: approved
-      # Signature, trusted key and its GitHub login, dispatcher, window, revocation, every
-      # binding to the candidate, this workflow's digest, run attempt 1, and no other run
-      # that carried the same authorization (tooling/release/releaseAuthorization.ts).
-      - name: Verify the authorization
-        env:
-          AUTHORIZATION: ${{ inputs.authorization }}
-          AUTHORIZATION_ID: ${{ inputs.authorization_id }}
-          APPROVE_WORKFLOWS: ${{ inputs.approve_workflows }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: bun tooling/release/releaseAuthorization.ts verify --candidate approved/candidate.json --out approved/authorization.json
-
   release:
-    name: Release the authorized candidate
-    needs: [candidate, authorize]
+    name: Release the approved candidate
+    needs: [select, candidate]
     runs-on: ubuntu-latest
-    # Mints the publishing credential: only from `main`, only by the repository owner, only
-    # for a publish dispatch whose owner authorization job `authorize` verified, and only once
-    # this repository is the active publisher (vars.COMFORGE_PUBLISHER). The environment
-    # is restricted to main and holds the credential as an environment secret, so no other
-    # branch's workflow can read it; it has no required reviewer (not on this plan).
+    # Mints the publishing credential: only from main, only for a run the owner started, only
+    # once this repository is the active publisher, and only after the owner approved this
+    # run's comforge-release environment. The environment is restricted to main and holds the
+    # credential as an environment secret, so no other branch's workflow can read it.
     if: >-
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_dispatch' &&
       github.actor == github.repository_owner &&
       github.triggering_actor == github.repository_owner &&
       vars.COMFORGE_PUBLISHER == 'comforge' &&
-      inputs.publish == true
+      needs.select.outputs.packages != '[]'
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        package: ${{ fromJSON(needs.select.outputs.packages) }}
     environment: comforge-release
     timeout-minutes: 15
     permissions:
       contents: read
       actions: read
+    env:
+      PACKAGE: ${{ matrix.package }}
     steps:
       # GitHub expressions compare strings case-insensitively; this exact check runs
       # before any step that receives a secret (tests/release/workflowPolicy.test.ts).
       - name: Verify exact branch ref (case-sensitive)
         run: test "$GITHUB_REF" = "refs/heads/main"
-      # Fail closed on the publisher transition (docs/contributing/release-transition.md): the owner records,
-      # as a variable of the comforge-release environment, the date the previous external
-      # publisher was disabled and its credential revoked. Without it no credential is minted.
+      # Fail closed on the publisher transition (docs/contributing/release-transition.md).
       - name: Verify the previous publisher is retired
         env:
           RETIRED: ${{ vars.COMFORGE_PREVIOUS_PUBLISHER_RETIRED }}
@@ -239,11 +222,23 @@ jobs:
             echo "::error::COMFORGE_PREVIOUS_PUBLISHER_RETIRED ($RETIRED) is in the future; nothing was published."
             exit 1
           fi
+      - name: Download this run's candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: comforge-candidate-${{ matrix.package }}
+          path: approved
+      - name: Read the candidate's source commit
+        id: source
+        run: |
+          sha=$(node -p "require('./approved/candidate.json').sourceCommit")
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the candidate names no source commit"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: Checkout the candidate's source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ needs.candidate.outputs.source }}
+          ref: ${{ steps.source.outputs.sha }}
           fetch-depth: 0
+          path: source
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
@@ -253,20 +248,14 @@ jobs:
         with:
           node-version: 22
       - name: Install dependencies
+        working-directory: source
         run: bun install --frozen-lockfile
-      - name: Download the approved candidate
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: comforge-candidate
-          path: approved
-      # Again here, immediately before the credential exists in this job.
-      - name: Verify the authorization
+      # The owner's approval of exactly this run, read back from GitHub before any credential.
+      - name: Verify the owner's approval of this run
+        working-directory: source
         env:
-          AUTHORIZATION: ${{ inputs.authorization }}
-          AUTHORIZATION_ID: ${{ inputs.authorization_id }}
-          APPROVE_WORKFLOWS: ${{ inputs.approve_workflows }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: bun tooling/release/releaseAuthorization.ts verify --candidate approved/candidate.json --out approved/authorization.json
+        run: bun tooling/release/environmentApproval.ts verify
 
       # GitHub App (preferred: short-lived installation token for this repository) when
       # COMFORGE_APP_ID is configured; otherwise the fine-grained PAT.
@@ -282,7 +271,7 @@ jobs:
 
       # The write credential exists only in this step and, through the checkout, the release step.
       - name: Prepare repository checkout
-        id: destination
+        working-directory: source
         env:
           PUBLISH_TOKEN: ${{ steps.app-token.outputs.token || secrets.COMFORGE_RELEASE_TOKEN }}
         run: |
@@ -299,11 +288,12 @@ jobs:
           git -c "http.https://github.com/.extraheader=$header" clone -q "https://github.com/$MIRROR_REPOSITORY.git" mirror-repo
           git -C mirror-repo config "http.https://github.com/.extraheader" "$header"
 
-      - name: Rebuild, match the authorized candidate and release
+      - name: Rebuild, match the approved candidate and release
         id: release
+        working-directory: source
         env:
-          APPROVE_WORKFLOWS: ${{ inputs.approve_workflows }}
-        run: bun run release:build --package "$PACKAGE" --dest mirror-repo --out generated/factory-core-release --publish --candidate approved/candidate.json --authorization approved/authorization.json --approve-workflows "$APPROVE_WORKFLOWS"
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun run release:build --package "$PACKAGE" --dest mirror-repo --out generated/factory-core-release --publish --candidate ../approved/candidate.json
 
       - name: Summary
         if: always()
@@ -313,5 +303,5 @@ jobs:
             echo "- Mirror: \`$MIRROR_REPOSITORY\`"
             echo "- Version: ${{ steps.release.outputs.version }}"
             echo "- Changed: ${{ steps.release.outputs.changed }}"
-            echo "- Next: the tag push starts the package's npm workflow in the Comforge repository (npm-publish.yml for core, npm-publish-<id>.yml for each other package); approve its environment, then the staged version (npm stage approve), then update consumers to the read-back version."
+            echo "- Next: the tag push starts the package's npm workflow (npm-publish.yml for core, npm-publish-<id>.yml for each other package), which publishes directly; then bun run release:npm-readback and bun run release:record."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -11,9 +11,10 @@
  *   2. the candidate build (`release:build` dry run: two byte-identical builds, disclosure
  *      scan, Node import, the sync rehearsed into a throwaway copy of the release branch),
  *      run twice more, so the candidate digest itself is shown to be reproducible;
- *   3. the owner's signed authorization, with a synthetic Ed25519 key generated for this run:
- *      accepted when signed by the trusted key, refused when altered, signed by another key,
- *      expired, or bound to another candidate;
+ *   3. the owner's approval of the run's release environment, read from a synthetic GitHub
+ *      API: accepted when the owner approved this run's comforge-release environment, refused
+ *      when there is no approval, a rejection, another person's or another environment's
+ *      approval, or an unreadable answer;
  *   4. npm publication preparation (`npm-release.mjs` plan: staged, listed, packed,
  *      re-verified) against a fake registry where the version is not yet published;
  *   5. readback of that tarball from the fake registry, and refusal of a substituted one.
@@ -23,28 +24,18 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { keyIdFor } from "@comforge/cli/authority";
 import { NpmReleaseRefusal, plan as npmPlan, readback } from "./assets/npm-release.mjs";
 import type { ReleaseCandidate } from "./candidate";
+import { ApprovalRefusal, verifyEnvironmentApproval } from "./environmentApproval";
 import { PACKAGE_NAMES, profileOf } from "./packages";
-import {
-  AuthorizationRefusal,
-  buildAuthorization,
-  type ReleaseTrust,
-  signAuthorization,
-  TRUST_SCHEMA,
-  verifyReleaseAuthorization,
-  workflowDigestAt,
-} from "./releaseAuthorization";
 import { groupOrder } from "./releasePlan";
 
 const REPO = path.resolve(import.meta.dir, "../..");
 export const REHEARSAL_SCHEMA = "comforge-release-rehearsal/v1";
-const REHEARSAL_LOGIN = "rehearsal-owner";
+const REHEARSAL_OWNER = "rehearsal-owner";
 
 type Step = { step: string; pass: boolean; detail: string };
 export type PackageRehearsal = {
@@ -73,71 +64,68 @@ const lastLine = (text: string) =>
     ?.slice(0, 300) ?? "";
 
 /**
- * Step 3: the authorization decision, offline, with a synthetic key. Exported for its test:
- * it needs only a candidate and the workflow digest it is bound to.
+ * Step 3: the approval decision, offline, against a synthetic GitHub approvals API. Exported for
+ * its test.
  */
-export function rehearseAuthorization(
-  candidate: ReleaseCandidate,
-  workflowSha256: string,
-  repository: string,
-  now = new Date(),
-): Step[] {
-  const trusted = generateKeyPairSync("ed25519");
-  const other = generateKeyPairSync("ed25519");
-  const publicKeyPem = trusted.publicKey.export({ type: "spki", format: "pem" }).toString();
-  const trust: ReleaseTrust = {
-    schema: TRUST_SCHEMA,
-    keys: [
-      { keyId: keyIdFor(publicKeyPem), publicKeyPem, login: REHEARSAL_LOGIN, label: "rehearsal" },
-    ],
-    revoked: [],
-  };
-  const request = {
-    candidate,
-    workflowSha256,
-    repository,
-    issuer: REHEARSAL_LOGIN,
-    authorizationId: randomUUID(),
-    nonce: randomBytes(16).toString("hex"),
-    candidateRun: null,
-    now,
-  };
-  const record = buildAuthorization(request);
-  const context = { trust, repository, candidate, workflowSha256, now };
-  const outcome = (name: string, raw: unknown, expected: string | null): Step => {
+export async function rehearseApproval(repository: string): Promise<Step[]> {
+  const RUN = "4242";
+  const approval = (state: string, login: string, environment = "comforge-release") => ({
+    state,
+    environments: [{ name: environment }],
+    user: { login },
+  });
+  const answering = (status: number, body: unknown): typeof fetch =>
+    (async (url: string | URL | Request) =>
+      String(url).endsWith(`/repos/${repository}/actions/runs/${RUN}/approvals`)
+        ? new Response(JSON.stringify(body), { status })
+        : new Response("{}", { status: 404 })) as typeof fetch;
+  const outcome = async (
+    name: string,
+    fetchImpl: typeof fetch,
+    expected: string | null,
+  ): Promise<Step> => {
     try {
-      verifyReleaseAuthorization(raw, context);
+      await verifyEnvironmentApproval({
+        repository,
+        runId: RUN,
+        owner: REHEARSAL_OWNER,
+        token: undefined,
+        fetchImpl,
+      });
       return { step: name, pass: expected === null, detail: "accepted" };
     } catch (error) {
-      if (!(error instanceof AuthorizationRefusal)) throw error;
+      if (!(error instanceof ApprovalRefusal)) throw error;
       return { step: name, pass: error.code === expected, detail: `refused: ${error.code}` };
     }
   };
-  const signed = signAuthorization(record, trusted.privateKey);
-  const tampered = { ...signed, authorization: { ...signed.authorization, version: "99.0.0" } };
-  const expired = signAuthorization(
-    buildAuthorization({ ...request, now: new Date(now.getTime() - 2 * 60 * 60 * 1000) }),
-    trusted.privateKey,
-  );
-  const otherCandidate = signAuthorization(
-    { ...record, candidateDigest: `sha256:${"0".repeat(64)}` },
-    trusted.privateKey,
-  );
-  return [
-    outcome("authorization: signed by the trusted key is accepted", signed, null),
-    outcome("authorization: an altered record is refused", tampered, "authorization-signature"),
+  return Promise.all([
     outcome(
-      "authorization: a key outside the trust file is refused",
-      signAuthorization(record, other.privateKey),
-      "authorization-untrusted",
+      "approval: the owner's approval of this run's release environment is accepted",
+      answering(200, [approval("approved", REHEARSAL_OWNER)]),
+      null,
     ),
-    outcome("authorization: an expired record is refused", expired, "authorization-expired"),
     outcome(
-      "authorization: a record bound to another candidate is refused",
-      otherCandidate,
-      "authorization-mismatch",
+      "approval: a run without an approval is refused",
+      answering(200, []),
+      "approval-missing",
     ),
-  ];
+    outcome(
+      "approval: a rejected deployment is refused",
+      answering(200, [approval("rejected", REHEARSAL_OWNER)]),
+      "approval-rejected",
+    ),
+    outcome(
+      "approval: another person's approval is refused",
+      answering(200, [approval("approved", "someone-else")]),
+      "approval-not-owner",
+    ),
+    outcome(
+      "approval: another environment's approval is refused",
+      answering(200, [approval("approved", REHEARSAL_OWNER, "npm")]),
+      "approval-missing",
+    ),
+    outcome("approval: an unreadable answer is refused", answering(403, {}), "approval-unreadable"),
+  ]);
 }
 
 type Route = { status: number; body?: unknown; bytes?: Uint8Array };
@@ -344,7 +332,7 @@ async function rehearsePackage(
     detail: digests.map((d) => d.slice(0, 19)).join(" = "),
   });
 
-  steps.push(...rehearseAuthorization(candidate, workflowDigestAt(repo, source), repository));
+  steps.push(...(await rehearseApproval(repository)));
 
   // The fake registry already holds the last released version, as the real one does.
   const baseline = JSON.parse(

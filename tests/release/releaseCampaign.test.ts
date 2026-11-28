@@ -427,7 +427,7 @@ describe("campaign run", () => {
     expect(r.view.next?.step).toMatchObject({
       by: "owner",
       action: "approve-release",
-      command: "bun run release:approve --build --package @comforge/core",
+      command: "bun run release:dispatch package=core",
     });
     expect(world.executed).toEqual([]);
   });

@@ -366,14 +366,16 @@ describe("the release workflow", () => {
     for (const use of workflow.match(/uses: \S+/g) ?? []) expect(use).toMatch(/@[0-9a-f]{40}$/);
   });
 
-  test("only the environment-gated publish job can mint an OIDC token, and it stages the re-verified tarball", () => {
+  test("only the npm-environment publish job can mint an OIDC token, and it publishes the re-verified tarball", () => {
     const plan = job("plan");
     const publish = workflow.slice(workflow.indexOf("\n  publish:\n"));
     expect(plan).not.toContain("id-token");
     expect(publish).toContain("environment: npm");
     expect(publish).toContain("id-token: write");
-    expect(publish.indexOf("verify-tarball")).toBeLessThan(publish.indexOf("npm stage publish"));
-    expect(workflow).not.toMatch(/npm publish\b/);
+    expect(publish.indexOf("verify-tarball")).toBeLessThan(publish.indexOf('npm publish "$tarball"'));
+    // Exactly one publication, of exactly the planned tarball.
+    expect(workflow.match(/npm publish\b/g)).toHaveLength(1);
+    expect(workflow).not.toContain("npm stage");
   });
 
   test("both jobs check the exact tag ref, and the plan requires the commit to be on releases/core", () => {
@@ -388,10 +390,10 @@ describe("the release workflow", () => {
     expect(plan).toContain("--release-branch-ref refs/remotes/origin/releases/core");
   });
 
-  test("there is no token fallback: a missing Trusted Publisher fails the stage step", () => {
+  test("there is no token fallback: a missing Trusted Publisher fails the publish step", () => {
     const publish = workflow.slice(workflow.indexOf("\n  publish:\n"));
-    expect(publish.indexOf("ACTIONS_ID_TOKEN_REQUEST_URL")).toBeLessThan(publish.indexOf("npm stage publish"));
+    expect(publish.indexOf("ACTIONS_ID_TOKEN_REQUEST_URL")).toBeLessThan(publish.indexOf('npm publish "$tarball"'));
     expect(workflow).not.toMatch(/_authToken|npm (login|adduser|token)|--allow-publish/);
-    expect(publish).toContain('npm stage publish "$tarball" --access public --provenance --ignore-scripts');
+    expect(publish).toContain('npm publish "$tarball" --access public --provenance --ignore-scripts');
   });
 });
