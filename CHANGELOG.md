@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0
+
+- Depends on @comforge/cli 0.7.0, whose checkout-free governance takes the writer's identity (RemoteGovernanceHost.identity).
+- RemoteGovernanceHost.identity(command) names the login each write credential acts as, for GitHub App installation tokens that cannot read GET /user. Needs the next @comforge/cli minor.
+
 ## 0.4.0
 
 - Depends on @comforge/cli 0.6.0, the release whose checkout-free governance (createRemoteGovernance) the server's remote publication tools call.

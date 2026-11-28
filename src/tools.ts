@@ -72,7 +72,7 @@ export const SERVER_NAME = "comforge-mcp";
  * Reported as `serverInfo.version`. A literal on purpose: a bundler cannot resolve a runtime
  * read of package.json. test/version.test.ts fails when it differs from package.json.
  */
-export const SERVER_VERSION = "0.4.0";
+export const SERVER_VERSION = "0.5.0";
 
 export interface CallContext {
   principal: Principal;
@@ -331,6 +331,7 @@ async function remoteGovernance(c: CallContext, tool: ToolName): Promise<RemoteG
     ...(host.fetchImpl ? { fetchImpl: host.fetchImpl } : {}),
     signal: c.signal,
     ...(governance.markerNamespace ? { markerNamespace: governance.markerNamespace } : {}),
+    ...((identity) => (identity !== undefined ? { identity } : {}))(governance.identity?.(command)),
   });
 }
 
