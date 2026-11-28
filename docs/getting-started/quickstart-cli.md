@@ -28,7 +28,7 @@ npx comforge cleanup 34 --execute
 
 Every writing command is a dry run without `--execute`. Output is JSON with `--json`; exit codes
 and error codes are listed by `comforge capabilities` and in the
-[CLI reference](../../packages/cli/README.md#exit-codes-and-errors).
+[CLI reference](../reference/errors.md#cli-error-codes).
 
 The same workflow with every command, configuration and expected output, tested in CI:
 [recipe 1](../recipes/01-first-governed-initiative.md).

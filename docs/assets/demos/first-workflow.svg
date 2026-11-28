@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="926" viewBox="0 0 820 926" role="img" aria-labelledby="t d"><title id="t">First governed workflow — Comforge terminal demo</title><desc id="d">One ticket from a published specification to a pull request with a completion record. Text transcript: docs/demos/first-workflow.md</desc>
+<rect width="820" height="926" rx="10" fill="#0d1117" stroke="#30363d"/>
+<circle cx="20" cy="16" r="5" fill="#484f58"/><circle cx="36" cy="16" r="5" fill="#484f58"/><circle cx="52" cy="16" r="5" fill="#484f58"/>
+<text x="410" y="20" fill="#9aa4b2" text-anchor="middle" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12">First governed workflow · synthetic GitHub</text>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
+<text x="16" y="44" fill="#9aa4b2" xml:space="preserve"># Publish the specification the work must satisfy</text>
+<text x="16" y="62" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge spec publish ACME-101 --title "ACME-101 — widget command" --body-file spec.md --execute</text>
+<text x="16" y="80" fill="#e6edf3" xml:space="preserve">comforge spec</text>
+<text x="16" y="98" fill="#e6edf3" xml:space="preserve">  ticket: ACME-101</text>
+<text x="16" y="116" fill="#e6edf3" xml:space="preserve">  digest: c93692ba759fa9f9d3570d886075b18089162b215af28224aa3f8352b6331184</text>
+<text x="16" y="134" fill="#e6edf3" xml:space="preserve">  executed: true</text>
+<text x="16" y="152" fill="#e6edf3" xml:space="preserve">  action: created</text>
+<text x="16" y="170" fill="#e6edf3" xml:space="preserve">  issueNumber: 100</text>
+<text x="16" y="188" fill="#e6edf3" xml:space="preserve">  url: https://github.com/acme/widgets/issues/100</text>
+<text x="16" y="206" fill="#e6edf3" xml:space="preserve">  operationId: specification-f3695e1d83ec36a13f50f8c076073ae532a603fa</text>
+<text x="16" y="224" fill="#e6edf3" xml:space="preserve">  authorization: {"mode":"operator"}</text>
+<text x="16" y="242" fill="#9aa4b2" xml:space="preserve"># Start an isolated checkout for the ticket</text>
+<text x="16" y="260" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge start ACME-101 --issue 100</text>
+<text x="16" y="278" fill="#e6edf3" xml:space="preserve">comforge start</text>
+<text x="16" y="296" fill="#e6edf3" xml:space="preserve">  initiative: ACME-101</text>
+<text x="16" y="314" fill="#e6edf3" xml:space="preserve">  branch: agent/acme-101</text>
+<text x="16" y="332" fill="#e6edf3" xml:space="preserve">  checkout: ~/widgets-agents/acme-101</text>
+<text x="16" y="350" fill="#e6edf3" xml:space="preserve">  base: {"remote":"origin","branch":"main","sha":"af842dbe73df801079868409b0033eae8cb51fb2"}</text>
+<text x="16" y="368" fill="#e6edf3" xml:space="preserve">  specification: {"issueNumber":100,"digest":"c93692ba759fa9f9d3570d886075b18089162b215af28224aa3f83</text>
+<text x="16" y="386" fill="#e6edf3" xml:space="preserve">  52b6331184"}</text>
+<text x="16" y="404" fill="#e6edf3" xml:space="preserve">  provisioned: []</text>
+<text x="16" y="422" fill="#e6edf3" xml:space="preserve">  provisioning: []</text>
+<text x="16" y="440" fill="#e6edf3" xml:space="preserve">  primaryCheckout: {"untouched":true,"trackedChanges":0,"untrackedFiles":1}</text>
+<text x="16" y="458" fill="#9aa4b2" xml:space="preserve"># The agent works and commits in its checkout</text>
+<text x="16" y="476" fill="#3bc9db" font-weight="600" xml:space="preserve">$ ( cd ../widgets-agents/acme-101 &amp;&amp; printf 'widget:\n\t@echo widget\n' &gt;&gt; Makefile &amp;&amp; git commit -q</text>
+<text x="16" y="494" fill="#3bc9db" font-weight="600" xml:space="preserve">  am $'feat: widget command\n\nTicket: ACME-101' )</text>
+<text x="16" y="512" fill="#9aa4b2" xml:space="preserve"># Validate the exact committed head</text>
+<text x="16" y="530" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge verify ACME-101</text>
+<text x="16" y="548" fill="#e6edf3" xml:space="preserve">comforge verify</text>
+<text x="16" y="566" fill="#e6edf3" xml:space="preserve">  initiative: ACME-101</text>
+<text x="16" y="584" fill="#e6edf3" xml:space="preserve">  commit: 619c70a76e5d3ad059042ca49564e3afcfce1844</text>
+<text x="16" y="602" fill="#e6edf3" xml:space="preserve">  tree: 672b4d012e85c381081bcd91042d815c16ae7e01</text>
+<text x="16" y="620" fill="#e6edf3" xml:space="preserve">  status: PASS</text>
+<text x="16" y="638" fill="#e6edf3" xml:space="preserve">  at: &lt;time&gt;</text>
+<text x="16" y="656" fill="#e6edf3" xml:space="preserve">  commands: [{"name":"test","exitStatus":0,"timedOut":false,"durationMs":&lt;ms&gt;}]</text>
+<text x="16" y="674" fill="#e6edf3" xml:space="preserve">  snapshot: false</text>
+<text x="16" y="692" fill="#9aa4b2" xml:space="preserve"># Push, open the pull request and publish the completion record</text>
+<text x="16" y="710" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge deliver ACME-101 --title "Widget command" --result result.json --execute | grep -v '^  st</text>
+<text x="16" y="728" fill="#3bc9db" font-weight="600" xml:space="preserve">  ages:'</text>
+<text x="16" y="746" fill="#e6edf3" xml:space="preserve">comforge deliver</text>
+<text x="16" y="764" fill="#e6edf3" xml:space="preserve">  initiative: ACME-101</text>
+<text x="16" y="782" fill="#e6edf3" xml:space="preserve">  executed: true</text>
+<text x="16" y="800" fill="#e6edf3" xml:space="preserve">  delivery: complete</text>
+<text x="16" y="818" fill="#e6edf3" xml:space="preserve">  attempt: 1</text>
+<text x="16" y="836" fill="#e6edf3" xml:space="preserve">  pullRequest: 101</text>
+<text x="16" y="854" fill="#9aa4b2" xml:space="preserve"># Every pull request on the repository</text>
+<text x="16" y="872" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge prs --json | jq -r '.pullRequests[] | "#\(.number)  \(.headRef)  \(.title.text)"'</text>
+<text x="16" y="890" fill="#e6edf3" xml:space="preserve">#101  agent/acme-101  Widget command</text>
+</g>
+</svg>

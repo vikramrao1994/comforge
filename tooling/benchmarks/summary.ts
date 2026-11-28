@@ -3,10 +3,12 @@
  * benchmark evidence (`evidence/benchmarks/*.json` and the routing evaluation set). With
  * `--check` it writes nothing and exits 1 when the page differs from the evidence, or when a
  * derived percentage in the evidence does not follow from its raw sizes — so no number on the
- * page can drift from, or be typed independently of, its evidence.
+ * page can drift from, or be typed independently of, its evidence. The charts in
+ * docs/assets/charts/ (tooling/benchmarks/charts.ts) are written and checked with the page.
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { CHART_DIR, charts } from "./charts";
 
 const REPO = path.resolve(import.meta.dir, "../..");
 export const SUMMARY_FILE = "docs/benchmarks/summary.md";
@@ -100,6 +102,16 @@ export function inconsistencies(m: Measurements): string[] {
   return problems;
 }
 
+/** Charts that differ from (or are missing against) the evidence. */
+export function chartProblems(): string[] {
+  return Object.entries(charts())
+    .filter(
+      ([rel, svg]) =>
+        !existsSync(path.join(REPO, rel)) || readFileSync(path.join(REPO, rel), "utf8") !== svg,
+    )
+    .map(([rel]) => `${rel} does not match the evidence: run bun run benchmarks:summary`);
+}
+
 export function render(): string {
   const m = read<Measurements>("evidence/benchmarks/component-measurements.json");
   const h = read<Historical>("evidence/benchmarks/historical.json");
@@ -148,9 +160,22 @@ export function render(): string {
     "and an MCP session pays its `tools/list` once per session; a CLI agent reads help only when",
     "it needs it.",
     "",
+    "![Bar chart: characters before and after compact output with the current releases, and the case where MCP is larger than the CLI's compact JSON](../assets/charts/current.svg)",
+    "",
     "## Historical (earlier versions; not attributed to the current releases)",
     "",
     `${h.provenance} Versions: ${h.versions}. Tokens: ${h.tokenizer}.`,
+    "",
+    "These are distinct component-level baselines, each against its own comparison — not one",
+    "end-to-end agent saving. *Selective retrieval* returns the fields an agent needs instead of",
+    "GitHub's full REST payload; *compact output* encodes the same content in fewer tokens; a",
+    "*summary* carries less information and is not compared with equivalent content.",
+    "",
+    "![Bar chart: tokens for listing pull requests and an issue's comments — raw GitHub REST JSON, CLI and MCP](../assets/charts/retrieval.svg)",
+    "",
+    "![Bar chart: tokens before and after compact discovery and compact CLI output](../assets/charts/compaction.svg)",
+    "",
+    "![Bar chart: equivalent initiative state, where MCP tool results are larger than the CLI's JSON](../assets/charts/mcp-larger.svg)",
     "",
     "| Result | Kind | Claim | Reproduced here |",
     "|---|---|---|---|",
@@ -181,6 +206,7 @@ if (import.meta.main) {
     if (!existsSync(file)) problems.push(`${SUMMARY_FILE} is missing`);
     else if (readFileSync(file, "utf8") !== text)
       problems.push(`${SUMMARY_FILE} is stale: run bun run benchmarks:summary`);
+    problems.push(...chartProblems());
     for (const p of problems) console.log(p);
     console.log(problems.length ? `FAIL benchmarks (${problems.length})` : "PASS benchmarks");
     process.exit(problems.length ? 1 : 0);
@@ -190,5 +216,7 @@ if (import.meta.main) {
     process.exit(1);
   }
   writeFileSync(path.join(REPO, SUMMARY_FILE), text);
-  console.log(`wrote ${SUMMARY_FILE}`);
+  mkdirSync(path.join(REPO, CHART_DIR), { recursive: true });
+  for (const [rel, svg] of Object.entries(charts())) writeFileSync(path.join(REPO, rel), svg);
+  console.log(`wrote ${SUMMARY_FILE} and ${Object.keys(charts()).length} charts in ${CHART_DIR}`);
 }

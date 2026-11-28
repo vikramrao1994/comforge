@@ -31,6 +31,13 @@ Status labels used throughout: **published** (in a released npm version), **impl
 [10 npm release](recipes/10-governed-npm-release.md) ·
 [11 context routing](recipes/11-context-routing.md)
 
+## Demos (recorded in CI)
+
+Real output of executable scenarios against a local synthetic GitHub:
+[first governed workflow](demos/first-workflow.md) ·
+[parallel agent development](demos/parallel-agents.md) ·
+[interrupted-agent recovery](demos/interrupted-recovery.md)
+
 ## Agent integrations
 
 [Index](integrations/README.md) · [Claude Code](integrations/claude-code.md) ·
@@ -50,6 +57,7 @@ Status labels used throughout: **published** (in a released npm version), **impl
 
 [Index](reference/README.md) · [CLI](reference/cli.md) · [MCP](reference/mcp.md) ·
 [configuration](reference/configuration.md) · [API](reference/api.md) ·
+[core walkthrough](reference/core.md) ·
 [errors](reference/errors.md) · [tool selection](reference/tool-selection.md) ·
 [compatibility](reference/compatibility.md)
 
@@ -60,7 +68,7 @@ Generated from the contracts: [CLI commands](reference/inventory/cli-commands.md
 
 ## Benchmarks
 
-[Method, provenance and limits](benchmarks/README.md) · [summary](benchmarks/summary.md)
+[Method, provenance and limits](benchmarks/README.md) · [summary and charts](benchmarks/summary.md)
 
 ## Security
 
@@ -78,7 +86,8 @@ and what an agent can never do.
 [Contributing](contributing/contributing.md) ·
 [release governance](contributing/release-governance.md) ·
 [release publisher transition](contributing/release-transition.md) ·
-[decisions](decisions/) · [reports](reports/documentation-001.md)
+[decisions](decisions/) · [reports](reports/documentation-001.md) ·
+[visual identity and assets](contributing/visual-identity.md)
 
 Per-package references are the package READMEs: [core](../packages/core/README.md),
 [github](../packages/github/README.md), [ledger](../packages/ledger/README.md),

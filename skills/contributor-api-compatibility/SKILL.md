@@ -44,5 +44,5 @@ bun run test && bun run release:plan   # the planner's bump matches the intent
 
 ## References
 
-- [packages/cli/README.md#upgrading](../../packages/cli/README.md#upgrading)
+- [docs/reference/cli.md#upgrading](../../docs/reference/cli.md#upgrading)
 - [docs/concepts/protocols-and-authority.md](../../docs/concepts/protocols-and-authority.md)

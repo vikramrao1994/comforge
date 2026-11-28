@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="358" viewBox="0 0 760 358" role="img" aria-labelledby="t d"><title id="t">Comforge lifecycle</title><desc id="d">A ticket moves through spec publish, start (isolated checkout), the agent's commits, verify (validation of the exact commit) and deliver (pull request and completion record). People review and merge on GitHub; cleanup then removes the checkout. If a run is interrupted it exits 4; recover settles each recorded write from GitHub and the same command is rerun without creating a duplicate pull request.</desc>
+<style>
+.bg{fill:#ffffff;stroke:#d0d7de}.box{stroke-width:1.2}.plain{fill:#f6f8fa;stroke:#d0d7de}.accent{fill:#0b7285;stroke:#0b7285}
+.outer{fill:none;stroke:#8c959f;stroke-dasharray:4 4}.people{fill:#fff8e6;stroke:#d4a72c}
+.t-title{fill:#0f1720;font:600 13px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.t-accent{fill:#ffffff;font:600 13px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}.t-sub{fill:#4b5563;font:11.5px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+.label{fill:#4b5563;font:600 11px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;letter-spacing:.04em}.edge{stroke:#6e7781;stroke-width:1.4;fill:none}.dashed{stroke-dasharray:5 4}.head{fill:#6e7781}
+.t-on{fill:#e6fcff;font:11.5px ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif}
+@media (prefers-color-scheme: dark){.bg{fill:#0d1117;stroke:#30363d}.plain{fill:#161b22;stroke:#30363d}.accent{fill:#3bc9db;stroke:#3bc9db}.outer{stroke:#6e7681}.people{fill:#2b2111;stroke:#9e6a03}
+.t-title{fill:#e6edf3}.t-accent{fill:#0d1117}.t-sub{fill:#9aa4b2}.label{fill:#9aa4b2}.edge{stroke:#8b949e}.head{fill:#8b949e}.t-on{fill:#0d1117}}
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker></defs>
+<rect class="bg" x="0.5" y="0.5" width="759" height="357" rx="10"/>
+<text x="24" y="30" class="label">THE GOVERNED PATH</text>
+<rect x="24" y="42" width="128" height="62" rx="8" class="box accent"/>
+<text x="88" y="60" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">spec publish</text>
+<text x="88" y="76" text-anchor="middle" class="t-on">specification issue</text>
+<text x="88" y="91" text-anchor="middle" class="t-on">with a digest</text>
+<path d="M152 73 L168 73" class="edge" marker-end="url(#arrow)"/>
+<rect x="170" y="42" width="128" height="62" rx="8" class="box accent"/>
+<text x="234" y="60" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">start</text>
+<text x="234" y="76" text-anchor="middle" class="t-on">isolated checkout</text>
+<text x="234" y="91" text-anchor="middle" class="t-on">on agent/&lt;ticket&gt;</text>
+<path d="M298 73 L314 73" class="edge" marker-end="url(#arrow)"/>
+<rect x="316" y="42" width="128" height="62" rx="8" class="box plain"/>
+<text x="380" y="60" text-anchor="middle" class="t-title">agent works</text>
+<text x="380" y="76" text-anchor="middle" class="t-sub">commits with</text>
+<text x="380" y="91" text-anchor="middle" class="t-sub">a Ticket: trailer</text>
+<path d="M444 73 L460 73" class="edge" marker-end="url(#arrow)"/>
+<rect x="462" y="42" width="128" height="62" rx="8" class="box accent"/>
+<text x="526" y="60" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">verify</text>
+<text x="526" y="76" text-anchor="middle" class="t-on">validation of the</text>
+<text x="526" y="91" text-anchor="middle" class="t-on">exact commit</text>
+<path d="M590 73 L606 73" class="edge" marker-end="url(#arrow)"/>
+<rect x="608" y="42" width="128" height="62" rx="8" class="box accent"/>
+<text x="672" y="60" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">deliver</text>
+<text x="672" y="76" text-anchor="middle" class="t-on">pull request and</text>
+<text x="672" y="91" text-anchor="middle" class="t-on">completion record</text>
+<path d="M672 104 L672 150" class="edge" marker-end="url(#arrow)"/>
+<rect x="568" y="152" width="168" height="52" rx="8" class="box people"/>
+<text x="652" y="172.5" text-anchor="middle" class="t-title">people review and merge</text>
+<text x="652" y="188.5" text-anchor="middle" class="t-sub">on GitHub, never Comforge</text>
+<path d="M568 178 L518 178" class="edge" marker-end="url(#arrow)"/>
+<rect x="316" y="152" width="200" height="52" rx="8" class="box accent"/>
+<text x="416" y="172.5" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">cleanup</text>
+<text x="416" y="188.5" text-anchor="middle" class="t-on">checkout removed, record closed</text>
+<text x="24" y="246" class="label">WHEN DELIVER, RECOVER OR CLEANUP IS INTERRUPTED</text>
+<rect x="24" y="258" width="210" height="52" rx="8" class="box plain"/>
+<text x="129" y="278.5" text-anchor="middle" class="t-title">exit 4: incomplete</text>
+<text x="129" y="294.5" text-anchor="middle" class="t-sub">a write's answer was lost</text>
+<path d="M234 284 L268 284" class="edge" marker-end="url(#arrow)"/>
+<rect x="270" y="258" width="210" height="52" rx="8" class="box accent"/>
+<text x="375" y="278.5" text-anchor="middle" class="t-accent" style="font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">recover --execute</text>
+<text x="375" y="294.5" text-anchor="middle" class="t-on">settle each write from GitHub</text>
+<path d="M480 284 L514 284" class="edge" marker-end="url(#arrow)"/>
+<rect x="516" y="258" width="220" height="52" rx="8" class="box plain"/>
+<text x="626" y="278.5" text-anchor="middle" class="t-title">rerun the same command</text>
+<text x="626" y="294.5" text-anchor="middle" class="t-sub">no duplicate pull request</text>
+<text x="24" y="340" class="t-sub">Every GitHub write is recorded before it is sent; an unknown outcome is reconciled, never re-sent blindly.</text>
+</svg>

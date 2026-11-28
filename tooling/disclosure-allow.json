@@ -61,17 +61,6 @@
       "reason": "published @comforge/cli 0.5.0 source, kept byte-identical to the release; reworded with the next cli release"
     },
     {
-      "path": "packages/core/README.md",
-      "rule": "private-repository",
-      "contains": "golden vectors",
-      "reason": "published @comforge/core 0.2.0 document; superseded wording ships with the next core release"
-    },
-    {
-      "path": "packages/ledger/README.md",
-      "rule": "private-repository",
-      "reason": "published @comforge/ledger 0.1.0 document; reworded with the next ledger release"
-    },
-    {
       "path": "release-trust.json",
       "rule": "owner-identity",
       "reason": "the release owner's public GitHub login, which a signed authorization must name"

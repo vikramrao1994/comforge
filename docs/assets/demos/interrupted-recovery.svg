@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="980" viewBox="0 0 820 980" role="img" aria-labelledby="t d"><title id="t">Interrupted-agent recovery — Comforge terminal demo</title><desc id="d">A delivery is cut off after GitHub applied a write but before its answer arrived. A second agent reconciles from the recorded state and finishes, without a duplicate pull request. Text transcript: docs/demos/interrupted-recovery.md</desc>
+<rect width="820" height="980" rx="10" fill="#0d1117" stroke="#30363d"/>
+<circle cx="20" cy="16" r="5" fill="#484f58"/><circle cx="36" cy="16" r="5" fill="#484f58"/><circle cx="52" cy="16" r="5" fill="#484f58"/>
+<text x="410" y="20" fill="#9aa4b2" text-anchor="middle" font-family="ui-sans-serif, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12">Interrupted-agent recovery · synthetic GitHub</text>
+<g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13">
+<text x="16" y="44" fill="#9aa4b2" xml:space="preserve"># Agent A delivers; the connection drops after the pull request is created, then again before the co</text>
+<text x="16" y="62" fill="#9aa4b2" xml:space="preserve">  mpletion comment</text>
+<text x="16" y="80" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge deliver ACME-301 --title "Exporter" --result result.json --execute | grep -v '^  stages:'</text>
+<text x="16" y="98" fill="#e6edf3" xml:space="preserve">comforge deliver</text>
+<text x="16" y="116" fill="#e6edf3" xml:space="preserve">  initiative: ACME-301</text>
+<text x="16" y="134" fill="#e6edf3" xml:space="preserve">  executed: true</text>
+<text x="16" y="152" fill="#e6edf3" xml:space="preserve">  delivery: incomplete</text>
+<text x="16" y="170" fill="#e6edf3" xml:space="preserve">  attempt: 1</text>
+<text x="16" y="188" fill="#e6edf3" xml:space="preserve">  failedStage: completion</text>
+<text x="16" y="206" fill="#e6edf3" xml:space="preserve">  error: {"code":"ambiguous","message":"the completion comment could not be verified; rerun comforge</text>
+<text x="16" y="224" fill="#e6edf3" xml:space="preserve">   recover, then this command","detail":{"operationId":"completion-dd34512c516cffa8c3f2376b040e2f28fbc</text>
+<text x="16" y="242" fill="#e6edf3" xml:space="preserve">  ca4c0","status":"indeterminate"}}</text>
+<text x="16" y="260" fill="#e6edf3" xml:space="preserve">[exit 4]</text>
+<text x="16" y="296" fill="#9aa4b2" xml:space="preserve"># Agent B takes over from the recorded state and reconciles with GitHub</text>
+<text x="16" y="314" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge recover ACME-301 --execute</text>
+<text x="16" y="332" fill="#e6edf3" xml:space="preserve">comforge recover</text>
+<text x="16" y="350" fill="#e6edf3" xml:space="preserve">  initiative: ACME-301</text>
+<text x="16" y="368" fill="#e6edf3" xml:space="preserve">  executed: true</text>
+<text x="16" y="386" fill="#e6edf3" xml:space="preserve">  operations: [{"operationId":"pr-create-f0bf71bd47caeed0987dc063b3fb608bc40259d8","kind":"pull.crea</text>
+<text x="16" y="404" fill="#e6edf3" xml:space="preserve">  te","state":"succeeded"},{"operationId":"completion-dd34512c516cffa8c3f2376b040e2f28fbcca4c0","kind"</text>
+<text x="16" y="422" fill="#e6edf3" xml:space="preserve">  :"issue.comment","state":"indeterminate"}]</text>
+<text x="16" y="440" fill="#e6edf3" xml:space="preserve">  reconciled: [{"operationId":"completion-dd34512c516cffa8c3f2376b040e2f28fbcca4c0","status":"indete</text>
+<text x="16" y="458" fill="#e6edf3" xml:space="preserve">  rminate","resource":null,"reason":"not found; it may still appear, or it was never created — abandon</text>
+<text x="16" y="476" fill="#e6edf3" xml:space="preserve">   to give up"}]</text>
+<text x="16" y="494" fill="#e6edf3" xml:space="preserve">  authorization: {"mode":"operator"}</text>
+<text x="16" y="512" fill="#e6edf3" xml:space="preserve">[exit 4]</text>
+<text x="16" y="548" fill="#9aa4b2" xml:space="preserve"># The comment was never created; give that one write up explicitly</text>
+<text x="16" y="566" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge recover ACME-301 --abandon --execute</text>
+<text x="16" y="584" fill="#e6edf3" xml:space="preserve">comforge recover</text>
+<text x="16" y="602" fill="#e6edf3" xml:space="preserve">  initiative: ACME-301</text>
+<text x="16" y="620" fill="#e6edf3" xml:space="preserve">  executed: true</text>
+<text x="16" y="638" fill="#e6edf3" xml:space="preserve">  operations: [{"operationId":"pr-create-f0bf71bd47caeed0987dc063b3fb608bc40259d8","kind":"pull.crea</text>
+<text x="16" y="656" fill="#e6edf3" xml:space="preserve">  te","state":"succeeded"},{"operationId":"completion-dd34512c516cffa8c3f2376b040e2f28fbcca4c0","kind"</text>
+<text x="16" y="674" fill="#e6edf3" xml:space="preserve">  :"issue.comment","state":"indeterminate"}]</text>
+<text x="16" y="692" fill="#e6edf3" xml:space="preserve">  reconciled: [{"operationId":"completion-dd34512c516cffa8c3f2376b040e2f28fbcca4c0","status":"abando</text>
+<text x="16" y="710" fill="#e6edf3" xml:space="preserve">  ned","resource":null,"reason":"not found; it may still appear, or it was never created — abandon to </text>
+<text x="16" y="728" fill="#e6edf3" xml:space="preserve">  give up"}]</text>
+<text x="16" y="746" fill="#e6edf3" xml:space="preserve">  authorization: {"mode":"operator"}</text>
+<text x="16" y="764" fill="#9aa4b2" xml:space="preserve"># Rerun the same delivery: the existing pull request is reused</text>
+<text x="16" y="782" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge deliver ACME-301 --title "Exporter" --result result.json --execute | grep -v '^  stages:'</text>
+<text x="16" y="800" fill="#e6edf3" xml:space="preserve">comforge deliver</text>
+<text x="16" y="818" fill="#e6edf3" xml:space="preserve">  initiative: ACME-301</text>
+<text x="16" y="836" fill="#e6edf3" xml:space="preserve">  executed: true</text>
+<text x="16" y="854" fill="#e6edf3" xml:space="preserve">  delivery: complete</text>
+<text x="16" y="872" fill="#e6edf3" xml:space="preserve">  attempt: 2</text>
+<text x="16" y="890" fill="#e6edf3" xml:space="preserve">  pullRequest: 101</text>
+<text x="16" y="908" fill="#9aa4b2" xml:space="preserve"># Still exactly one pull request</text>
+<text x="16" y="926" fill="#3bc9db" font-weight="600" xml:space="preserve">$ comforge prs --json | jq -r '.pullRequests[] | "#\(.number)  \(.headRef)  \(.title.text)"'</text>
+<text x="16" y="944" fill="#e6edf3" xml:space="preserve">#101  agent/acme-301  Exporter</text>
+</g>
+</svg>

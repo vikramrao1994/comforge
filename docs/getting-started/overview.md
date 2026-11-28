@@ -28,6 +28,15 @@ Deterministic code decides every permission and every write; prompts and instruc
   component-level effects are measured ([benchmarks](../benchmarks/README.md)), but no
   end-to-end saving is claimed.
 
+## When to use it, and when not
+
+| Use Comforge when | Look elsewhere when |
+|---|---|
+| agents open pull requests in a GitHub repository and you need each change tied to a published specification, an exact validated commit and an auditable record | you need isolation from untrusted code (use containers or VMs; Comforge runs your validation as you) |
+| several agents, sessions or people hand work over and must not duplicate writes | you want an agent framework that plans and writes code (Comforge governs the lifecycle around it) |
+| you want owner-signed authorization of agent writes, or an explicit operator mode | your forge is not GitHub (github.com or GitHub Enterprise) |
+| you need one lifecycle from the CLI, MCP and your own server alike | you are on Windows (refused; use WSL) |
+
 ## Who it is for
 
 - Teams that want agents to open pull requests under the same evidence and validation rules

@@ -6,17 +6,18 @@
  *   code, MCP tool, launch flag and configuration section/key is explained on its handwritten
  *   reference page.
  * - invented: no document names a `comforge` command, a flag of a command, a `comforge-mcp` flag
- *   or a `comforge_*` tool that the contracts do not declare.
+ *   (also inside an MCP client configuration's `"args"` array) or a `comforge_*` tool that the
+ *   contracts do not declare.
  * - versions: no document calls a package version published that is newer than the workspace
  *   version, unless the same line labels it a candidate, planned or unreleased.
  * - recipes: at least ten recipes, each with an executable block, an errors section and cleanup,
  *   each listed in the recipes index (execution itself is tests/docs/recipes.test.ts).
  * - benchmarks: the benchmark summary page matches its evidence and the evidence is internally
- *   consistent (tooling/benchmarks/summary.ts).
+ *   consistent, and so do the charts drawn from it (tooling/benchmarks/summary.ts, charts.ts).
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { inconsistencies, render, SUMMARY_FILE } from "../benchmarks/summary";
+import { chartProblems, inconsistencies, render, SUMMARY_FILE } from "../benchmarks/summary";
 import {
   cliContracts,
   configContracts,
@@ -124,6 +125,12 @@ export async function checkInvented(): Promise<string[]> {
   for (const file of markdownFiles()) {
     const lines = codeLines(read(file));
     for (const line of lines) {
+      // An MCP client configuration's args array: `"args": ["-y", "@comforge/mcp@…", "--flag", …]`.
+      const args = line.match(/"args"\s*:\s*\[([^\]]*)\]/)?.[1];
+      if (args && /@comforge\/mcp|comforge-mcp/.test(args))
+        for (const m of args.matchAll(/"(--[a-z][a-z-]*)"/g))
+          if (!binFlags.has(m[1] as string))
+            problems.push(`${file}: comforge-mcp has no flag ${m[1]}`);
       for (const m of line.matchAll(/\bcomforge_[a-z_]+\b/g))
         if (!tools.has(m[0])) problems.push(`${file}: unknown MCP tool ${m[0]}`);
       // Token by token: `comforge <command> [flags]` and `comforge-mcp [flags]`, each up to the
@@ -222,5 +229,6 @@ export function checkBenchmarks(): string[] {
   );
   if (!existsSync(path.join(REPO, SUMMARY_FILE)) || read(SUMMARY_FILE) !== render())
     problems.push(`${SUMMARY_FILE} does not match the evidence: run bun run benchmarks:summary`);
+  problems.push(...chartProblems());
   return problems;
 }

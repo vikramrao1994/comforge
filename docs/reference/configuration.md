@@ -3,7 +3,7 @@
 `comforge.config.json` at the repository root, committed to the base branch. Status: published
 (`comforge-config/v1`, `@comforge/cli` 0.5.0). `comforge schema config` prints the JSON Schema;
 the generated [section and key inventory](inventory/configuration.md) is reconciled with it in
-CI; the [CLI README](../../packages/cli/README.md#configuration) has a full example. Unknown keys
+CI; the [example](#example) below is complete. Unknown keys
 and unknown schema versions are refused. Commands are argument vectors, never shell strings.
 
 | Section | Required | Decides |
@@ -44,3 +44,31 @@ passed to a child process.
 Recipes with complete configurations: [1](../recipes/01-first-governed-initiative.md),
 [5](../recipes/05-owner-grants.md) (owner grants), [6](../recipes/06-specification-review-revision.md)
 (advisory reviews), [9](../recipes/09-non-typescript-project.md) (Python).
+
+## Example
+
+```json
+{
+  "schema": "comforge-config/v1",
+  "repository": { "owner": "acme", "name": "widgets", "baseBranch": "main", "remote": "origin" },
+  "tickets": { "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+$", "branchPrefix": "agent/" },
+  "checkout": { "provision": [["npm", "ci"]] },
+  "validation": { "commands": [{ "name": "test", "run": ["npm", "test"] }], "timeoutSeconds": 3600 },
+  "evidence": { "reportDir": "docs/comforge" },
+  "commits": { "trailer": "Ticket" },
+  "specification": { "required": true, "digestScheme": "acme-spec/v1", "markerNamespace": "acme-spec", "publisherName": "Acme Specs", "publishToolName": "acme_create_issue" },
+  "completion": { "scheme": "acme-completion/v1", "markerNamespace": "acme-lifecycle", "runner": { "id": "my-agent", "label": "my agent" } },
+  "context": { "manifest": "routing.json" },
+  "security": {
+    "capabilities": ["pulls:create", "pulls:update", "issues:comment"],
+    "ledgerNamespace": "writes",
+    "markerNamespace": "comforge-cli",
+    "credentials": { "source": "env", "variable": "GITHUB_TOKEN" },
+    "delivery": { "assignee": "acme-owner" }
+  }
+}
+```
+
+The `specification` and `completion` sections name the `@comforge/core` protocols; a repository
+that configures the same names produces byte-identical records. More on trust, authorization,
+credentials, provisioning and verification results: [CLI reference](cli.md#trust-and-configuration-sections).

@@ -160,3 +160,98 @@ and drift tests in every "Tests" job).
 - During this work a local shell mistake created and then removed an unpushed commit on this
   branch (a nested heredoc ended early; a push to `main` was attempted and rejected because the
   local `main` was behind). Nothing reached GitHub, and the configuration was untouched.
+
+## Presentation — visual identity, demonstrations and charts
+
+A second review direction asked the project to look and read like a mature open-source
+library, not a set of internal reports, without unsupported claims. Delivered as a separate pull
+request after the first one merged.
+
+### Audit (before any change)
+
+| Finding | Evidence |
+|---|---|
+| The root README opened with a definition and four tables; install came fifth; no logo, badges or navigation | `rendering/before-*.jpg` (github.com, light/dark, 1280 and 390 px) |
+| Package READMEs ran 174–427 lines with report-style version history, hardcoded versions and relative links that break on npm | line counts below |
+| **Defect:** the MCP quickstart and the setup skill configured `comforge-mcp` with `--repo`; the published 0.3.0 binary accepts only `--repository` and exits `unknown option --repo` | reproduced against the npm package; fixed, and the `invented` check now reads MCP `args` arrays |
+| Twelve links pointed at package-README anchors that no longer existed (after the README rewrite) | caught by the new `links` check, retargeted to the reference |
+| The mcp changelog repeated, as "Unreleased", two items already shipped in 0.3.0 | confirmed in the published tarball's `dist/http.js`; section removed |
+| Known limitations still called self-hosted publication "planned" | the publisher switch-over is complete; reworded |
+| A first draft of the package READMEs failed three existing gates: hand-written core examples (the documentation test), and `raw.githubusercontent.com` image URLs (the release disclosure scan) | caught by the full test suite before the pull request; fixed as described below, gates unchanged |
+| The cited historical numbers (2587/1191, 1431/969, 11019/6759, 1543/1230) | each matches `evidence/benchmarks/historical.json` and the original measurement record field for field |
+
+### What changed
+
+- **Identity** (`docs/assets/brand/`, [design rationale](../contributing/visual-identity.md)):
+  an original prompt-glyph mark, a stroke-drawn wordmark that needs no font, light and dark
+  logos, a 1280×640 social preview (SVG and PNG). One accent; text contrast ≥ 4.5:1.
+- **Root README:** logo, tagline, value proposition, navigation, dynamic badges (npm, CI,
+  license, Node — no hardcoded version or status), install and a first workflow with **recorded**
+  output, benefits, demos, diagrams, examples, recipes, one chart, then links. Content it no
+  longer carries moved to the overview and known-limitations pages.
+- **Package READMEs:** one structure for all five (install, quick example, what it provides,
+  compatibility, limitations, documentation), absolute links for npm. cli 427→99, mcp 273→98,
+  core 387→129, github 174→82, ledger 207→78 lines; their detail moved, not
+  deleted, into the reference and concept pages. The core README's examples stay verbatim
+  regions of the executed example consumer; its full walkthrough and export reference moved to
+  [`docs/reference/core.md`](../reference/core.md), and `tests/release/documentation.test.ts`
+  checks both pages. Package images use `github.com/<repository>/raw/main/`, the only
+  owner-named host the release disclosure scan admits in shipped files.
+- **Terminal demonstrations** (`docs/demos/`, `docs/assets/demos/`): first governed workflow,
+  parallel agents, interrupted-agent recovery — each recorded by running the scenario against
+  the published harness and a local synthetic GitHub, with a text transcript. Commit time and
+  server port are fixed so SHAs reproduce; only the temp directory, timestamps and durations are
+  normalized, and each page says so. VHS/asciinema were not used: a static SVG rendered from the
+  recorded transcript needs no extra tool and is checked byte for byte.
+- **Diagrams** (`docs/assets/diagrams/`): architecture and lifecycle, generated from code.
+- **Charts** (`docs/assets/charts/`): retrieval, compaction, the MCP-larger counterexample and
+  the current-release measurements, read from the evidence JSON and written with the summary.
+  Each names its unit, versions and kind; the summary states these are distinct
+  component-level baselines, distinguishes selective retrieval from compact encoding, and
+  claims no end-to-end saving.
+- **Repository metadata:** About text, topics, website and the social preview are prepared in
+  the visual-identity page; applying them is a repository setting for the owner.
+
+### Checks added (all in `bun run validate`, so in CI and pre-push)
+
+| Check | Fails when |
+|---|---|
+| `links` | a relative or absolute repository link, image or `#anchor` does not resolve; a package README uses a relative link; a badge names an unknown package or workflow |
+| `excerpts` | a `console` block in the README is not, line for line, in a recorded transcript |
+| `brand` | a logo or diagram differs from its generator, or the social PNG is missing |
+| `demos` | re-recording any demo produces different text or SVG |
+| `benchmarks` (extended) | a chart differs from the evidence |
+| `invented` (extended) | an MCP client configuration's `args` names a flag `comforge-mcp` lacks |
+
+Reproduce: `bun run brand`, `bun run demos`, `bun run benchmarks:summary`,
+`bun tooling/brand/social.ts` (PNG, needs agent-browser), and for the rendering evidence
+`agent-browser` with `set media light|dark` and viewports 1280×900 / 390×844 against the
+README's github.com URL.
+
+### Rendering evidence (`evidence/documentation-001/presentation/rendering/`)
+
+Full-page captures of the actual github.com rendering, before (`main` at the first
+documentation merge) and after (this branch), each in light and dark at 1280 px and 390 px.
+The README reflows at 390 px; the diagrams scale down with the column, so their small text is
+best read after opening the image. Package READMEs reference their logo on `main`, so their
+logos render on GitHub and npm only after the merge; npm rendering was not checked (nothing is
+published by this change).
+
+### Release governance
+
+README and changelog edits change shipped files. Every package already has a reviewed patch
+intent (repository metadata), so these changes ship with those patch releases; nothing was
+versioned or published, and no historical release was rewritten. `bun run release:plan`
+passes.
+
+### Validation (local, before the pull request)
+
+| Check | Result |
+|---|---|
+| `bun run test` (Node and Bun runtimes) | 1,165 pass, 6 skip, 0 fail (86 files) |
+| `bun run validate` | 15 of 15 PASS, including the new `links`, `excerpts`, `brand`, `demos` |
+| `bun run lint` / `bun run typecheck` | no errors (27 warnings, all in files this change does not touch) / 6 projects |
+| `bun run release:plan` | exit 0; README changes ride the pending patch intents |
+| README install commands against npm | pass (`evidence/documentation-001/presentation/presentation.json`) |
+
+CI on the pull request is the authoritative run.

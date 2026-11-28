@@ -49,5 +49,5 @@ npx comforge review list <PR> --json   # your review shows integrity: verified
 ## References
 
 - [docs/concepts/protocols-and-authority.md](../../docs/concepts/protocols-and-authority.md)
-- [packages/cli/README.md#completion-results](../../packages/cli/README.md#completion-results)
+- [docs/reference/cli.md#completion-results-provisioning-and-verification](../../docs/reference/cli.md#completion-results-provisioning-and-verification)
 - [docs/recipes/06-specification-review-revision.md](../../docs/recipes/06-specification-review-revision.md)

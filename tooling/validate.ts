@@ -1,9 +1,13 @@
 /**
- * `bun run validate [routing|skills|docs|boundaries|harness|disclosure|reference|invented|versions|recipes|benchmarks ...]`
+ * `bun run validate [routing|skills|docs|boundaries|harness|disclosure|reference|invented|versions|recipes|benchmarks|links|excerpts|brand|demos ...]`
  * — the repository validators (all of them without arguments). Exit 0 only when every selected
  * check is clean.
  */
+
+import { checkBrand } from "./brand/brand";
+import { checkDiagrams } from "./brand/diagrams";
 import { checkBoundaries, checkDocs, checkHarness, checkRouting, checkSkills } from "./checks";
+import { checkDemos, checkExcerpts } from "./demos/demos";
 import { scan } from "./disclosure";
 import {
   checkBenchmarks,
@@ -12,6 +16,7 @@ import {
   checkReference,
   checkVersions,
 } from "./docs/checks";
+import { checkLinks } from "./docs/links";
 
 const CHECKS: Record<string, () => string[] | Promise<string[]>> = {
   routing: checkRouting,
@@ -31,6 +36,11 @@ const CHECKS: Record<string, () => string[] | Promise<string[]>> = {
   versions: checkVersions,
   recipes: checkRecipes,
   benchmarks: checkBenchmarks,
+  links: checkLinks,
+  excerpts: checkExcerpts,
+  brand: () => [...checkBrand(), ...checkDiagrams()],
+  // Re-records every terminal demo (needs the harness: bun run harness:install).
+  demos: () => checkDemos(),
 };
 const selected = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(CHECKS);
 let failed = 0;
