@@ -21,7 +21,7 @@
     },
     "packages/cli": {
       "name": "@comforge/cli",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "bin": {
         "comforge": "./src/cli.ts",
       },
@@ -333,6 +333,8 @@
     "@comforge/core/zod": ["zod@4.6.7", "", {}, "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="],
 
     "@comforge/github/zod": ["zod@4.6.7", "", {}, "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="],
+
+    "@comforge/mcp/@comforge/cli": ["@comforge/cli@0.5.0", "", { "dependencies": { "@comforge/core": "0.2.0", "@comforge/github": "0.6.0", "@comforge/ledger": "0.1.0", "zod": "^4.6.6" }, "bin": { "comforge": "dist/cli.js" } }, "sha512-XjZuvw8sDf0XNk9aXyxqCPfUnRk7btaElILzQog+myxPNCzwhymmFpWwAAOOwW33dndllMvdGGV81oJaQpkFtg=="],
 
     "@comforge/mcp/zod": ["zod@4.6.7", "", {}, "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="],
 
