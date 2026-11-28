@@ -280,6 +280,16 @@ async function rehearsePackage(
   } catch {
     status = null;
   }
+  // Published and recorded, waiting for adoption: there is nothing left to rehearse.
+  if (/\(version-published\)/.test(planned.out)) {
+    steps.push({
+      step: "version commit (local branch only, nothing pushed)",
+      pass: true,
+      detail: "already released and recorded: nothing to rehearse",
+    });
+    result.pass = true;
+    return result;
+  }
   if (status === "release-ready") {
     steps.push({
       step: "version commit (local branch only, nothing pushed)",
