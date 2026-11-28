@@ -400,7 +400,8 @@ export function summarizeChecks(
     sources: ["check-runs"],
     required: {
       evaluated: false,
-      reason: "required checks and commit statuses are not read; state covers check runs only",
+      reason:
+        "required checks and commit statuses are not read; state covers check runs only and is not merge readiness",
     },
   };
 }
