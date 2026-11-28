@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Depends on @comforge/cli 0.6.0, the release whose checkout-free governance (createRemoteGovernance) the server's remote publication tools call.
+- registerComforgeTools composes the native tools into an existing McpServer (collisions refused before anything is registered). RemoteHost.governance serves publish_specification, publish_review and the new publish_comment without a checkout. Needs the next @comforge/cli minor.
+- package.json names the package's directory in the Comforge repository (repository.directory), its README (homepage) and the issue tracker (bugs).
+
 ## 0.3.0
 
 - New subpath @comforge/mcp/host: createEngineeringHost (evidence reads, advisory reviews, trusted configuration, governed writes; read-only without injected writes) and sqliteOperationStore; the server's reads use the same services. Depends on @comforge/cli 0.5.0 and @comforge/ledger 0.1.0.
