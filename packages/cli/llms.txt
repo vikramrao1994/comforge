@@ -40,6 +40,7 @@ Verification: PASS, FAIL (exit 1) or UNAVAILABLE (exit 3, the environment could 
 `import { createLifecycleServices, main, runCommand, ConfigSchema, checkManifest, routeTask } from "@comforge/cli"`; `@comforge/cli/config`, `@comforge/cli/routing`.
 `createLifecycleServices({ runtime, repository, credentials?, state?, writeLedger?, signal?, host? })`: each command as a function returning `{ok, value|error, exit}`; nothing read from `process`.
 `host` (embedder code only, never a tool input): `HostPolicy { checkoutParent, prepareCheckout, remove, validation }`.
+`createRemoteGovernance({ config, principal, token, ledger, authorize })` (unreleased): specification, advisory-review and discussion-comment publication without a checkout, for a host that verified `config` against GitHub itself; operator-mode repositories only, the host's `authorize` decides each write.
 
 ## Subpaths for hosts
 

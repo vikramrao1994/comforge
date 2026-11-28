@@ -22,5 +22,6 @@
 | `publication` | — | `bodyCommand`, `checks`, `draftFirst`, `linkMarkerNamespace`, `marker`, `reportPullRequestReason` |
 | `cleanup` | — | `after`, `deleteLocalBranch`, `deleteRemoteBranch`, `fastForwardPrimary` |
 | `review` | — | `markerNamespace`, `publishToolName`, `publisherName`, `reviewScheme`, `trustedAuthors` |
+| `discussion` | — | `markerNamespace`, `publishToolName`, `publisherName`, `scheme` |
 | `artifacts` | — | `readable` |
 | `security` | — | `authorization`, `capabilities`, `credentials`, `delivery`, `ledgerNamespace`, `markerNamespace` |

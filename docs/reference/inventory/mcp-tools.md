@@ -24,3 +24,4 @@ Profiles: `read-only`, `reviewer`, `executor`, `publisher`. Launch flags of `com
 | `comforge_artifact` | Artifact at a commit | read-only, reviewer, executor, publisher | — | — | — | A file at an exact commit, within the repository's readable artifact paths. |
 | `comforge_publish_review` | Publish an advisory review | reviewer | — | yes | — | Post an advisory review bound to the reviewed head; not an approval. execute:false plans. |
 | `comforge_publish_specification` | Publish a specification | publisher | — | yes | — | Publish or replace a specification issue, idempotently. execute:false plans. |
+| `comforge_publish_comment` | Publish a discussion comment | publisher | — | yes | — | Comment on an open, published specification issue, idempotently per key; evidence only, never an approval or authorization. execute:false plans. |

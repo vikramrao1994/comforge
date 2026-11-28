@@ -132,6 +132,7 @@ describe("@comforge/cli installed from its distribution tarball", () => {
         "issueComments",
         "migrate",
         "publish",
+        "publishComment",
         "publishReview",
         "publishSpecification",
         "pullRequests",

@@ -56,7 +56,7 @@ Tools are grouped into four profiles. A principal can hold several, discovers on
 | `read-only` | `comforge_capabilities`, `comforge_context`, `comforge_status`, `comforge_evidence`, `comforge_issue`, `comforge_pr`, `comforge_prs`, `comforge_comments`, `comforge_reviews`, `comforge_artifact` |
 | `reviewer` | Adds patches and full review bodies to reads, and `comforge_publish_review` |
 | `executor` | `comforge_start`, `comforge_revise`, `comforge_verify` |
-| `publisher` | `comforge_deliver`, `comforge_recover`, `comforge_cleanup`, `comforge_publish_specification` |
+| `publisher` | `comforge_deliver`, `comforge_recover`, `comforge_cleanup`, `comforge_publish_specification`, `comforge_publish_comment` |
 
 Results are versioned and bounded (about 48,000 characters), paginated with `cursor` and `pageSize`, and redacted. Untrusted issue, comment and pull request text is excerpted. `--compact-discovery` leaves output schemas out of `tools/list`, and `--summary-text` reduces each result's text content to one line.
 
@@ -65,7 +65,10 @@ Results are versioned and bounded (about 48,000 characters), paginated with `cur
 | `createComforgeMcpServer` | `@comforge/mcp` | An `McpServer` over your repository bindings, for any transport |
 | `serveStdio` | `@comforge/mcp` | The stdio transport the executable uses |
 | `createHttpHandler` | `@comforge/mcp` | Streamable HTTP with authentication, `Host` and `Origin` allowlists, limits and per-principal sessions |
+| `registerComforgeTools` | `@comforge/mcp` | The native tools on an application's existing `McpServer`, next to its own tools (unreleased) |
 | `createEngineeringHost`, `sqliteOperationStore`, `fetchTransport` | `@comforge/mcp/host` | The same engineering services for an application's own server |
+
+Composition: `registerComforgeTools(server, options)` registers exactly the tools `createComforgeMcpServer` would, with the same schemas and handlers, onto a server you already have. A name the server already holds is refused before anything is registered; comforge never renames a tool. Checkout-free repositories (`remoteRepositories`) serve evidence reads, and with `remote.governance` also `comforge_publish_specification`, `comforge_publish_review` and `comforge_publish_comment`, under the host's per-command write credential, durable operation store and authorization (operator-mode repositories only; owner-grant repositories need a checkout).
 
 Credentials stay server-owned and are never returned. Writes are authorized by the repository's trusted configuration in `@comforge/cli` (an owner-signed grant or operator mode), never by the server or a tool input. Over HTTP, tools that run repository commands are neither listed nor callable unless the host supplies an `IsolationProvider`.
 

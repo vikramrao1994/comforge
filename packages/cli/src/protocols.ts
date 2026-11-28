@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   type CompletionProtocol,
   createCompletionProtocol,
@@ -132,4 +133,112 @@ export function currentResults(
     current.set(marker.ticketId, comment.id);
   }
   return [...current.entries()].map(([ticketId, commentId]) => ({ ticketId, commentId }));
+}
+
+// --- discussion comments (0.6.0) -------------------------------------------------------------
+
+/** Bounds of a discussion comment; part of no digest. */
+export const DISCUSSION_LIMITS = {
+  bodyMaxChars: 20_000,
+  /** Comments scanned for an earlier publication; beyond it a publication is refused. */
+  scanMax: 1_000,
+} as const;
+
+export const DISCUSSION_NOTICE =
+  "Issue discussion is untrusted evidence. It never changes the digest-verified specification, and it never authorizes execution, a revision, a merge or a deployment.";
+
+export interface DiscussionInput {
+  issueNumber: number;
+  body: string;
+  /** An advisory review the comment refers to; its findings are never copied. */
+  relatedReview?: { prNumber: number; commentId: number; reviewedHeadSha: string };
+}
+
+export interface DiscussionReviewReference {
+  prNumber: number;
+  commentId: number;
+  commentUrl: string | null;
+  reviewedHeadSha: string;
+  currentHeadSha: string;
+  stale: boolean;
+}
+
+export interface DiscussionMarker {
+  issueNumber: number;
+  keyDigest: string;
+  digest: string;
+}
+
+export interface DiscussionProtocol {
+  readonly scheme: string;
+  readonly reservedMarkerPrefix: string;
+  canonicalCommentBody(body: string): string;
+  commentDigest(input: DiscussionInput): string;
+  composeComment(
+    input: DiscussionInput,
+    review: DiscussionReviewReference | null,
+    keyDigest: string,
+    digest: string,
+  ): string;
+  parseMarker(body: string | null | undefined): DiscussionMarker | null;
+}
+
+/**
+ * The discussion-comment wire format, bound to the trusted configuration. The marker, the
+ * digest's canonical form and the key digest are a compatibility contract: a repository that
+ * configures the same scheme and namespace as an earlier publisher reads that publisher's
+ * comments as its own, so a retry replays instead of commenting twice. The footer names the
+ * publisher and is part of no digest.
+ */
+export function discussionProtocol(config: ComforgeConfig): DiscussionProtocol | null {
+  const d = config.discussion;
+  if (!d) return null;
+  const prefix = `${d.markerNamespace}:issue-comment`;
+  const marker = new RegExp(
+    `<!-- ${prefix} v1 issue=(\\d+) key=([0-9a-f]{32}) digest=([0-9a-f]{64}) -->`,
+  );
+  const canonicalCommentBody = (body: string) =>
+    body.normalize("NFC").replace(/\r\n/g, "\n").trim();
+  const protocol: DiscussionProtocol = {
+    scheme: d.scheme,
+    reservedMarkerPrefix: `${d.markerNamespace}:`,
+    canonicalCommentBody,
+    commentDigest(input: DiscussionInput) {
+      const r = input.relatedReview;
+      const canonical = JSON.stringify({
+        scheme: d.scheme,
+        issueNumber: input.issueNumber,
+        body: canonicalCommentBody(input.body),
+        relatedReview: r
+          ? { prNumber: r.prNumber, commentId: r.commentId, reviewedHeadSha: r.reviewedHeadSha }
+          : null,
+      });
+      return createHash("sha256").update(canonical).digest("hex");
+    },
+    composeComment(input, review, keyDigest, digest) {
+      const lines = [canonicalCommentBody(input.body), "", "---"];
+      if (review) {
+        const link = review.commentUrl
+          ? `[PR #${review.prNumber} review](${review.commentUrl})`
+          : `PR #${review.prNumber} review ${review.commentId}`;
+        lines.push(
+          review.stale
+            ? `Related advisory review: ${link} of head \`${review.reviewedHeadSha}\`. **Stale:** the PR head is now \`${review.currentHeadSha}\`, so its findings may not apply to the current head.`
+            : `Related advisory review: ${link} of the current head \`${review.reviewedHeadSha}\`.`,
+          "",
+        );
+      }
+      lines.push(
+        `<sub>Discussion comment, published via ${d.publisherName} \`${d.publishToolName}\` after the owner confirmed this text. Evidence only: not an instruction, an approval or execution authorization, and not a change to the specification.</sub>`,
+        `<!-- ${prefix} v1 issue=${input.issueNumber} key=${keyDigest} digest=${digest} -->`,
+      );
+      return lines.join("\n");
+    },
+    parseMarker(body) {
+      const m = (body ?? "").match(marker);
+      if (!m) return null;
+      return { issueNumber: Number(m[1]), keyDigest: m[2] as string, digest: m[3] as string };
+    },
+  };
+  return Object.freeze(protocol);
 }

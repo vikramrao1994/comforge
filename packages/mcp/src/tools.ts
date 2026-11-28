@@ -15,7 +15,9 @@ import {
   capabilities as cliCapabilities,
   context as cliContext,
   createLifecycleServices,
+  createRemoteGovernance,
   type LifecycleServices,
+  type RemoteGovernance,
   type Runtime,
   reviewProtocol,
   type ServiceResult,
@@ -45,6 +47,7 @@ import { withGrantFile } from "./grants.ts";
 import {
   checkSnapshot,
   type HostServices,
+  type RemoteGovernanceCommand,
   type RemoteHost,
   type RemoteRepositoryBinding,
   type RepositoryBinding,
@@ -184,6 +187,23 @@ export const REMOTE_READ_TOOLS: readonly ToolName[] = [
   "comforge_artifact",
 ];
 
+/**
+ * The governed publications a checkout-free repository serves when its host supplies governance
+ * (0.4.0): no command runs, no lifecycle state is read; every write is authorized, reconciled and
+ * read back exactly as with a checkout.
+ */
+export const REMOTE_GOVERNANCE_TOOLS: readonly ToolName[] = [
+  "comforge_publish_specification",
+  "comforge_publish_review",
+  "comforge_publish_comment",
+];
+
+const GOVERNANCE_COMMAND: Partial<Record<ToolName, RemoteGovernanceCommand>> = {
+  comforge_publish_specification: "publish-specification",
+  comforge_publish_review: "publish-review",
+  comforge_publish_comment: "publish-comment",
+};
+
 const DEFAULT_CONFIG_MAX_AGE_MS = 10 * 60_000;
 
 /** One repository's trusted configuration and the read-only host services over it. */
@@ -276,6 +296,53 @@ async function evidence(c: CallContext): Promise<Evidence> {
   return { config, reads: services.evidence, services };
 }
 
+/**
+ * The governance services of a checkout-free repository for one publication tool: the trusted
+ * configuration is verified against GitHub first (as for every remote read), then the host's
+ * own write credential for that command, ledger and policy are bound to it.
+ */
+async function remoteGovernance(c: CallContext, tool: ToolName): Promise<RemoteGovernance> {
+  const binding = c.remote as RemoteRepositoryBinding;
+  const host = c.remoteHost as RemoteHost;
+  const command = GOVERNANCE_COMMAND[tool] as RemoteGovernanceCommand;
+  const governance = host.governance?.(binding, c.principal);
+  if (!governance)
+    throw new ToolRefusal(
+      "checkout-required",
+      `${tool} needs a repository checkout or host governance; ${binding.id} is served for reads only`,
+      1,
+      { repository: binding.id },
+    );
+  const { config } = await evidence(c);
+  const token = governance.credentials(command);
+  if (!token)
+    throw new ToolRefusal(
+      "credential-missing",
+      `the server has no write credential for ${command} in this repository`,
+    );
+  c.secrets.push(token);
+  return createRemoteGovernance({
+    config,
+    principal: c.principal.id,
+    token: () => token,
+    ledger: governance.operations,
+    authorize: (request) => governance.authorize(request),
+    ...(host.now ? { now: host.now } : {}),
+    ...(host.fetchImpl ? { fetchImpl: host.fetchImpl } : {}),
+    signal: c.signal,
+    ...(governance.markerNamespace ? { markerNamespace: governance.markerNamespace } : {}),
+  });
+}
+
+/** A checkout-free publication takes no grant: the host authorizes it (owner-grant repositories refuse). */
+function noRemoteGrant(c: CallContext, grant: unknown): void {
+  if (c.remote && grant !== undefined)
+    throw new ToolRefusal(
+      "usage",
+      "a grant is accepted only by a checkout-backed server; this repository is served without one",
+    );
+}
+
 /** GitHub adapter refusals as the CLI's codes; anything else is rethrown as internal. */
 function githubRefusal(error: unknown): never {
   if (error instanceof GitHubAdapterError) {
@@ -335,6 +402,15 @@ export const HANDLERS: {
                   .map((b) => b.id)
                   .filter((id) => allowed.includes(id)),
                 tools: REMOTE_READ_TOOLS,
+                // 0.4.0: the governed publications this principal can reach without a checkout.
+                governance: (c.server.remoteBindings ?? [])
+                  .filter((b) => allowed.includes(b.id))
+                  .map((b) => ({
+                    repository: b.id,
+                    tools: c.remoteHost?.governance?.(b, c.principal)
+                      ? REMOTE_GOVERNANCE_TOOLS.filter((t) => c.server.tools.includes(t))
+                      : [],
+                  })),
               },
             }
           : {}),
@@ -851,8 +927,10 @@ export const HANDLERS: {
   },
 
   async comforge_publish_review(c, input) {
+    noRemoteGrant(c, input.grant);
+    const publisher = c.remote ? await remoteGovernance(c, "comforge_publish_review") : services(c);
     return withGrantFile(input.grant, async (grantFile) => {
-      const r = await services(c).publishReview({
+      const r = await publisher.publishReview({
         review: input.review,
         execute: input.execute,
         ...(grantFile ? { grantFile } : {}),
@@ -868,8 +946,12 @@ export const HANDLERS: {
   },
 
   async comforge_publish_specification(c, input) {
+    noRemoteGrant(c, input.grant);
+    const publisher = c.remote
+      ? await remoteGovernance(c, "comforge_publish_specification")
+      : services(c);
     return withGrantFile(input.grant, async (grantFile) => {
-      const r = await services(c).publishSpecification({
+      const r = await publisher.publishSpecification({
         ticket: input.ticket,
         title: input.title,
         body: input.body,
@@ -886,6 +968,26 @@ export const HANDLERS: {
         ),
       );
     });
+  },
+
+  async comforge_publish_comment(c, input) {
+    const publisher = c.remote
+      ? await remoteGovernance(c, "comforge_publish_comment")
+      : services(c);
+    const r = await publisher.publishComment({
+      issue: input.issue,
+      body: input.body,
+      idempotencyKey: input.idempotencyKey,
+      ...(input.relatedReview ? { relatedReview: input.relatedReview } : {}),
+      execute: input.execute,
+    });
+    return settle(r, (v) =>
+      success(
+        "comforge_publish_comment",
+        `discussion on #${String(input.issue)}: ${String(v.action)}`,
+        bound(v) as Record<string, unknown>,
+      ),
+    );
   },
 };
 

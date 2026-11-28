@@ -30,7 +30,7 @@ The repository id a tool takes is the configured `repository.name`, lowercased.
 | `read-only` | the ten reads: capabilities, context, status, evidence, issue, pr, prs, comments, reviews, artifact |
 | `reviewer` | full review bodies and patches in reads; `comforge_publish_review` |
 | `executor` | `comforge_start`, `comforge_revise`, `comforge_verify` |
-| `publisher` | `comforge_deliver`, `comforge_recover`, `comforge_cleanup`, `comforge_publish_specification` |
+| `publisher` | `comforge_deliver`, `comforge_recover`, `comforge_cleanup`, `comforge_publish_specification`, `comforge_publish_comment` |
 
 A principal can hold several. It discovers only the tools its profiles permit, and every call
 checks the profile again.
@@ -57,6 +57,7 @@ checks the profile again.
 | `comforge_cleanup` | publisher | `cleanup` | checkout, state, branch |
 | `comforge_publish_specification` | publisher | `spec publish` | one issue |
 | `comforge_publish_review` | reviewer | `review publish` | one comment |
+| `comforge_publish_comment` | publisher | — (library: `publishComment`) | one comment |
 
 Write tools plan with `execute: false` and act with `execute: true`. An owner grant goes in
 `grant`, as the signed envelope.
@@ -113,10 +114,23 @@ Every runtime export: [API inventory](inventory/api.md#comforgemcp-030).
   passes an `IsolationProvider`. That is the host's attestation that its runtime runs every command
   inside an isolation boundary it operates. A flag cannot stand in for it. This package implements
   no sandbox and claims none.
-- **Remote publication is not remote execution.** The reads, `comforge_publish_review` and
-  `comforge_publish_specification` run no repository command, so over HTTP they are available
-  without an `IsolationProvider`. They still need the principal's profile and the repository's
-  trusted authorization.
+- **Remote publication is not remote execution.** The reads, `comforge_publish_review`,
+  `comforge_publish_specification` and `comforge_publish_comment` run no repository command, so
+  over HTTP they are available without an `IsolationProvider`. They still need the principal's
+  profile and the repository's trusted authorization.
+- **Discussion comments.** `comforge_publish_comment` comments on an open issue that verifies as
+  a published specification, never on another issue or a pull request. It needs the trusted
+  `discussion` section and `issues:comment`; one key publishes one comment (same key and text:
+  replayed; same key, other text: `conflict`). Evidence only. Owner-grant repositories refuse it:
+  no grant can be scoped to a comment.
+- **Checkout-free publication (unreleased).** For a `remoteRepositories` binding, the three
+  publication tools exist only when `remote.governance(binding, principal)` returns governance:
+  a per-command write credential, a durable operation store and the host's `authorize`. The
+  repository must be in `operator` mode; the result records `{mode: "host", authority,
+  principal}`. Without governance the binding stays read-only (`checkout-required`).
+- **Composition (unreleased).** `registerComforgeTools(server, options)` registers the same tools
+  onto an existing `McpServer`; a name the server already holds is refused before anything is
+  registered.
 - **Host policy.** `HostServices.hostPolicy(binding)` hands the CLI's `HostPolicy` (checkout
   parent, worker preparation and removal, validation) to the lifecycle for one repository. It is
   host code; no tool input reaches it.

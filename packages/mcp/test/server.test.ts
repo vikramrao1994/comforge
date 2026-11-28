@@ -49,6 +49,7 @@ describe("discovery is filtered by profile and transport", () => {
         "comforge_recover",
         "comforge_cleanup",
         "comforge_publish_specification",
+        "comforge_publish_comment",
       ].sort(),
     );
     const allButReview = TOOL_NAMES.filter((n) => n !== "comforge_publish_review");
@@ -56,7 +57,7 @@ describe("discovery is filtered by profile and transport", () => {
     // Remote publication is not remote execution: without isolation HTTP keeps the publication
     // tool that runs no repository command, and drops every executing one.
     expect(await listed(["executor", "publisher"], "http")).toEqual(
-      [...READ, "comforge_publish_specification"].sort(),
+      [...READ, "comforge_publish_specification", "comforge_publish_comment"].sort(),
     );
     const isolated = discoverableTools(principal(["executor", "publisher"]), "http", {
       id: "vm",
