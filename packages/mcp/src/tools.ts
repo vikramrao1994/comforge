@@ -331,6 +331,7 @@ async function remoteGovernance(c: CallContext, tool: ToolName): Promise<RemoteG
     ...(host.fetchImpl ? { fetchImpl: host.fetchImpl } : {}),
     signal: c.signal,
     ...(governance.markerNamespace ? { markerNamespace: governance.markerNamespace } : {}),
+    ...((identity) => (identity !== undefined ? { identity } : {}))(governance.identity?.(command)),
   });
 }
 

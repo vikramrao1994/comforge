@@ -1,0 +1,8 @@
+{
+  "schema": "comforge-release-intent/v1",
+  "package": "@comforge/mcp",
+  "bump": "minor",
+  "summary": "Depends on @comforge/cli 0.7.0, whose checkout-free governance takes the writer's identity (RemoteGovernanceHost.identity).",
+  "breaking": null,
+  "covers": []
+}

@@ -2,7 +2,7 @@
 
 <!-- recipe: {"world": "github"} -->
 
-Run the published `comforge-mcp` stdio server (`@comforge/mcp` 0.3.0, published) for one
+Run the published `comforge-mcp` stdio server (`@comforge/mcp` 0.4.0, published) for one
 repository and one profile, register it with an agent client, and check what the agent can see
 and call. The server calls the CLI's lifecycle services in process; it adds no authority.
 
@@ -86,11 +86,12 @@ reviews and artifact. Every result is a versioned envelope
 ```sh recipe
 node "$WORK/probe.mjs" read-only executor publisher
 ```
-<!-- recipe-expect: {"json": {"tools.length": 17}} -->
+<!-- recipe-expect: {"json": {"tools.length": 18}} -->
 
 With `executor` and `publisher` the agent also sees `comforge_start`, `comforge_revise`,
-`comforge_verify`, `comforge_deliver`, `comforge_recover`, `comforge_cleanup` and
-`comforge_publish_specification` (the reviewer's `comforge_publish_review` needs `reviewer`).
+`comforge_verify`, `comforge_deliver`, `comforge_recover`, `comforge_cleanup`,
+`comforge_publish_specification` and `comforge_publish_comment` (the reviewer's
+`comforge_publish_review` needs `reviewer`).
 
 ## Errors
 

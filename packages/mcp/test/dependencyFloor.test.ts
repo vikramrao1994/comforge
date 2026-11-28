@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 
-// The server's checkout-free governance calls createRemoteGovernance, first exported by
-// @comforge/cli 0.6.0. The planner writes version fields only, never a dependent's sibling pin, so
+// The server's checkout-free governance calls createRemoteGovernance (first exported by
+// @comforge/cli 0.6.0) with the writer's identity (0.7.0). The planner writes version fields only, never a dependent's sibling pin, so
 // the version PR that moves this package past 0.3.0 must also move its @comforge/cli dependency;
 // until it does, this fails and the candidate cannot be released against a CLI without it.
 
@@ -21,8 +21,9 @@ const atLeast = (v: string, floor: string) => {
   return a !== x ? a > x : b !== y ? b > y : c >= z;
 };
 
-test("a release after 0.3.0 depends on an @comforge/cli that has createRemoteGovernance", () => {
+test("each release depends on an @comforge/cli with the governance API it calls", () => {
   const cli = manifest.dependencies["@comforge/cli"] as string;
-  if (atLeast(manifest.version, "0.3.1")) expect(atLeast(cli, "0.6.0")).toBe(true);
+  if (atLeast(manifest.version, "0.4.1")) expect(atLeast(cli, "0.7.0")).toBe(true);
+  else if (atLeast(manifest.version, "0.3.1")) expect(atLeast(cli, "0.6.0")).toBe(true);
   else expect(manifest.version).toBe("0.3.0");
 });

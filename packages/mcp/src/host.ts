@@ -217,6 +217,11 @@ export interface RemoteGovernanceHost {
   ): RemoteAuthorizationDecision | Promise<RemoteAuthorizationDecision>;
   /** The writer's correlation-marker namespace; default the configuration's `security.markerNamespace`. */
   markerNamespace?: string;
+  /**
+   * The login the credential for `command` acts as (0.4.1), or undefined to read it from GitHub.
+   * Required for a GitHub App installation token, which cannot read `GET /user`.
+   */
+  identity?(command: RemoteGovernanceCommand): string | undefined;
 }
 
 export interface RemoteHost {

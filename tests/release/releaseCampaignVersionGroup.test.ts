@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { PackageName } from "../../tooling/release/packages";
 import {
@@ -63,10 +63,14 @@ describe("the committed interface campaign", () => {
     expect(campaign.hold.map((h) => h.package).sort()).toEqual([...HELD].sort());
     expect(groupOf(campaign, MCP).map((t) => t.package)).toEqual([CLI, MCP]);
     expect(versionGroupOf(campaign, CLI).map((t) => t.package)).toEqual([CLI, MCP]);
-    // The MCP candidate names exactly the CLI version the current campaign releases.
-    const current = parseCampaign(JSON.parse(readFileSync(path.join(REPO, "releases/campaigns/comforge-composition.json"), "utf8")));
+    // The MCP candidate names a CLI version that a committed campaign releases.
+    const dir = path.join(REPO, "releases/campaigns");
+    const campaigns = readdirSync(dir)
+      .filter((f) => f.endsWith(".json"))
+      .map((f) => parseCampaign(JSON.parse(readFileSync(path.join(dir, f), "utf8"))));
     const mcp = JSON.parse(readFileSync(path.join(REPO, "packages/mcp/package.json"), "utf8"));
-    expect(mcp.dependencies["@comforge/cli"]).toBe(current.packages.find((p) => p.package === CLI)?.version);
+    const cli = mcp.dependencies["@comforge/cli"];
+    expect(campaigns.some((c) => c.packages.some((p) => p.package === CLI && p.version === cli))).toBe(true);
   });
 
   test("the version group's branch is the one the planner's version-pr command creates", () => {

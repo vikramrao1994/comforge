@@ -180,7 +180,7 @@ Every runtime export of every published subpath. Types are exported alongside an
 | `ledgerConformance` | function | The cases. |
 | `record` | function | — |
 
-## `@comforge/cli` 0.6.0
+## `@comforge/cli` 0.7.0
 
 ### `@comforge/cli`
 

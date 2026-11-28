@@ -135,7 +135,15 @@ export interface GitHubAccessOptions {
   fetchImpl?: typeof fetch;
   /** The writer's correlation-marker namespace; default `security.markerNamespace`. */
   markerNamespace?: string;
+  /**
+   * The login the token acts as, when the host knows it (0.6.1). A GitHub App installation token
+   * cannot read `GET /user`, so a host writing as an App names its `<slug>[bot]` login here;
+   * without it the login is read from GitHub.
+   */
+  login?: string;
 }
+
+const GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
 
 /**
  * GitHub access from a credential and a write ledger alone (0.6.0): what `openGitHub` builds for a
@@ -154,7 +162,9 @@ export function createGitHubAccess(options: GitHubAccessOptions): GitHubAccess {
     userAgent: "comforge-cli",
   });
   const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
-  let viewer: string | null = null;
+  if (options.login !== undefined && !GITHUB_LOGIN.test(options.login))
+    fail("config-invalid", "the host-supplied login is not a GitHub login");
+  let viewer: string | null = options.login ?? null;
   const login = async () => {
     if (viewer) return viewer;
     const user = (await transport.get("/user").catch(githubError)) as { login?: unknown };

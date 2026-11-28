@@ -127,7 +127,9 @@ Every runtime export: [API inventory](inventory/api.md#comforgemcp-040).
   publication tools exist only when `remote.governance(binding, principal)` returns governance:
   a per-command write credential, a durable operation store and the host's `authorize`. The
   repository must be in `operator` mode; the result records `{mode: "host", authority,
-  principal}`. Without governance the binding stays read-only (`checkout-required`).
+  principal}`. Without governance the binding stays read-only (`checkout-required`). A host
+  writing with a GitHub App installation token names its `<slug>[bot]` login in
+  `governance.identity(command)`: such a token cannot read `GET /user`.
 - **Composition (unreleased).** `registerComforgeTools(server, options)` registers the same tools
   onto an existing `McpServer`; a name the server already holds is refused before anything is
   registered.

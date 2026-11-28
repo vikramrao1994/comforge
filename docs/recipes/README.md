@@ -2,7 +2,7 @@
 
 Task-sized, executable walk-throughs. Every `sh recipe` block on these pages is run in CI by
 `tests/docs/recipes.test.ts` (`bun tooling/docs/recipes.ts` locally) against the **published**
-packages pinned in `harness/` — `@comforge/cli` 0.5.0 and `@comforge/mcp` 0.3.0 — never the
+packages pinned in `harness/` — `@comforge/cli` 0.6.0 and `@comforge/mcp` 0.4.0 — never the
 unreleased workspace sources. GitHub is a local synthetic server; no recipe needs a credential
 or reaches github.com.
 
