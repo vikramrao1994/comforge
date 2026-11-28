@@ -72,11 +72,34 @@
     "capabilities": [
       "pulls:create",
       "pulls:update",
-      "issues:comment"
+      "issues:comment",
+      "issues:create"
     ],
-    "authorization": null,
+    "authorization": {
+      "mode": "operator"
+    },
     "credentials": {
       "source": "gh"
     }
+  },
+  "specification": {
+    "required": false,
+    "digestScheme": "comforge-engineering-spec/v1",
+    "markerNamespace": "comforge-spec",
+    "publisherName": "Comforge MCP host",
+    "publishToolName": "comforge_publish_specification"
+  },
+  "review": {
+    "reviewScheme": "comforge-engineering-review/v1",
+    "markerNamespace": "comforge-review",
+    "publisherName": "Comforge MCP host",
+    "publishToolName": "comforge_publish_review",
+    "trustedAuthors": []
+  },
+  "discussion": {
+    "scheme": "comforge-engineering-issue-comment/v1",
+    "markerNamespace": "comforge-spec",
+    "publisherName": "Comforge MCP host",
+    "publishToolName": "comforge_publish_comment"
   }
 }
