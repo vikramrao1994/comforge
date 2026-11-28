@@ -48,6 +48,12 @@ export interface RemoteGovernanceOptions {
     signal?: AbortSignal;
     /** The writer's correlation-marker namespace; default `security.markerNamespace`. */
     markerNamespace?: string;
+    /**
+     * The login `token` acts as (0.6.1): required for a GitHub App installation token, which cannot
+     * read `GET /user`. Reconciliation trusts only markers by this login, and an advisory review of
+     * a pull request this login opened is refused.
+     */
+    identity?: string;
 }
 type Options<K extends keyof typeof governanceCommands> = Parameters<(typeof governanceCommands)[K]>[1];
 export interface RemoteGovernance {

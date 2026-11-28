@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0
+
+- createRemoteGovernance and createGitHubAccess take the login the write credential acts as (identity, login), so a GitHub App installation token, which cannot read GET /user, can publish; a malformed login is refused.
+
 ## 0.6.0
 
 - Governance without a checkout: createRemoteGovernance publishes specifications, advisory reviews and discussion comments for a host that supplies the verified configuration, write credential, ledger and policy (operator mode only). New discussion section and publishComment; createGitHubAccess.

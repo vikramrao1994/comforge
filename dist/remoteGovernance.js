@@ -18,6 +18,7 @@ export function createRemoteGovernance(options) {
                 now,
                 ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
                 ...(options.markerNamespace ? { markerNamespace: options.markerNamespace } : {}),
+                ...(options.identity !== undefined ? { login: options.identity } : {}),
             });
             return access;
         },

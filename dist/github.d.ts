@@ -40,6 +40,12 @@ export interface GitHubAccessOptions {
     fetchImpl?: typeof fetch;
     /** The writer's correlation-marker namespace; default `security.markerNamespace`. */
     markerNamespace?: string;
+    /**
+     * The login the token acts as, when the host knows it (0.6.1). A GitHub App installation token
+     * cannot read `GET /user`, so a host writing as an App names its `<slug>[bot]` login here;
+     * without it the login is read from GitHub.
+     */
+    login?: string;
 }
 /**
  * GitHub access from a credential and a write ledger alone (0.6.0): what `openGitHub` builds for a

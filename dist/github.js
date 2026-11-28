@@ -75,6 +75,7 @@ export function openGitHub(rt, config, commonDir, provider, ledgerFactory) {
         ...(rt.fetchImpl ? { fetchImpl: rt.fetchImpl } : {}),
     });
 }
+const GITHUB_LOGIN = /^[A-Za-z0-9][A-Za-z0-9-]{0,38}(\[bot\])?$/;
 /**
  * GitHub access from a credential and a write ledger alone (0.6.0): what `openGitHub` builds for a
  * checkout, for a host that has no checkout and supplies both itself.
@@ -92,7 +93,9 @@ export function createGitHubAccess(options) {
         userAgent: "comforge-cli",
     });
     const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
-    let viewer = null;
+    if (options.login !== undefined && !GITHUB_LOGIN.test(options.login))
+        fail("config-invalid", "the host-supplied login is not a GitHub login");
+    let viewer = options.login ?? null;
     const login = async () => {
         if (viewer)
             return viewer;
