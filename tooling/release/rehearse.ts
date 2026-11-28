@@ -267,18 +267,39 @@ async function rehearsePackage(
     steps.push({ step: "install", pass: false, detail: lastLine(install.out) });
     return result;
   }
-  const versionPr = run(
+  // A version PR's own head is already versioned: the planner reports it release-ready, and
+  // the rehearsal builds that head instead of asking for a second version commit.
+  const planned = run(
     "bun",
-    ["tooling/release/releasePlan.ts", "version-pr", "--package", name],
+    ["tooling/release/releasePlan.ts", "plan", "--package", name, "--json"],
     repo,
   );
-  const versioned = versionPr.ok && /version commit\(s\) on /.test(versionPr.out);
-  steps.push({
-    step: "version commit (local branch only, nothing pushed)",
-    pass: versioned,
-    detail: lastLine(versionPr.out),
-  });
-  if (!versioned) return result;
+  let status: string | null = null;
+  try {
+    if (planned.ok) status = (JSON.parse(planned.out) as { status?: string }).status ?? null;
+  } catch {
+    status = null;
+  }
+  if (status === "release-ready") {
+    steps.push({
+      step: "version commit (local branch only, nothing pushed)",
+      pass: true,
+      detail: "already versioned at the head: release-ready",
+    });
+  } else {
+    const versionPr = run(
+      "bun",
+      ["tooling/release/releasePlan.ts", "version-pr", "--package", name],
+      repo,
+    );
+    const versioned = versionPr.ok && /version commit\(s\) on /.test(versionPr.out);
+    steps.push({
+      step: "version commit (local branch only, nothing pushed)",
+      pass: versioned,
+      detail: lastLine(versionPr.out),
+    });
+    if (!versioned) return result;
+  }
   const source = run("git", ["rev-parse", "HEAD"], repo).out.trim();
 
   const digests: string[] = [];
