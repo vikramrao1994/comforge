@@ -1,12 +1,17 @@
 {
   "name": "@comforge/cli",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "comforge: a governed agent lifecycle for any Git repository. Isolated checkouts per ticket, exact-commit validation, published-specification checks, idempotent GitHub publication and completion records through @comforge/github and @comforge/ledger, with stable JSON output and exit codes for agents. Never merges, deploys, approves or closes.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vikramrao1994/comforge.git"
+    "url": "git+https://github.com/vikramrao1994/comforge.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/vikramrao1994/comforge/tree/main/packages/cli#readme",
+  "bugs": {
+    "url": "https://github.com/vikramrao1994/comforge/issues"
   },
   "type": "module",
   "sideEffects": false,

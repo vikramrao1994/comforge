@@ -58,17 +58,6 @@ export function githubError(error) {
     throw error;
 }
 export function openGitHub(rt, config, commonDir, provider, ledgerFactory) {
-    const { owner, name, apiOrigin } = config.repository;
-    const token = credential(rt, config, provider);
-    // Resolved now: the SDK transport reports a failing token provider as a network error.
-    token();
-    const transport = createFetchTransport({
-        token,
-        fetchImpl: rt.fetchImpl,
-        apiOrigin,
-        userAgent: "comforge-cli",
-    });
-    const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
     const ledger = ledgerFactory?.(config) ??
         createFileLedger({
             directory: writeLedgerDir(commonDir, config),
@@ -78,6 +67,31 @@ export function openGitHub(rt, config, commonDir, provider, ledgerFactory) {
                     fail("ledger", "the write ledger holds a record of another kind");
             },
         });
+    return createGitHubAccess({
+        config,
+        token: credential(rt, config, provider),
+        ledger,
+        now: rt.now,
+        ...(rt.fetchImpl ? { fetchImpl: rt.fetchImpl } : {}),
+    });
+}
+/**
+ * GitHub access from a credential and a write ledger alone (0.6.0): what `openGitHub` builds for a
+ * checkout, for a host that has no checkout and supplies both itself.
+ */
+export function createGitHubAccess(options) {
+    const { config, token, ledger } = options;
+    const rt = { now: options.now, fetchImpl: options.fetchImpl };
+    const { owner, name, apiOrigin } = config.repository;
+    // Resolved now: the SDK transport reports a failing token provider as a network error.
+    token();
+    const transport = createFetchTransport({
+        token,
+        fetchImpl: rt.fetchImpl,
+        apiOrigin,
+        userAgent: "comforge-cli",
+    });
+    const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
     let viewer = null;
     const login = async () => {
         if (viewer)
@@ -99,7 +113,7 @@ export function openGitHub(rt, config, commonDir, provider, ledgerFactory) {
             : { allow: false, reason: "not the operation this command prepared" },
         ledger,
         clock: rt.now,
-        markers: { namespace: config.security.markerNamespace },
+        markers: { namespace: options.markerNamespace ?? config.security.markerNamespace },
         expectedAuthor: viewer ?? undefined,
         fetchImpl: rt.fetchImpl,
         apiOrigin,

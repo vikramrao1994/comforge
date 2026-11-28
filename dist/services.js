@@ -1,5 +1,5 @@
 import { complete, deliver, publish, recover } from "./commands/delivery.js";
-import { advisoryReviews, artifact, issueComments, publishReview, publishSpecification, pullRequests, } from "./commands/governance.js";
+import { advisoryReviews, artifact, issueComments, publishComment, publishReview, publishSpecification, pullRequests, } from "./commands/governance.js";
 import { cleanup, revise, start, status, verify, } from "./commands/lifecycle.js";
 import { migrate } from "./commands/migrate.js";
 import { openContext } from "./context.js";
@@ -45,6 +45,7 @@ export function createLifecycleServices(options) {
         migrate: call(migrate),
         publishSpecification: call(publishSpecification),
         publishReview: call(publishReview),
+        publishComment: call(publishComment),
         issueComments: call(issueComments),
         pullRequests: call(pullRequests),
         advisoryReviews: call(advisoryReviews),

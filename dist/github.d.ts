@@ -30,6 +30,22 @@ export interface GitHubAccess {
 }
 export declare function githubError(error: unknown): never;
 export declare function openGitHub(rt: Runtime, config: ComforgeConfig, commonDir: string, provider?: (config: ComforgeConfig) => string, ledgerFactory?: (config: ComforgeConfig) => Ledger<OperationRecord>): GitHubAccess;
+export interface GitHubAccessOptions {
+    /** The trusted configuration: repository, API origin, capabilities, marker namespace. */
+    config: ComforgeConfig;
+    /** Server-owned; held in memory only. */
+    token: () => string;
+    ledger: Ledger<OperationRecord>;
+    now: () => number;
+    fetchImpl?: typeof fetch;
+    /** The writer's correlation-marker namespace; default `security.markerNamespace`. */
+    markerNamespace?: string;
+}
+/**
+ * GitHub access from a credential and a write ledger alone (0.6.0): what `openGitHub` builds for a
+ * checkout, for a host that has no checkout and supplies both itself.
+ */
+export declare function createGitHubAccess(options: GitHubAccessOptions): GitHubAccess;
 /** The audited host adapter: assignment through `gh`, which the SDK does not offer. */
 export declare function assignWithGh(rt: Runtime, config: ComforgeConfig, prNumber: number, login: string): {
     assigned: boolean;

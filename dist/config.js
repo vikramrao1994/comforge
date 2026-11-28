@@ -149,6 +149,21 @@ const ReviewSection = z
     .strict()
     .nullable();
 /**
+ * Discussion comments (0.6.0): owner-confirmed comments on a published specification issue,
+ * idempotent under a hidden marker `<!-- <markerNamespace>:issue-comment v1 issue=N key=K digest=D -->`.
+ * Evidence only: never a specification change, a review, a completion or an authorization.
+ * Absent: no discussion publication.
+ */
+const DiscussionSection = z
+    .object({
+    scheme: z.string().regex(/^[a-z0-9][a-z0-9.-]{0,63}\/v\d+$/),
+    markerNamespace: NAMESPACE,
+    publisherName: z.string().min(1).max(80),
+    publishToolName: z.string().regex(/^[a-z0-9_]{1,64}$/),
+})
+    .strict()
+    .nullable();
+/**
  * A canonical repository path: `/`-separated, no empty, `.` or `..` segment, no backslash, no
  * control character, no leading or trailing slash. Prefix matching is only sound on paths in
  * this one spelling; anything else is refused rather than normalized.
@@ -173,6 +188,7 @@ const ArtifactsSection = z
     .strict();
 export const SECTION_DEFAULTS = {
     review: null,
+    discussion: null,
     artifacts: ArtifactsSection.parse({}),
     state: StateSection.parse({}),
     lifecycle: LifecycleSection.parse({}),
@@ -293,6 +309,7 @@ export const ConfigSchema = z
     publication: PublicationSection.default(SECTION_DEFAULTS.publication),
     cleanup: CleanupSection.default(SECTION_DEFAULTS.cleanup),
     review: ReviewSection.default(null),
+    discussion: DiscussionSection.default(null),
     artifacts: ArtifactsSection.default(SECTION_DEFAULTS.artifacts),
     security: z
         .object({
@@ -381,6 +398,7 @@ export const TRUSTED_SECTIONS = [
     "publication",
     "cleanup",
     "review",
+    "discussion",
     "artifacts",
 ];
 /** Trusted sections added after 0.1.0: in the digest only when they differ from their default. */

@@ -3,6 +3,7 @@ import {
   advisoryReviews,
   artifact,
   issueComments,
+  publishComment,
   publishReview,
   publishSpecification,
   pullRequests,
@@ -118,6 +119,10 @@ export interface LifecycleServices {
     options: Parameters<typeof publishSpecification>[1],
   ): Promise<ServiceResult<EvidenceResult>>;
   /** Publishes an advisory review comment bound to the reviewed head; never a native review. */
+  /** Publishes (or replays) a discussion comment on a published specification issue (0.6.0). */
+  publishComment(
+    options: Parameters<typeof publishComment>[1],
+  ): Promise<ServiceResult<Record<string, unknown>>>;
   publishReview(
     options: Parameters<typeof publishReview>[1],
   ): Promise<ServiceResult<EvidenceResult>>;
@@ -177,6 +182,7 @@ export function createLifecycleServices(options: LifecycleServicesOptions): Life
     migrate: call(migrate),
     publishSpecification: call(publishSpecification),
     publishReview: call(publishReview),
+    publishComment: call(publishComment),
     issueComments: call(issueComments),
     pullRequests: call(pullRequests),
     advisoryReviews: call(advisoryReviews),

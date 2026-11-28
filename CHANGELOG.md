@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0
+
+- Governance without a checkout: createRemoteGovernance publishes specifications, advisory reviews and discussion comments for a host that supplies the verified configuration, write credential, ledger and policy (operator mode only). New discussion section and publishComment; createGitHubAccess.
+- package.json names the package's directory in the Comforge repository (repository.directory), its README (homepage) and the issue tracker (bugs).
+
 ## 0.5.0
 
 - New subpaths: @comforge/cli/protocols (specification, review and completion protocols under an explicit versioned profile that cannot weaken the credential floor or reserved prefixes) and @comforge/cli/authority (execution grants and validation receipts, separate from lifecycle grants).

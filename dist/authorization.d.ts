@@ -21,6 +21,15 @@ import { type InitiativeRecord } from "./state.ts";
  */
 export type Authorized = {
     mode: "operator";
+}
+/**
+ * 0.6.0, checkout-free governance only: an operator-mode repository's write approved by the
+ * embedding host's own policy for an authenticated principal (`createRemoteGovernance`).
+ */
+ | {
+    mode: "host";
+    authority: string;
+    principal: string;
 } | {
     mode: "owner-grant";
     grantId: string;

@@ -106,17 +106,6 @@ export function openGitHub(
   provider?: (config: ComforgeConfig) => string,
   ledgerFactory?: (config: ComforgeConfig) => Ledger<OperationRecord>,
 ): GitHubAccess {
-  const { owner, name, apiOrigin } = config.repository;
-  const token = credential(rt, config, provider);
-  // Resolved now: the SDK transport reports a failing token provider as a network error.
-  token();
-  const transport = createFetchTransport({
-    token,
-    fetchImpl: rt.fetchImpl,
-    apiOrigin,
-    userAgent: "comforge-cli",
-  });
-  const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
   const ledger: Ledger<OperationRecord> =
     ledgerFactory?.(config) ??
     createFileLedger<OperationRecord>({
@@ -127,6 +116,44 @@ export function openGitHub(
           fail("ledger", "the write ledger holds a record of another kind");
       },
     });
+  return createGitHubAccess({
+    config,
+    token: credential(rt, config, provider),
+    ledger,
+    now: rt.now,
+    ...(rt.fetchImpl ? { fetchImpl: rt.fetchImpl } : {}),
+  });
+}
+
+export interface GitHubAccessOptions {
+  /** The trusted configuration: repository, API origin, capabilities, marker namespace. */
+  config: ComforgeConfig;
+  /** Server-owned; held in memory only. */
+  token: () => string;
+  ledger: Ledger<OperationRecord>;
+  now: () => number;
+  fetchImpl?: typeof fetch;
+  /** The writer's correlation-marker namespace; default `security.markerNamespace`. */
+  markerNamespace?: string;
+}
+
+/**
+ * GitHub access from a credential and a write ledger alone (0.6.0): what `openGitHub` builds for a
+ * checkout, for a host that has no checkout and supplies both itself.
+ */
+export function createGitHubAccess(options: GitHubAccessOptions): GitHubAccess {
+  const { config, token, ledger } = options;
+  const rt = { now: options.now, fetchImpl: options.fetchImpl };
+  const { owner, name, apiOrigin } = config.repository;
+  // Resolved now: the SDK transport reports a failing token provider as a network error.
+  token();
+  const transport = createFetchTransport({
+    token,
+    fetchImpl: rt.fetchImpl,
+    apiOrigin,
+    userAgent: "comforge-cli",
+  });
+  const evidence = createGitHubEvidence({ transport, repository: { owner, name } });
   let viewer: string | null = null;
   const login = async () => {
     if (viewer) return viewer;
@@ -152,7 +179,7 @@ export function openGitHub(
           : { allow: false, reason: "not the operation this command prepared" },
       ledger,
       clock: rt.now,
-      markers: { namespace: config.security.markerNamespace },
+      markers: { namespace: options.markerNamespace ?? config.security.markerNamespace },
       expectedAuthor: viewer ?? undefined,
       fetchImpl: rt.fetchImpl,
       apiOrigin,

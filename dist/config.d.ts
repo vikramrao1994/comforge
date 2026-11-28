@@ -37,6 +37,7 @@ export declare const GOVERNANCE_CAPABILITIES: readonly ["issues:create", "issues
 export declare function isCanonicalRepoPath(p: unknown): p is string;
 export declare const SECTION_DEFAULTS: {
     readonly review: null;
+    readonly discussion: null;
     readonly artifacts: {
         readable: string[];
     };
@@ -185,6 +186,12 @@ export declare const ConfigSchema: z.ZodObject<{
         publishToolName: z.ZodString;
         trustedAuthors: z.ZodDefault<z.ZodArray<z.ZodString>>;
     }, z.core.$strict>>>;
+    discussion: z.ZodDefault<z.ZodNullable<z.ZodObject<{
+        scheme: z.ZodString;
+        markerNamespace: z.ZodString;
+        publisherName: z.ZodString;
+        publishToolName: z.ZodString;
+    }, z.core.$strict>>>;
     artifacts: z.ZodDefault<z.ZodObject<{
         readable: z.ZodDefault<z.ZodArray<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>>;
     }, z.core.$strict>>;
@@ -227,7 +234,7 @@ export declare const ConfigSchema: z.ZodObject<{
 export type ComforgeConfig = z.infer<typeof ConfigSchema>;
 export type ConfigInput = z.input<typeof ConfigSchema>;
 /** Sections a candidate revision may not change for its own publication. */
-export declare const TRUSTED_SECTIONS: readonly ["schema", "repository", "tickets", "validation", "specification", "completion", "security", "state", "lifecycle", "verification", "publication", "cleanup", "review", "artifacts"];
+export declare const TRUSTED_SECTIONS: readonly ["schema", "repository", "tickets", "validation", "specification", "completion", "security", "state", "lifecycle", "verification", "publication", "cleanup", "review", "discussion", "artifacts"];
 export declare function parseConfig(text: string, source: string): ComforgeConfig;
 /** The working tree's configuration (candidate text: guidance and local settings only). */
 export declare function readWorkingConfig(root: string): ComforgeConfig;
@@ -295,6 +302,11 @@ export declare const trustedPart: (config: ComforgeConfig) => {
         publisherName: string;
         publishToolName: string;
         trustedAuthors: string[];
+    } | {
+        scheme: string;
+        markerNamespace: string;
+        publisherName: string;
+        publishToolName: string;
     } | {
         capabilities: ("branches:delete" | "issues:comment" | "issues:create" | "issues:update" | "pulls:assign" | "pulls:create" | "pulls:ready" | "pulls:update")[];
         authorization: {

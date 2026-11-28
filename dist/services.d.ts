@@ -1,5 +1,5 @@
 import { complete, deliver, publish, recover } from "./commands/delivery.ts";
-import { advisoryReviews, artifact, issueComments, publishReview, publishSpecification, pullRequests } from "./commands/governance.ts";
+import { advisoryReviews, artifact, issueComments, publishComment, publishReview, publishSpecification, pullRequests } from "./commands/governance.ts";
 import { cleanup, revise, start, status, verify } from "./commands/lifecycle.ts";
 import { migrate } from "./commands/migrate.ts";
 import { type ContextOptions } from "./context.ts";
@@ -119,6 +119,8 @@ export interface LifecycleServices {
     /** Publishes (or replays) a specification issue; owner-grant needs a publish-specification grant. */
     publishSpecification(options: Parameters<typeof publishSpecification>[1]): Promise<ServiceResult<EvidenceResult>>;
     /** Publishes an advisory review comment bound to the reviewed head; never a native review. */
+    /** Publishes (or replays) a discussion comment on a published specification issue (0.6.0). */
+    publishComment(options: Parameters<typeof publishComment>[1]): Promise<ServiceResult<Record<string, unknown>>>;
     publishReview(options: Parameters<typeof publishReview>[1]): Promise<ServiceResult<EvidenceResult>>;
     issueComments(options: Parameters<typeof issueComments>[1]): Promise<ServiceResult<EvidenceResult>>;
     pullRequests(options: Parameters<typeof pullRequests>[1]): Promise<ServiceResult<EvidenceResult>>;

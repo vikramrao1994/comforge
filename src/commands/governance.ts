@@ -6,12 +6,24 @@ import {
   readSpecificationIssue,
   reconcileSpecification,
 } from "@comforge/github";
-import { authorizeGovernanceWrite, commandGrantTemplate } from "../authorization.ts";
+import {
+  type Authorized,
+  authorizeGovernanceWrite,
+  commandGrantTemplate,
+} from "../authorization.ts";
 import { type ComforgeConfig, isCanonicalRepoPath, readableArtifacts } from "../config.ts";
 import type { CommandContext } from "../context.ts";
 import { fail } from "../errors.ts";
-import { githubError } from "../github.ts";
-import { detectSecrets, reviewProtocol, specificationProtocol } from "../protocols.ts";
+import { type GitHubAccess, githubError } from "../github.ts";
+import {
+  DISCUSSION_LIMITS,
+  DISCUSSION_NOTICE,
+  type DiscussionReviewReference,
+  detectSecrets,
+  discussionProtocol,
+  reviewProtocol,
+  specificationProtocol,
+} from "../protocols.ts";
 import { trustedBase } from "../repository.ts";
 import type { CommandResult } from "./lifecycle.ts";
 
@@ -38,9 +50,69 @@ import type { CommandResult } from "./lifecycle.ts";
 const opId = (prefix: string, ...parts: string[]) =>
   `${prefix}-${createHash("sha256").update(parts.join("\0")).digest("hex").slice(0, 40)}`;
 
-/** The configuration of the base revision (candidate text cannot change what is checked). */
-function trustedNow(ctx: CommandContext): ComforgeConfig {
-  return trustedBase(ctx.rt, ctx.repo.root, ctx.working()).config;
+/**
+ * What a governance command needs, and nothing else (0.6.0): the trusted configuration, GitHub
+ * access under it, the write authorization, a clock and cancellation. A checkout-backed command
+ * builds it from its CommandContext (`governanceOf`); a checkout-free host builds it from a
+ * configuration it has already verified against GitHub (`createRemoteGovernance`). The commands
+ * cannot tell the two apart, so both publish the same records under the same checks.
+ */
+export interface GovernanceContext {
+  /** The configuration of the base revision: candidate text cannot change what is checked. */
+  trusted(): ComforgeConfig;
+  github(trusted: ComforgeConfig): GitHubAccess;
+  authorize(trusted: ComforgeConfig, options: AuthorizationRequest): Promise<Authorized>;
+  now(): number;
+  checkpoint(): void;
+}
+
+/** A governance write to authorize: a grant-scoped command, or a discussion comment. */
+export type AuthorizationRequest =
+  | { grantFile?: string; context: Parameters<typeof authorizeGovernanceWrite>[2]["context"] }
+  | {
+      grantFile?: string;
+      context: {
+        command: "publish-comment";
+        ticket: string;
+        issue: number;
+        specification: { ticketId: string; digest: string; digestMatches: boolean };
+      };
+    };
+
+/**
+ * Discussion comments have no owner-grant command scope (the grant protocol cannot bind one), so
+ * an owner-grant repository refuses them rather than accept a grant scoped to something else.
+ */
+export function discussionAuthorization(trusted: ComforgeConfig): Authorized {
+  const a = trusted.security.authorization;
+  if (!a)
+    return fail(
+      "authorization-required",
+      "GitHub writes are not authorized in this repository: the trusted configuration sets no security.authorization",
+    );
+  if (a.mode !== "operator")
+    return fail(
+      "authorization-required",
+      "discussion comments are published only in operator mode: no owner grant can be scoped to one",
+    );
+  return { mode: "operator" };
+}
+
+/** The governance context of a checkout: the base revision's configuration and the CLI's own authorization. */
+export function governanceOf(ctx: CommandContext): GovernanceContext {
+  return {
+    trusted: () => trustedBase(ctx.rt, ctx.repo.root, ctx.working()).config,
+    github: (trusted) => ctx.github(trusted),
+    authorize: async (trusted, options) =>
+      options.context.command === "publish-comment"
+        ? discussionAuthorization(trusted)
+        : authorizeGovernanceWrite(ctx, trusted, {
+            ...(options.grantFile ? { grantFile: options.grantFile } : {}),
+            context: options.context,
+          }),
+    now: () => ctx.rt.now(),
+    checkpoint: () => ctx.checkpoint(),
+  };
 }
 
 function reservedPrefixes(trusted: ComforgeConfig): string[] {
@@ -49,6 +121,7 @@ function reservedPrefixes(trusted: ComforgeConfig): string[] {
     ...(trusted.specification ? [`${trusted.specification.markerNamespace}:`] : []),
     ...(trusted.completion ? [`${trusted.completion.markerNamespace}:`] : []),
     ...(trusted.review ? [`${trusted.review.markerNamespace}:`] : []),
+    ...(trusted.discussion ? [`${trusted.discussion.markerNamespace}:`] : []),
   ];
 }
 
@@ -71,8 +144,8 @@ function needCapability(trusted: ComforgeConfig, capability: string, why: string
 
 // --- specification publication ------------------------------------------------------------
 
-export async function publishSpecification(
-  ctx: CommandContext,
+async function publishSpecificationWith(
+  ctx: GovernanceContext,
   options: {
     ticket: string;
     title: string;
@@ -84,7 +157,7 @@ export async function publishSpecification(
     grantFile?: string;
   },
 ): Promise<CommandResult> {
-  const trusted = trustedNow(ctx);
+  const trusted = ctx.trusted();
   const spec = specificationProtocol(trusted);
   if (!spec)
     return fail("config-invalid", "specification publication needs a specification section");
@@ -159,7 +232,7 @@ export async function publishSpecification(
         command: "publish-specification",
         target: target ? { kind: "issue", number: target.number } : { kind: "new" },
       },
-      now: ctx.rt.now(),
+      now: ctx.now(),
     });
     return {
       result: {
@@ -174,7 +247,7 @@ export async function publishSpecification(
   }
 
   needCapability(trusted, target ? "issues:update" : "issues:create", "publishing a specification");
-  const authorization = await authorizeGovernanceWrite(ctx, trusted, {
+  const authorization = await ctx.authorize(trusted, {
     grantFile: options.grantFile,
     context: {
       command: "publish-specification",
@@ -229,11 +302,11 @@ export async function publishSpecification(
 
 // --- advisory review publication -----------------------------------------------------------
 
-export async function publishReview(
-  ctx: CommandContext,
+async function publishReviewWith(
+  ctx: GovernanceContext,
   options: { review: unknown; execute: boolean; grantFile?: string },
 ): Promise<CommandResult> {
-  const trusted = trustedNow(ctx);
+  const trusted = ctx.trusted();
   const rp = reviewProtocol(trusted);
   if (!rp) return fail("config-invalid", "advisory reviews need a review section");
   const parsed = rp.inputSchema.safeParse(options.review);
@@ -321,7 +394,7 @@ export async function publishReview(
               reviewedHead: input.expectedHeadSha,
               reviewDigest: digest,
             },
-            now: ctx.rt.now(),
+            now: ctx.now(),
           })
         : null;
     return {
@@ -338,7 +411,7 @@ export async function publishReview(
   }
 
   needCapability(trusted, "issues:comment", "publishing an advisory review");
-  const authorization = await authorizeGovernanceWrite(ctx, trusted, {
+  const authorization = await ctx.authorize(trusted, {
     grantFile: options.grantFile,
     context: {
       command: "publish-review",
@@ -395,13 +468,241 @@ export async function publishReview(
   };
 }
 
+// --- discussion comments (0.6.0) --------------------------------------------------------------
+
+/**
+ * One owner-confirmed discussion comment on an open, published specification issue: never a
+ * comment on any other issue or on a pull request, never a review, completion or authorization.
+ * Idempotent per key: an earlier comment with the same key and content is replayed, the same key
+ * with other content is a conflict, and the send goes through the writer's durable operation
+ * identity, reconciled against GitHub first. A replay is answered even on a closed issue; a new
+ * comment needs an open one.
+ */
+async function publishCommentWith(
+  ctx: GovernanceContext,
+  options: {
+    issue: number;
+    body: string;
+    idempotencyKey: string;
+    relatedReview?: { prNumber: number; commentId: number; reviewedHeadSha: string };
+    execute: boolean;
+    grantFile?: string;
+  },
+): Promise<CommandResult> {
+  const trusted = ctx.trusted();
+  const dp = discussionProtocol(trusted);
+  if (!dp) return fail("config-invalid", "discussion comments need a discussion section");
+  const spec = specificationProtocol(trusted);
+  if (!spec) return fail("config-invalid", "discussion comments need a specification section");
+  if (!Number.isSafeInteger(options.issue) || options.issue < 1)
+    fail("usage", "an issue number is a positive integer");
+  const body = dp.canonicalCommentBody(options.body ?? "");
+  if (!body || body.length > DISCUSSION_LIMITS.bodyMaxChars)
+    fail("usage", `a comment needs a body of 1–${DISCUSSION_LIMITS.bodyMaxChars} characters`);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/.test(options.idempotencyKey ?? ""))
+    fail("usage", "the idempotency key must be 16–128 characters of [A-Za-z0-9._:-]");
+  const related = options.relatedReview;
+  if (
+    related &&
+    (!Number.isSafeInteger(related.prNumber) ||
+      related.prNumber < 1 ||
+      !Number.isSafeInteger(related.commentId) ||
+      related.commentId < 1 ||
+      !/^[0-9a-f]{40}$/.test(related.reviewedHeadSha ?? ""))
+  )
+    fail("usage", "relatedReview needs prNumber, commentId and a full 40-hex reviewedHeadSha");
+  refuseUnsafeText(trusted, [body]);
+  const input = {
+    issueNumber: options.issue,
+    body,
+    ...(related ? { relatedReview: related } : {}),
+  };
+  const keyDigest = idempotencyKeyDigest(options.idempotencyKey);
+  const digest = dp.commentDigest(input);
+  const gh = ctx.github(trusted);
+  ctx.checkpoint();
+
+  const issue = await gh.evidence.getIssue(options.issue).catch(githubError);
+  if (issue.isPullRequest)
+    fail("usage", `#${options.issue} is a pull request; publish an advisory review instead`);
+  if (issue.body.truncated) fail("conflict", `#${options.issue} is too long to verify safely`);
+  // Narrow by design: never a generic comment tool for any issue in the repository.
+  const published = spec.verifyPublishedSpecification({
+    title: issue.title.text,
+    body: issue.body.text,
+  });
+  if (!published)
+    return fail("policy-denied", `#${options.issue} is not a published specification`);
+
+  const earlier = await discussionComments(gh, dp, options.issue);
+  const sameKey = earlier.find((c) => c.marker.keyDigest === keyDigest);
+  if (sameKey && sameKey.marker.digest !== digest)
+    return fail(
+      "conflict",
+      "this idempotency key was already used for a different comment; use a new key only for a new comment",
+      { existingCommentId: sameKey.id, existingCommentUrl: sameKey.url },
+    );
+  const review = related
+    ? await relatedReviewReference(gh, trusted, related, published.ticketId, Boolean(sameKey))
+    : null;
+  const shaped = (commentId: number, url: string | null, action: string, extra = {}) => ({
+    result: {
+      kind: "discussion",
+      issueNumber: options.issue,
+      ticket: published.ticketId,
+      digest,
+      scheme: dp.scheme,
+      executed: options.execute,
+      action,
+      commentId,
+      url,
+      relatedReview: review
+        ? {
+            prNumber: review.prNumber,
+            commentId: review.commentId,
+            reviewedHeadSha: review.reviewedHeadSha,
+            currentHeadSha: review.currentHeadSha,
+            stale: review.stale,
+          }
+        : null,
+      // Evidence only: discussion never authorizes anything.
+      notice: DISCUSSION_NOTICE,
+      ...extra,
+    },
+  });
+  if (sameKey) return shaped(sameKey.id, sameKey.url, "replayed");
+  if (issue.state !== "open")
+    fail("conflict", `#${options.issue} is ${issue.state}; discussion belongs on open work`);
+  if (!options.execute)
+    return {
+      result: {
+        kind: "discussion",
+        issueNumber: options.issue,
+        ticket: published.ticketId,
+        digest,
+        scheme: dp.scheme,
+        executed: false,
+        action: "create",
+      },
+    };
+
+  needCapability(trusted, "issues:comment", "publishing a discussion comment");
+  const authorization = await ctx.authorize(trusted, {
+    grantFile: options.grantFile,
+    context: {
+      command: "publish-comment",
+      ticket: published.ticketId,
+      issue: options.issue,
+      specification: {
+        ticketId: published.ticketId,
+        digest: published.digest,
+        digestMatches: published.digestMatches,
+      },
+    },
+  });
+  ctx.checkpoint();
+  const operationId = opId("discussion", String(options.issue), keyDigest);
+  const composed = dp.composeComment(input, review, keyDigest, digest);
+  const outcome = await gh
+    .write({
+      kind: "issue.comment",
+      operationId,
+      issueNumber: options.issue,
+      thread: "issue",
+      body: composed,
+    })
+    .catch(githubError);
+  if (outcome.status !== "verified" || outcome.resource?.type !== "comment")
+    return fail(
+      "ambiguous",
+      "the comment could not be verified; run this command again with the same key to reconcile",
+      { operationId, status: outcome.status },
+    );
+  const commentId = outcome.resource.id;
+  const readBack = await gh.evidence.getIssueComment(commentId).catch(githubError);
+  const marker = dp.parseMarker(readBack.body.text);
+  if (
+    readBack.issueNumber !== options.issue ||
+    marker?.digest !== digest ||
+    marker.keyDigest !== keyDigest ||
+    !readBack.body.text.startsWith(composed)
+  )
+    fail("ambiguous", "the published comment does not read back as composed", {
+      operationId,
+      commentId,
+    });
+  return shaped(commentId, readBack.url, outcome.replayed ? "replayed" : "created", {
+    operationId,
+    authorization,
+  });
+}
+
+/** Every discussion marker on the issue; the listing itself refuses past its page bound. */
+async function discussionComments(
+  gh: GitHubAccess,
+  dp: NonNullable<ReturnType<typeof discussionProtocol>>,
+  issue: number,
+) {
+  const comments = await gh.evidence.listIssueComments(issue).catch(githubError);
+  if (comments.length > DISCUSSION_LIMITS.scanMax)
+    fail(
+      "conflict",
+      `cannot rule out an earlier publication beyond ${DISCUSSION_LIMITS.scanMax} comments`,
+    );
+  return comments.flatMap((c) => {
+    const marker = dp.parseMarker(c.body.text);
+    return marker && marker.issueNumber === issue ? [{ id: c.id, url: c.url, marker }] : [];
+  });
+}
+
+/** The verified review a comment refers to; on a replay a review that no longer verifies is dropped. */
+async function relatedReviewReference(
+  gh: GitHubAccess,
+  trusted: ComforgeConfig,
+  related: { prNumber: number; commentId: number; reviewedHeadSha: string },
+  ticketId: string,
+  replay: boolean,
+): Promise<DiscussionReviewReference | null> {
+  const rp = reviewProtocol(trusted);
+  try {
+    if (!rp) return fail("config-invalid", "a related review needs a review section");
+    const pr = await gh.evidence.getPullRequest(related.prNumber).catch(githubError);
+    const reviews = await listAdvisoryReviews(
+      gh.evidence,
+      rp,
+      { number: pr.number, headSha: pr.head.sha },
+      { trustedAuthors: trusted.review?.trustedAuthors ?? [] },
+    ).catch(githubError);
+    const r = reviews.find((x) => x.commentId === related.commentId);
+    if (!r || r.integrity !== "verified")
+      return fail("conflict", "the referenced review does not verify");
+    if (r.reviewedHeadSha !== related.reviewedHeadSha)
+      return fail("conflict", "the referenced review is of a different head", {
+        reviewedHead: r.reviewedHeadSha,
+      });
+    if (r.ticketId !== ticketId)
+      return fail("conflict", `the referenced review is for ${r.ticketId}, not ${ticketId}`);
+    return {
+      prNumber: pr.number,
+      commentId: r.commentId,
+      commentUrl: r.commentUrl ?? null,
+      reviewedHeadSha: r.reviewedHeadSha,
+      currentHeadSha: pr.head.sha,
+      stale: r.reviewedHeadSha !== pr.head.sha,
+    };
+  } catch (error) {
+    if (replay) return null;
+    throw error;
+  }
+}
+
 // --- verified reads --------------------------------------------------------------------------
 
-export async function issueComments(
-  ctx: CommandContext,
+async function issueCommentsWith(
+  ctx: GovernanceContext,
   options: { issue: number },
 ): Promise<CommandResult> {
-  const trusted = trustedNow(ctx);
+  const trusted = ctx.trusted();
   const comments = await ctx
     .github(trusted)
     .evidence.listIssueComments(options.issue)
@@ -409,11 +710,11 @@ export async function issueComments(
   return { result: { issue: options.issue, comments } };
 }
 
-export async function pullRequests(
-  ctx: CommandContext,
+async function pullRequestsWith(
+  ctx: GovernanceContext,
   options: { state?: "open" | "closed" | "all" },
 ): Promise<CommandResult> {
-  const trusted = trustedNow(ctx);
+  const trusted = ctx.trusted();
   const pulls = await ctx
     .github(trusted)
     .evidence.listPullRequests({ state: options.state ?? "open" })
@@ -421,11 +722,11 @@ export async function pullRequests(
   return { result: { state: options.state ?? "open", pullRequests: pulls } };
 }
 
-export async function advisoryReviews(
-  ctx: CommandContext,
+async function advisoryReviewsWith(
+  ctx: GovernanceContext,
   options: { pr: number },
 ): Promise<CommandResult> {
-  const trusted = trustedNow(ctx);
+  const trusted = ctx.trusted();
   const rp = reviewProtocol(trusted);
   if (!rp) return fail("config-invalid", "advisory reviews need a review section");
   const gh = ctx.github(trusted);
@@ -457,11 +758,11 @@ export function artifactReadable(trusted: ComforgeConfig, file: string): boolean
   return readableArtifacts(trusted).some((dir) => file === dir || file.startsWith(`${dir}/`));
 }
 
-export async function artifact(
-  ctx: CommandContext,
+async function artifactWith(
+  ctx: GovernanceContext,
   options: { commit: string; path: string },
 ): Promise<CommandResult> {
-  const trusted = trustedNow(ctx);
+  const trusted = ctx.trusted();
   if (!/^[0-9a-f]{40}$/.test(options.commit))
     fail("usage", "an artifact is read at a full 40-character commit sha");
   if (!artifactReadable(trusted, options.path))
@@ -475,3 +776,65 @@ export async function artifact(
     .catch(githubError);
   return { result: { artifact: file } };
 }
+
+// --- checkout-backed entry points (the CLI and the lifecycle services) ------------------------
+
+export function publishSpecification(
+  ctx: CommandContext,
+  options: Parameters<typeof publishSpecificationWith>[1],
+): Promise<CommandResult> {
+  return publishSpecificationWith(governanceOf(ctx), options);
+}
+
+export function publishReview(
+  ctx: CommandContext,
+  options: Parameters<typeof publishReviewWith>[1],
+): Promise<CommandResult> {
+  return publishReviewWith(governanceOf(ctx), options);
+}
+
+export function issueComments(
+  ctx: CommandContext,
+  options: Parameters<typeof issueCommentsWith>[1],
+): Promise<CommandResult> {
+  return issueCommentsWith(governanceOf(ctx), options);
+}
+
+export function pullRequests(
+  ctx: CommandContext,
+  options: Parameters<typeof pullRequestsWith>[1],
+): Promise<CommandResult> {
+  return pullRequestsWith(governanceOf(ctx), options);
+}
+
+export function advisoryReviews(
+  ctx: CommandContext,
+  options: Parameters<typeof advisoryReviewsWith>[1],
+): Promise<CommandResult> {
+  return advisoryReviewsWith(governanceOf(ctx), options);
+}
+
+export function artifact(
+  ctx: CommandContext,
+  options: Parameters<typeof artifactWith>[1],
+): Promise<CommandResult> {
+  return artifactWith(governanceOf(ctx), options);
+}
+
+export function publishComment(
+  ctx: CommandContext,
+  options: Parameters<typeof publishCommentWith>[1],
+): Promise<CommandResult> {
+  return publishCommentWith(governanceOf(ctx), options);
+}
+
+/** The same commands over a supplied governance context (a checkout-free host). */
+export const governanceCommands = {
+  publishSpecification: publishSpecificationWith,
+  publishReview: publishReviewWith,
+  publishComment: publishCommentWith,
+  issueComments: issueCommentsWith,
+  pullRequests: pullRequestsWith,
+  advisoryReviews: advisoryReviewsWith,
+  artifact: artifactWith,
+} as const;
